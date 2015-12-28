@@ -1,4 +1,4 @@
-# A fully automated recurrent neural network for unknown dynamic system identification and control
+# FARNN ID
 
 ## Maintainer
 
