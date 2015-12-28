@@ -85,14 +85,15 @@ The code will compute the input, output and overall order of your nonlinear syst
 
 ## Options
 
-* '-seed', 123, 'initial random seed to use'
-* '-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu'
-* '-pose','posemat7.mat','path to preprocessed data(save in Matlab -v7.3 format'
-* '-tau', 1, 'what is the delay in the data?'
-* '-m_eps', 0.01, 'stopping criterion for order determination'
-* '-l_eps', 0.05, 'stopping criterion for input order determination'
-* '-backend', 'cudnn', 'nn|cudnn'
-* '-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu '
-* '-quots', 0, 'do you want to print the Lipschitz quotients?; 0 to silence, 1 to print'
-* '-maxIter', 50, 'maximaum iteratiopn for training the neural network'
+* `-seed`, 		initial random seed to use.
+* `-gpuid`, 	which gpu to use. -1 = use CPU; >=0 use gpu.
+* `-pose`, 		path to preprocessed data(save in Matlab -v7.3 format). Default is given `posemat7.mat`.
+* `-tau`, 		what is the delay in the data?` Default is 1.
+* `-m_eps`, 	stopping criterion for order determination. Default is  0.01.
+* `-l_eps`,  	stopping criterion for input order determination. Default is 0.05.
+* `-backend`, 	cudnn`, `nn|cudnn`
+* `-gpuid`,  	which gpu to use. -1 = use CPU; >=0 use gpu.  Default is gpu 0.
+* `-quots`,  	do you want to print the Lipschitz quotients?; 0 to silence, 1 to print
+* `-maxIter`, 	maximaum iteration for training the neural network.' Default is 50.
 
+	
