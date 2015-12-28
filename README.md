@@ -2,7 +2,7 @@
 
 ## Maintainer
 
-- [Olalekan Ogunmolu](https://ecs.utdallas.edu/~olalekan.ogunmolu <<olalekan.ogunmolu@utdallas.edu>>, [Sensing, Robotics, Vision, Control and Estimation Lab](http://ecs.utdallas.edu/research/researchlabs/service-lab/), University of Texas at Dallas
+- [Olalekan Ogunmolu](https://ecs.utdallas.edu/~olalekan.ogunmolu) <<olalekan.ogunmolu@utdallas.edu>>, [Sensing, Robotics, Vision, Control and Estimation Lab](http://ecs.utdallas.edu/research/researchlabs/service-lab/), University of Texas at Dallas
 
 ## Table of contents
 - [Description](#description)
