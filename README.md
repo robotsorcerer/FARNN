@@ -80,7 +80,7 @@ This is my implementation for a SISO-based input-output mapping recontruction us
 
 This avoids the active region consuming too much memory bandwidth and reduces algorithm complexity in terms of finding optimal regions within the input nonlinearity activation function that is non-saturated such as Yam and Chow proposed in the 2001 paper [Feedforward networks training speed enhancement by optimal initialization of the synaptic coefficients. IEEE Transactions on Neural Networks, 12(2), 430–434.](http://doi.org/10.1109/72.914538).
 
-## Testing code
+## Test code
 
 To test this code, make sure `posemat7.mat`	 is in the root directory of your project. Then run the `farnn.lua` script as
 
