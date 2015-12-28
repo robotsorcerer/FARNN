@@ -41,16 +41,22 @@ YMMV, but it is good if you have a CUDA-capable GPU to be able to run this code 
 If the above command does not list the above dependencies, you can install them via the following commands
 
 - NN
- 
- >luarocks install nn
+
+```bash
+	luarocks install nn
+```
 
 - CUNN
 
->luarocks install cunn
+```bash
+	luarocks install cunn
+```
 
 - CUTORCH
 
-> luarocks install cutorch
+```bash
+	luarocks install cutorch
+```
 
 - MATIO
 
@@ -58,8 +64,9 @@ On Ubuntu, you can simply install the matio  development library from the ubuntu
 
 Then do
 
->luarocks install matio
-
+```bash
+	luarocks install matio
+```
 If you want to use a GPU, you will have to install the [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit). Or you could copy out the following lines from this [bash script](https://github.com/lakehanne/Shells/blob/master/packages.sh#L282-L313), place it in a new bash script and it will install cuda-7.0 on your computer.
 
 If you'd like to use the cudnn backend (to speed up the training of your dataset), you also have to install [cudnn](https://github.com/soumith/cudnn.torch). First follow the link to [NVIDIA website](https://developer.nvidia.com/cuDNN), register with them and download the cudnn library. Then make sure you adjust your `LD_LIBRARY_PATH` to point to the `lib64` folder that contains the library (e.g. `libcudnn.so.7.0.64`). Then git clone the `cudnn.torch` repo, `cd` inside and do `luarocks make cudnn-scm-1.rockspec` to build the Torch bindings.
