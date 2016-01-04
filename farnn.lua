@@ -30,16 +30,20 @@ cmd:text()
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial random seed to use')
 
--- Data input settings
-cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
+-- Model Order Determination Parameters
 cmd:option('-pose','posemat7.mat','path to preprocessed data(save in Matlab -v7.3 format)')
 cmd:option('-tau', 1, 'what is the delay in the data?')
-cmd:option('-m_eps', 0.01, 'stopping criterion for order determination')
-cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
-cmd:option('-backend', 'cudnn', 'nn|cudnn')
-cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu ')
 cmd:option('-quots', 0, 'do you want to print the Lipschitz quotients?; 0 to silence, 1 to print')
-cmd:option('-maxIter', 50, 'maximaum iteratiopn for training the neural network')
+cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
+cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
+
+--Gpu settings
+cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
+cmd:option('-backend', 'cudnn', 'nn|cudnn')
+
+-- Neural Network settings
+cmd:option('-learningRate', 0.0055, 'learning rate for the neural network')
+cmd:option('-maxIter', 1000, 'maximaum iteratiopn for training the neural network')
 
 --parse input params
 params = cmd:parse(arg)
@@ -57,6 +61,7 @@ cmd:text()
 -- misc
 local opt = cmd:parse(arg)
 torch.manualSeed(opt.seed)
+
 -------------------------------------------------------------------------------
 -- Basic Torch initializations
 -------------------------------------------------------------------------------
@@ -68,19 +73,19 @@ if opt.gpuid >= 0 then
   cutorch.manualSeed(opt.seed)
   cutorch.setDevice(opt.gpuid + 1)                         -- +1 because lua is 1-indexed
   idx = cutorch.getDevice()
-  print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'I am running on GPU:', idx)
+  print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
 end
 
 ----------------------------------------------------------------------------------------
 --Data Preprocessing
 ----------------------------------------------------------------------------------------
 if opt.gpuid >=0 then
-	data    = opt.pose       --ship raw data to gpu
+--	data    = opt.pose:cuda()       --ship raw data to gpu
+	--print(data)
 end
---print(data)
+
 input      = matio.load(data, 'in')						--SIMO System
 -- print('\ninput head\n\n', input[{ {1,5}, {1}} ])
-
 trans     = matio.load(data, {'xn', 'yn', 'zn'})
 roll      = matio.load(data, {'rolln'})
 pitch     = matio.load(data, {'pitchn'})
@@ -88,7 +93,6 @@ yaw       = matio.load(data, {'yawn'})
 rot       = {roll, pitch, yaw}
 --print('\nFull output head\n\n', trans.xn:size()[1], trans.yn:size()[1], trans.zn:size()[1])
 --,	 output.rolln:size()[1], output.pitchn:size()[1], output.yawn.size()[1])
-
 
 out        = matio.load(data, 'zn')
 out        = out/10;							--because zn was erroneosly multipled by 10 in the LabVIEW Code.
@@ -219,7 +223,7 @@ inorder, outorder, q =  computeq(u_off, y_off)
 print('inorder: ', inorder, 'outorder: ', outorder)
 print('system order:', inorder + outorder)
 
---Print out some Lipschitz quotients for your eyes
+--Print out some Lipschitz quotients for your observation
 if opt.quots == 1 then
 	for k, v in pairs( q ) do
 		print(k, v)
@@ -237,38 +241,66 @@ print('Optimal number of input variables is: ', torch.ceil(qn))
 --print(Res) make install
   local inp= torch.randn(2);
 
-m          = nn.ReLU()
-FirstLayer = m:forward(input)     --hidden layer
-
 --[[In the dynamic layer, feedforward the first layer, then do a self-feedback of 2nd layer neurons
  and weighted connections with the feedback from other neurons  ]]
 
 mlp        = nn.Sequential();  --to enable us plug the hidden layer with dynamic layer in a feedforward manner
-input = 1 	 output = 1 	HUs = 6;				--Hidden units in dynamic layer parameters
+input = 1 	 output = 1 	HUs = 3;				--Hidden units in dynamic layer parameters
 mlp:add(nn.Linear(input, HUs))      -- 1 input vector, 20 hidden unit
 mlp:add(nn.Tanh())                       -- maxOut function
 mlp:add(nn.Linear(HUs, output))	-- to map out of dynamic layer to states
 
---Training
+--Training using the MSE criterion
 for i = 1, off do
 	local input = u_off
 	local output = y_off
 	criterion = nn.MSECriterion()           -- Loss function
 	trainer   = nn.StochasticGradient(mlp, criterion)
-	trainer.learningRate = 0.01
+	trainer.learningRate = 0.0055
 	trainer.maxIteration = opt.maxIter
-	criterion:forward(mlp:forward(input), output)
+	--Forward Pass
+	local err = criterion:forward(mlp:forward(input), output)
+	print('iteration', i, 'error: ', delta)
 	  -- train over this example in 3 steps
 	  -- (1) zero the accumulation of the gradients
 	  mlp:zeroGradParameters()
 	  -- (2) accumulate gradients
 	  mlp:backward(input, criterion:backward(mlp.output, output))
-	  -- (3) update parameters with a 0.01 learning rate
-	  mlp:updateParameters(0.01)
+	  -- (3) update parameters with a 0.0055 learning rate
+	  mlp:updateParameters(trainer.learningRate)
 end
 
---Test Network
+--Test Network (MSE)
 x = u_on
-print(mlp:forward(x)[{1,5} {}])
+print('=========================================================')
+print('       Example results head post-training using MSE      ')
+print(              mlp:forward(x)[{ {1, 5}, {} }]                   )
+print('=========================================================')                
+
+
+--Train using the Negative Log Likelihood Criterion
+function gradUpdate(mlp, x, y, learningRate)	
+   local criterion 	= nn.ClassNLLCriterion()
+   local pred 	  	= mlp:forward(x)
+   local err 		= criterion:forward(pred, y)
+   print(err)
+   mlp:zeroGradParameters()
+   local t          = criterion:backward(pred, y)
+   mlp:backward(x, t)
+   learningRate = 0.055
+   mlp:updateParameters(learningRate)
+   return err
+end
+
+
+local input = u_off 	local output = y_off
+
+repeat
+	delta = gradUpdate(mlp, input, output, opt.learningRate)
+	print('iteration', i, 'NLL error: ', delta)
+until delta < 0.00005    --stopping criterion for backward pass
+
+
+
 
 
