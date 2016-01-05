@@ -240,7 +240,6 @@ print('Optimal number of input variables is: ', torch.ceil(qn))
 
 --print('\ninput order: ', l, 'output_order: ', m, '\nsystem order: ', n, 'Lipschitz Quotients: ', q)
 --print(Res) make install
-local inp= torch.randn(2);
 
 --[[In the dynamic layer, feedforward the first layer, then do a self-feedback of 2nd layer neurons
  and weighted connections with the feedback from other neurons  ]]
@@ -252,23 +251,25 @@ mlp:add(nn.Tanh())                       	-- maxOut function
 mlp:add(nn.Linear(HUs, output))				-- to map out of dynamic layer to states
 
 --Training using the MSE criterion
+-- for i = 1, off do
 i = 0
 repeat
-	local input = u_off
-	local output = y_off
-	criterion = nn.MSECriterion()           -- Loss function
-	trainer   = nn.StochasticGradient(mlp, criterion)
-	trainer.learningRate = 0.0055
-	trainer.maxIteration = opt.maxIter
-	--Forward Pass
-	local err = criterion:forward(mlp:forward(input), output)
-	i = i + 1
+	local input  			= u_off
+	local output 			= y_off
+	criterion 				= nn.MSECriterion()           -- Loss function
+	trainer   				= nn.StochasticGradient(mlp, criterion)
+	trainer.learningRate 	= 0.01
+	trainer.maxIteration 	= opt.maxIter
+	--Forward Pass (on gpu andf clone error to cpu)
+	crit 					= criterion:forward(mlp:forward(input), output):cuda() 
+	local err 				= crit:clone()
+	i 						= i + 1
 	print('iteration', i, 'error: ', err)
 	  -- train over this example in 3 steps
 	  -- (1) zero the accumulation of the gradients
 	  mlp:zeroGradParameters()
-	  -- (2) accumulate gradients
-	  mlp:backward(input, criterion:backward(mlp.output, output))
+	  -- (2) accumulate gradients on gpu and clone to cpu
+	  mlp:backward(input, criterion:backward(mlp.output, output)):cuda()
 	  -- (3) update parameters with a 0.0055 learning rate
 	  mlp:updateParameters(trainer.learningRate)
 --end
