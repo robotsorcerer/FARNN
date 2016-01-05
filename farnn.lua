@@ -240,19 +240,20 @@ print('Optimal number of input variables is: ', torch.ceil(qn))
 
 --print('\ninput order: ', l, 'output_order: ', m, '\nsystem order: ', n, 'Lipschitz Quotients: ', q)
 --print(Res) make install
-  local inp= torch.randn(2);
 
 --[[In the dynamic layer, feedforward the first layer, then do a self-feedback of 2nd layer neurons
  and weighted connections with the feedback from other neurons  ]]
 
 mlp        = nn.Sequential();  --to enable us plug the hidden layer with dynamic layer in a feedforward manner
 input = 1 	 output = 1 	HUs = 3;				--Hidden units in dynamic layer parameters
-mlp:add(nn.Linear(input, HUs))      -- 1 input vector, 20 hidden unit
-mlp:add(nn.Tanh())                       -- maxOut function
-mlp:add(nn.Linear(HUs, output))	-- to map out of dynamic layer to states
+mlp:add(nn.Linear(input, HUs))      		-- 1 input vector, 3 hidden units
+mlp:add(nn.Tanh())                       	-- maxOut function
+mlp:add(nn.Linear(HUs, output))				-- to map out of dynamic layer to states
 
 --Training using the MSE criterion
-for i = 1, off do
+-- for i = 1, off do
+i = 0
+repeat
 	local input = u_off
 	local output = y_off
 	criterion = nn.MSECriterion()           -- Loss function
@@ -261,6 +262,7 @@ for i = 1, off do
 	trainer.maxIteration = opt.maxIter
 	--Forward Pass
 	local err = criterion:forward(mlp:forward(input), output)
+	i = i + 1
 	print('iteration', i, 'error: ', err)
 	  -- train over this example in 3 steps
 	  -- (1) zero the accumulation of the gradients
@@ -269,7 +271,8 @@ for i = 1, off do
 	  mlp:backward(input, criterion:backward(mlp.output, output))
 	  -- (3) update parameters with a 0.0055 learning rate
 	  mlp:updateParameters(trainer.learningRate)
-end
+--end
+until err <= 0.00055      --stopping criterion for MSE based optimization
 
 --Test Network (MSE)
 x = u_on
@@ -281,22 +284,22 @@ print('=========================================================')
 
 --Train using the Negative Log Likelihood Criterion
 function gradUpdate(mlp, x, y, learningRate)	
-   local criterion 	= nn.ClassNLLCriterion()
-   local pred 	  	= mlp:forward(x)
-   local err 		= criterion:forward(pred, y)
-   print(err)
+   local NLLcriterion 	= nn.ClassNLLCriterion()
+   local pred 	  		= mlp:forward(x)
+   local NLLerr 		= criterion:forward(pred, y)
+   i = i + 1
+   print('NLL_iter', i, 'error: ', NLLerr)
    mlp:zeroGradParameters()
    local t          = criterion:backward(pred, y)
    mlp:backward(x, t)
-   local learningRate = 0.055
-   mlp:updateParameters(learningRate)
+   mlp:updateParameters(opt.learningRate)
    return err
 end
 
 
-local input = u_off 	local output = y_off
+local inNLL = u_off 	local outNLL = y_off
 
 repeat
-	delta = gradUpdate(mlp, input, output, opt.learningRate)
+	delta = gradUpdate(mlp, inNLL, outNLL, opt.learningRate)
 	print('iteration', i, 'NLL error: ', delta)
 until delta < 0.00005    --stopping criterion for backward pass
