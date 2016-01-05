@@ -29,6 +29,7 @@ cmd:text()
 cmd:text()
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial random seed to use')
+cmd:option('-rundir', false, 'log output to file in a directory? Default is false')
 
 -- Model Order Determination Parameters
 cmd:option('-pose','posemat7.mat','path to preprocessed data(save in Matlab -v7.3 format)')
@@ -48,7 +49,7 @@ cmd:option('-maxIter', 1000, 'maximaum iteratiopn for training the neural networ
 --parse input params
 params = cmd:parse(arg)
 
-params.rundir = cmd:string('experiment', params, {dir=true})
+params.rundir = cmd:string('experiment', params, {dir=false})
 paths.mkdir(params.rundir)
 
 -- create log file
@@ -80,7 +81,7 @@ end
 --Data Preprocessing
 ----------------------------------------------------------------------------------------
 if opt.gpuid >=0 then
---	data    = opt.pose:cuda()       --ship raw data to gpu
+	data    = opt.pose       --ship raw data to gpu
 	--print(data)
 end
 
@@ -260,7 +261,7 @@ for i = 1, off do
 	trainer.maxIteration = opt.maxIter
 	--Forward Pass
 	local err = criterion:forward(mlp:forward(input), output)
-	print('iteration', i, 'error: ', delta)
+	print('iteration', i, 'error: ', err)
 	  -- train over this example in 3 steps
 	  -- (1) zero the accumulation of the gradients
 	  mlp:zeroGradParameters()
@@ -287,7 +288,7 @@ function gradUpdate(mlp, x, y, learningRate)
    mlp:zeroGradParameters()
    local t          = criterion:backward(pred, y)
    mlp:backward(x, t)
-   learningRate = 0.055
+   local learningRate = 0.055
    mlp:updateParameters(learningRate)
    return err
 end
@@ -299,8 +300,3 @@ repeat
 	delta = gradUpdate(mlp, input, output, opt.learningRate)
 	print('iteration', i, 'NLL error: ', delta)
 until delta < 0.00005    --stopping criterion for backward pass
-
-
-
-
-
