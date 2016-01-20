@@ -248,7 +248,9 @@ local inp= torch.randn(2);
 mlp        = nn.Sequential();  --to enable us plug the hidden layer with dynamic layer in a feedforward manner
 input = 1 	 output = 1 	HUs = 3;		-- Hidden units in dynamic layer parameters
 mlp:add(nn.Linear(input, HUs))      		-- 1 input vector, 3 hidden units
-mlp:add(nn.Tanh())                       	-- maxOut function
+mlp:add(nn.ReLU())                       	-- maxOut function
+print('mlp weights', mlp.weight)
+print('mlp biases', mlp.bias)
 mlp:add(nn.Linear(HUs, output))				-- to map out of dynamic layer to states
 
 --Training using the MSE criterion
@@ -272,7 +274,7 @@ repeat
 	  -- (3) update parameters with a 0.0055 learning rate
 	  mlp:updateParameters(trainer.learningRate)
 --end
-until err <= 0.00055      --stopping criterion for MSE based optimization
+until err <= 141    --stopping criterion for MSE based optimization
 
 --Test Network (MSE)
 x = u_on
@@ -293,7 +295,7 @@ function gradUpdate(mlp, x, y, learningRate)
    local t          = criterion:backward(pred, y)
    mlp:backward(x, t)
    mlp:updateParameters(opt.learningRate)
-   return err
+   return NLLerr
 end
 
 
@@ -302,4 +304,4 @@ local inNLL = u_off 	local outNLL = y_off
 repeat
 	delta = gradUpdate(mlp, inNLL, outNLL, opt.learningRate)
 	print('iteration', i, 'NLL error: ', delta)
-until delta < 0.00005    --stopping criterion for backward pass
+until delta < 141    --stopping criterion for backward pass
