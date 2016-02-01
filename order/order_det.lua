@@ -10,7 +10,7 @@ require 'torch'
 order_det = {}
 print('Determinining input-output order determination using He and Asada\'s method')
 --------------------------------------------------------------------------------------------------------------
---Section 3.2 Find Optimal number of input parameters 
+--Section 3.2, He and Asada: Find Optimal number of input parameters 
 --------------------------------------------------------------------------------------------------------------
 local qn = {}
 function order_det.computeqn(u_off, y_off)
@@ -29,7 +29,9 @@ function order_det.computeqn(u_off, y_off)
 		--print('off', off)
 	return qn
 end
-
+-- qn is not needed anymore
+qn = nil
+collectgarbage()
 --------------------------------------------------------------------------------------------------------------
 --[[Compute the Lipschitz quotients and Estimate Model order
 
@@ -106,3 +108,6 @@ function order_det.computeq (u_off, y_off, opt)
 		
     return inorder, outorder, q
 end
+--not needed anymore
+inorder, outorder, q = nil
+collectgarbage()

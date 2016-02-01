@@ -9,7 +9,9 @@
 -- needed dependencies
 require 'torch'
 require 'nn'
-matio   = require 'matio'       
+require 'optim'
+matio   	= require 'matio'  
+orderdet 	= require 'order.order_det'     
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -66,8 +68,10 @@ cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
-cmd:option('-learningRate', 0.0055, 'learning rate for the neural network')
-cmd:option('-maxIter', 1000, 'maximum iteration for training the neural network')
+cmd:option('-learningRate',1e-3, 'learning rate for the neural network')
+cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
+cmd:option('-maxIter', 20000, 'maximum iteration for training the neural network')
+cmd:option('-optimizer', 'nll', 'nll|mse|l-bfgs|adam')
 
 --parse input params
 params = cmd:parse(arg)
@@ -139,8 +143,6 @@ y_on       = out  [{{off + 1, k}, {1}}]
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 
-orderdet = require 'order.order_det'
-
 --find optimal # of input variables from data
 qn  = order_det.computeqn(u_off, y_off)
 print('\nqn:' , qn)
@@ -164,19 +166,53 @@ end
 
 
 --[[Set up the network, add layers in place as we add more abstraction]]
-local neunet        = nn.Sequential()
 input = 1 	 output = 1 	HUs = 1;
-print('neunet1 biases Linear', neunet.bias)
+local neunet 	= {}
+neunet        	= nn.Sequential()
+print('neunet biases Linear', neunet.bias)
+neunet:add(nn.Linear(input, HUs))
 neunet:add(nn.ReLU())                       	
 --neunet.modules[1].weights = torch.rand(input, HUs):mul(opt.sigma)
 neunet:add(nn.Linear(HUs, output))				
 --create a deep copy of neunet for NLL training
 neunet2 = neunet:clone('weight', bias);
-print('\nneunet_1 biases\n', neunet:get(1).bias, '\tneunet_1 weights: ', neunet:get(1).weights)
+print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
+collectgarbage()
+
+--[[Declare states for limited BFGS
+ See: https://github.com/torch/optim/blob/master/lbfgs.lua
+]]
+local state = nil
+if opt.optimizer == 'l-bfgs' then
+  state = {
+    maxIter = opt.maxIter,
+    verbose=true,
+  }
+
+elseif opt.optimizer == 'adam' then
+  state = {
+    learningRate = opt.learningRate,
+  }
+
+elseif opt.optimizer == 'nll' then
+  state = {
+    learningRate = opt.learningRate,
+  }
+
+elseif opt.optimizer == 'mse' then
+  state = {
+    learningRate = opt.learningRate,
+  }
+
+else
+  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
+end
 
 --[[ Function to evaluate loss and gradient.
 -- optim.lbfgs internally handles iteration and calls this fucntion many
 -- times]]
+
+--[[
 local num_calls = 0
 local function feval(x)
   num_calls = num_calls + 1
@@ -196,39 +232,76 @@ local function feval(x)
   -- optim.lbfgs expects a vector for gradients
   return loss, grad:view(grad:nElement())
 end
-
--- Run optimization.
-if opt.optimizer == 'lbfgs' then
-  print('Running optimization with L-BFGS')
-  local x, losses = optim.lbfgs(feval, img, optim_state)
-end
+]]
 
 --Training using the MSE criterion
-function msetrain(neunet, x, y, learningRate)
-	i = 0
-	repeat
-		local input = x
-		local output = y
-		criterion = nn.MSECriterion()           -- Loss function
-		trainer   = nn.StochasticGradient(neunet, criterion)
-		learningRate = 0.5 --
-		learningRateDecay = 0.0055
-		trainer.maxIteration = opt.maxIter
+local i = 0
+local function msetrain(neunet, x, y, learningRate)
+	-- repeat
+		local input = x;		local output = y; -- 	local cost = {}
+		cost 		= nn.MSECriterion()           -- Loss function
+		trainer   	= nn.StochasticGradient(neunet, cost)
+
 		--Forward Pass
-		 err = criterion:forward(neunet2:forward(input), output)
-		i = i + 1
-		print('MSE_iter', i, 'MSE error: ', err)
-		  neunet2:zeroGradParameters()
-		  neunet2:backward(input, criterion:backward(neunet2.output, output))		  neunet2:updateParameters(learningRate, learningRateDecay)
-	until err <= opt.trainStop    --stopping criterion for MSE based optimization
-return i, err
+		err 		= cost:forward(neunet:forward(input), output)
+		-- i 			= i + 1
+		-- print('MSE_iter', i, 'MSE error: ', err)
+		neunet:zeroGradParameters()
+		--neunet:backward(input, cost:backward(neunet.output, output))		 
+		neunet:backward(input, cost:backward(neunet.output, output))
+		neunet:updateParameters(opt.learningRate, opt.learningRateDecay)
+	-- until err <= opt.trainStop    --stopping criterion for MSE based optimization
+return err
 end
 
-i, mse_error = msetrain(neunet2, u_off, y_off, learningRate)
-print('MSE iteration', i, 'MSE error: ', mse_error, '\n')
 
- print('neunet gradient weights', neunet.gradWeight)
- print('neunet gradient biases', neunet.gradBias)
+--Train using the Negative Log Likelihood Criterion
+function nllOptim(net, x, y, learningRate)	
+   -- iN = 0
+   local NLLcriterion 	= nn.ClassNLLCriterion()
+   local pred 	  		= net:forward(x)
+   NLLerr 				= NLLcriterion:forward(pred, y)
+   -- iN = iN + 1
+   -- print('NLL_iter', iN, 'NLL error: ', NLLerr)
+   neunet:zeroGradParameters()
+   local t          = NLLcriterion:backward(pred, y)
+   net:backward(x, t)
+   net:updateParameters(opt.learningRate)
+   return t, NLLerr
+end
+
+
+-- Run optimization.
+local i = {}
+if opt.optimizer == 'mse' then
+	print('Running optimization with mean-squared error')
+	for i = 0, opt.maxIter do
+		mse_error = msetrain(neunet2, u_off, y_off, learningRate)
+		i = i + 1
+		print('MSE iteration', i, 'MSE error: ', mse_error, '\n')
+		-- print('neunet gradient weights', neunet.gradWeight)
+		-- print('neunet gradient biases', neunet.gradBias)
+	end
+
+elseif opt.optimizer == 'l-bfgs' then
+  print('Running optimization with L-BFGS')
+  for i = 0, opt.maxIter do
+  	local i, losses = optim.lbfgs(msetrain, u_off, state)
+  	i = i + 1
+  	print('lbfgs iter', i,  'error', losses)
+  end
+ 
+elseif opt.optimizer == 'nll' then
+	print('Running optimization with negative log likelihood criterion')
+  	for i = 0, opt.maxIter do
+  		t, delta = nllOptim(neunet, u_off, y_off, opt.learningRate)
+  		i = i + 1
+  		print('nll iter', i, 'bckwd error', t, 'fwd error', delta )
+  	end
+  		--print('NLL_iter', iNLL, 'NLL error: ', delta)
+  	--until delta < opt.trainStop    --stopping criterion for backward pass
+end
+
 
 --Test Network (MSE)
 -- x = u_on
@@ -239,28 +312,6 @@ print('MSE iteration', i, 'MSE error: ', mse_error, '\n')
 -- print('=========================================================')                
 
 
---Train using the Negative Log Likelihood Criterion
-function gradUpdate(neunet, x, y, learningRate)	
-   iN = 0
-   local NLLcriterion 	= nn.ClassNLLCriterion()
-   local pred 	  		= neunet:forward(x)
-   NLLerr 		= criterion:forward(pred, y)
-   iN = iN + 1
-   print('NLL_iter', iN, 'NLL error: ', NLLerr)
-   neunet:zeroGradParameters()
-   local t          = criterion:backward(pred, y)
-   neunet:backward(x, t)
-   neunet:updateParameters(opt.learningRate)
-   return iN, NLLerr
-end
-
-
-local inNLL = u_off 	local outNLL = y_off
-
-repeat
-	iNLL, delta = gradUpdate(neunet, inNLL, outNLL, opt.learningRate)
-	--print('NLL_iter', iNLL, 'NLL error: ', delta)
-until delta < opt.trainStop    --stopping criterion for backward pass
 --[[
 for i, module in ipairs(neunet:listModules()) do
 	print('neunet1 Modules are: \n', module)
