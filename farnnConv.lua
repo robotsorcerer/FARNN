@@ -313,7 +313,7 @@ function msetrain(mlp, x, y, learningRate)
 	until err <= opt.trainStop    --stopping criterion for MSE based optimization
 return i, err
 end
-
+--[[]]
 ii, mse_error = msetrain(mlp2, u_off, y_off, learningRate)
 print('MSE iteration', ii, 'MSE error: ', mse_error, '\n')
 
@@ -338,13 +338,13 @@ print('\nmlp1 biases\n', mlp:get(1).bias, '\tmlp1 weights: ', mlp:get(1).weights
 
 iN = 0
 function nllTrain(mlp, x, y, learningRate)	
-   local NLLcriterion 	= nn.ClassNLLCriterion()
+   local criterion 		= nn.ClassNLLCriterion()
    local pred 	  		= mlp:forward(x)
-   NLLerr 		= criterion:forward(pred, y)
-   iN = iN + 1
+   NLLerr 				= criterion:forward(pred, y)
+   iN 					= iN + 1
   print('NLL_iter', iN, 'NLL error: ', NLLerr)
    mlp:zeroGradParameters()
-   local t          = criterion:backward(pred, y)
+   local t          	= criterion:backward(pred, y)
    mlp:backward(x, t)
    mlp:updateParameters(opt.learningRate)
    return iN, NLLerr

@@ -175,7 +175,7 @@ neunet:add(nn.ReLU())
 --neunet.modules[1].weights = torch.rand(input, HUs):mul(opt.sigma)
 neunet:add(nn.Linear(HUs, output))				
 --create a deep copy of neunet for NLL training
-neunet2 = neunet:clone('weight', bias);
+neunetnll = neunet:clone('weight', bias);
 print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
 collectgarbage()
 
@@ -208,31 +208,10 @@ else
   error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
 end
 
---[[ Function to evaluate loss and gradient.
--- optim.lbfgs internally handles iteration and calls this fucntion many
--- times]]
 
---[[
-local num_calls = 0
-local function feval(x)
-  num_calls = num_calls + 1
-  net:forward(x)
-  local grad = net:backward(x, dy)
-  local loss = 0
-  for _, mod in ipairs(content_losses) do
-    loss = loss + mod.loss
-  end
-  for _, mod in ipairs(style_losses) do
-    loss = loss + mod.loss
-  end
-  maybe_print(num_calls, loss)
-  maybe_save(num_calls)
-
-  collectgarbage()
-  -- optim.lbfgs expects a vector for gradients
-  return loss, grad:view(grad:nElement())
-end
-]]
+--[[ Run optimization: User has three options:
+We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
+Negative Log Likelihood Function ]]
 
 --Training using the MSE criterion
 local i = 0
@@ -251,22 +230,18 @@ end
 
 
 --Train using the Negative Log Likelihood Criterion
-function nllOptim(neunet, x, y, learningRate)	
-   local pred, NLLcriterion = {}, {}
-   NLLcriterion 	= nn.ClassNLLCriterion()
-   pred 	  			= neunet:forward(x)
-   NLLerr 				= NLLcriterion:forward(pred, y)
+function nllOptim(neunetnll, u_off, y_off, learningRate)
+  local x = u_off   local y = y_off	
+   local NLLcriterion 	= nn.ClassNLLCriterion()
+   local pred 	  			= neunetnll:forward(x)
+   local NLLerr 				= NLLcriterion:forward(pred, y)
    neunet:zeroGradParameters()
-   local t          = NLLcriterion:backward(pred, y)
-   net:backward(x, t)
-   net:updateParameters(opt.learningRate)
+   local t              = NLLcriterion:backward(pred, y)
+   neunet:backward(x, t)
+   neunetnll:updateParameters(opt.learningRate)
    return t, NLLerr
 end
 
-
---[[ Run optimization: User has three options:
-We could train usin the genral mean squared error, limited, Broyden-Fletcher-GoldFarb abd Shanno or the
-Negative Log Likelihood Function ]]
 
 local i = {}
 if opt.optimizer == 'mse' then
@@ -294,10 +269,36 @@ elseif opt.optimizer == 'l-bfgs' then
 elseif opt.optimizer == 'nll' then
 	print('Running optimization with negative log likelihood criterion')
   	for i = 0, opt.maxIter do
-  		delta = nllOptim(neunet, u_off, y_off, opt.learningRate)
+  		delta = nllOptim(neunetnll, u_off, y_off, opt.learningRate)
   		i = i + 1
   		if delta > 150 then learningRate = opt.learningRate
   		elseif delta <= 150 then learningRate = opt.learningRateDecay end
   		print('nll iter', i, 'bkwd error', t, 'fwd error', delta )
   	end
 end
+
+--[[ Function to evaluate loss and gradient.
+-- optim.lbfgs internally handles iteration and calls this fucntion many
+-- times]]
+
+--[[
+local num_calls = 0
+local function feval(x)
+  num_calls = num_calls + 1
+  net:forward(x)
+  local grad = net:backward(x, dy)
+  local loss = 0
+  for _, mod in ipairs(content_losses) do
+    loss = loss + mod.loss
+  end
+  for _, mod in ipairs(style_losses) do
+    loss = loss + mod.loss
+  end
+  maybe_print(num_calls, loss)
+  maybe_save(num_calls)
+
+  collectgarbage()
+  -- optim.lbfgs expects a vector for gradients
+  return loss, grad:view(grad:nElement())
+end
+]]
