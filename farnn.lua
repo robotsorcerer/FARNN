@@ -68,7 +68,7 @@ cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
-cmd:option('-learningRate',1e-3, 'learning rate for the neural network')
+cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-maxIter', 20000, 'maximum iteration for training the neural network')
 cmd:option('-optimizer', 'nll', 'nll|mse|l-bfgs|adam')
@@ -237,32 +237,25 @@ end
 --Training using the MSE criterion
 local i = 0
 local function msetrain(neunet, x, y, learningRate)
-	-- repeat
 		local input = x;		local output = y; -- 	local cost = {}
 		cost 		= nn.MSECriterion()           -- Loss function
 		trainer   	= nn.StochasticGradient(neunet, cost)
 
 		--Forward Pass
 		err 		= cost:forward(neunet:forward(input), output)
-		-- i 			= i + 1
-		-- print('MSE_iter', i, 'MSE error: ', err)
-		neunet:zeroGradParameters()
-		--neunet:backward(input, cost:backward(neunet.output, output))		 
+		neunet:zeroGradParameters()		 
 		neunet:backward(input, cost:backward(neunet.output, output))
-		neunet:updateParameters(opt.learningRate, opt.learningRateDecay)
-	-- until err <= opt.trainStop    --stopping criterion for MSE based optimization
+		par = neunet:updateParameters(opt.learningRate, opt.learningRateDecay)
 return err
 end
 
 
 --Train using the Negative Log Likelihood Criterion
-function nllOptim(net, x, y, learningRate)	
-   -- iN = 0
-   local NLLcriterion 	= nn.ClassNLLCriterion()
-   local pred 	  		= net:forward(x)
+function nllOptim(neunet, x, y, learningRate)	
+   local pred, NLLcriterion = {}, {}
+   NLLcriterion 	= nn.ClassNLLCriterion()
+   pred 	  			= neunet:forward(x)
    NLLerr 				= NLLcriterion:forward(pred, y)
-   -- iN = iN + 1
-   -- print('NLL_iter', iN, 'NLL error: ', NLLerr)
    neunet:zeroGradParameters()
    local t          = NLLcriterion:backward(pred, y)
    net:backward(x, t)
@@ -271,13 +264,18 @@ function nllOptim(net, x, y, learningRate)
 end
 
 
--- Run optimization.
+--[[ Run optimization: User has three options:
+We could train usin the genral mean squared error, limited, Broyden-Fletcher-GoldFarb abd Shanno or the
+Negative Log Likelihood Function ]]
+
 local i = {}
 if opt.optimizer == 'mse' then
 	print('Running optimization with mean-squared error')
 	for i = 0, opt.maxIter do
-		mse_error = msetrain(neunet2, u_off, y_off, learningRate)
-		i = i + 1
+		mse_error = msetrain(neunet, u_off, y_off, learningRate)
+		i = i + 1		
+		if mse_error > 150 then learningRate = opt.learningRate
+		elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
 		print('MSE iteration', i, 'MSE error: ', mse_error, '\n')
 		-- print('neunet gradient weights', neunet.gradWeight)
 		-- print('neunet gradient biases', neunet.gradBias)
@@ -288,32 +286,18 @@ elseif opt.optimizer == 'l-bfgs' then
   for i = 0, opt.maxIter do
   	local i, losses = optim.lbfgs(msetrain, u_off, state)
   	i = i + 1
+  	if losses > 150 then learningRate = opt.learningRate
+  	elseif losses <= 150 then learningRate = opt.learningRateDecay end
   	print('lbfgs iter', i,  'error', losses)
   end
  
 elseif opt.optimizer == 'nll' then
 	print('Running optimization with negative log likelihood criterion')
   	for i = 0, opt.maxIter do
-  		t, delta = nllOptim(neunet, u_off, y_off, opt.learningRate)
+  		delta = nllOptim(neunet, u_off, y_off, opt.learningRate)
   		i = i + 1
-  		print('nll iter', i, 'bckwd error', t, 'fwd error', delta )
+  		if delta > 150 then learningRate = opt.learningRate
+  		elseif delta <= 150 then learningRate = opt.learningRateDecay end
+  		print('nll iter', i, 'bkwd error', t, 'fwd error', delta )
   	end
-  		--print('NLL_iter', iNLL, 'NLL error: ', delta)
-  	--until delta < opt.trainStop    --stopping criterion for backward pass
 end
-
-
---Test Network (MSE)
--- x = u_on
--- print('=========================================================')
--- print('       Example results head post-training using MSE      ')
--- print(              neunet:forward(x)[{ {1, 5}, {} }]               )
--- print('                        Error: ', err                     )
--- print('=========================================================')                
-
-
---[[
-for i, module in ipairs(neunet:listModules()) do
-	print('neunet1 Modules are: \n', module)
-end
---]]
