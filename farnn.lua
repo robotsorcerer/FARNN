@@ -53,7 +53,7 @@ cmd:text()
 cmd:text()
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial random seed to use')
-cmd:option('-rundir', false, 'log output to file in a directory? Default is false')
+cmd:option('-rundir', false, 'false|true')
 
 -- Model Order Determination Parameters
 cmd:option('-pose','posemat7.mat','path to preprocessed data(save in Matlab -v7.3 format)')
@@ -77,8 +77,10 @@ cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
 -- LBFGS Settings
 cmd:option('Correction', 60, 'number of corrections for linesearch. Max is 100')
 cmd:option('linesearch', 0.5, 'Line Search')
---parse input params
---params = cmd:parse(arg)
+
+-- Print options
+cmd:option('print', false, 'false|true')  -- print System order/Lipschitz parameters
+
 
 
 -- misc
@@ -121,7 +123,7 @@ end
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
-input      = matio.load(data, 'yn')						--SIMO System
+input      = matio.load(data, 'in')						--SIMO System
 -- print('\ninput head\n\n', input[{ {1,5}, {1}} ])
 trans     = matio.load(data, {'xn', 'yn', 'zn'})
 roll      = matio.load(data, {'rolln'})
@@ -152,44 +154,56 @@ y_on       = out  [{{off + 1, k}, {1}}]
 
 --find optimal # of input variables from data
 qn  = order_det.computeqn(u_off, y_off)
-print('\nqn:' , qn)
-print('Optimal number of input variables is: ', torch.ceil(qn))
 
 --compute actual system order
 utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(u_off, y_off, opt)
-print('inorder: ', inorder, 'outorder: ', outorder)
-print('system order:', inorder + outorder)
-
---Print out some Lipschitz quotients (first 5) for user
-if opt.quots == 1 then
-	for k, v in pairs( q ) do
-		print(k, v)
-		if k == 5 then      
-			break
-		end
-	end
-end
 
 
 --[[Set up the network, add layers in place as we add more abstraction]]
-input = 1 	 output = 1 	HUs = 1;
-local neunet 	= {}
-neunet        	= nn.Sequential()
-print('neunet biases Linear', neunet.bias)
-neunet:add(nn.Linear(input, HUs))
-neunet:add(nn.ReLU())                       	
---neunet.modules[1].weights = torch.rand(input, HUs):mul(opt.sigma)
-neunet:add(nn.Linear(HUs, output))				
---create a deep copy of neunet for NLL training
-neunetnll = neunet:clone('weight', bias);
-print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
-collectgarbage()
+local function contruct_net()
+  input = 1 	 output = 1 	HUs = 1;
+  local neunet 	  = {}
+        neunet        	= nn.Sequential()
+        neunet:add(nn.Linear(input, HUs))
+        neunet:add(nn.ReLU())                       	
+        neunet:add(nn.Linear(HUs, output))	
+  return neunet			
+end
+
+neunet          = contruct_net()
+neunetnll       = neunet:clone('weight', bias);
+neunetlbfgs     = neunet:clone('weight', bias);collectgarbage()
+
+local function perhaps_print()
+  print('\nqn:' , qn)
+  print('Optimal number of input variables is: ', torch.ceil(qn))
+  print('inorder: ', inorder, 'outorder: ', outorder)
+  print('system order:', inorder + outorder)
+  --Print out some Lipschitz quotients (first 5) for user
+  if opt.quots == 1 then
+   for k, v in pairs( q ) do
+    print(k, v)
+    if k == 5 then break end
+   end
+  end
+
+  --print neural net parameters
+  print('neunet biases Linear', neunet.bias)
+  print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
+end
+
+
+--[[ Run optimization: User has three options:
+We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
+Negative Log Likelihood Function ]]
 
 --[[Declare states for limited BFGS
  See: https://github.com/torch/optim/blob/master/lbfgs.lua
 ]]
 local state = nil
+local config = nil
+
 if opt.optimizer == 'l-bfgs' then
   state = 
   {
@@ -198,10 +212,7 @@ if opt.optimizer == 'l-bfgs' then
     maxEval = 1000,      --Maximum number of function evaluations
     tolFun  = 1e-1      --Termination tol on progress in terms of func/param changes
   }
-end
 
-local config = {}
-if opt.optimizer == 'l-fbgs' then
   config =   
   {
     nCorrection = opt.Correction,    
@@ -212,17 +223,17 @@ if opt.optimizer == 'l-fbgs' then
 
 elseif opt.optimizer == 'adam' then
   state = {
-    learningRate = opt.learningRate,
+    learningRate = opt.learningRate
   }
 
 elseif opt.optimizer == 'nll' then
   state = {
-    learningRate = opt.learningRate,
+    learningRate = opt.learningRate
   }
 
 elseif opt.optimizer == 'mse' then
   state = {
-    learningRate = opt.learningRate,
+    learningRate = opt.learningRate
   }
 
 else
@@ -230,25 +241,31 @@ else
 end
 
 
---[[ Run optimization: User has three options:
-We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
-Negative Log Likelihood Function ]]
 
---Training using the MSE criterion
-local i = 0
-local function msetrain(neunet, x, y, learningRate)
-		local input = x;		local output = y; -- 	local cost = {}
-		cost 		= nn.MSECriterion()           -- Loss function
-		trainer   	= nn.StochasticGradient(neunet, cost)
+--[[ Function to evaluate loss and gradient.
+-- optim.lbfgs internally handles iteration and calls this fucntion many
+-- times]]
 
-		--Forward Pass
-		err 		= cost:forward(neunet:forward(input), output)
-		neunet:zeroGradParameters()		 
-		neunet:backward(input, cost:backward(neunet.output, output))
-		par = neunet:updateParameters(opt.learningRate, opt.learningRateDecay)
-return err
+
+local num_calls = 0
+local function grad(x, y)
+  num_calls = num_calls + 1
+  neunetlbfgs:forward(x, y)
+  local grad = net:backward(x, y)
+  local loss = 0
+  for _, mod in ipairs(content_losses) do
+    loss = loss + mod.loss
+  end
+  for _, mod in ipairs(style_losses) do
+    loss = loss + mod.loss
+  end
+  maybe_print(num_calls, loss)
+  maybe_save(num_calls)
+
+  collectgarbage()
+  -- optim.lbfgs expects a vector for gradients
+  return loss, grad:view(grad:nElement())
 end
-
 
 --Train using the Negative Log Likelihood Criterion
 function nllOptim(neunetnll, u_off, y_off, learningRate)
@@ -260,16 +277,39 @@ function nllOptim(neunetnll, u_off, y_off, learningRate)
    return neunet2
 end
 
+--Training using the MSE criterion
+local i = 0
+local function msetrain(neunet, x, y, learningRate)
+  --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
+    pred      = neunet:forward(x)
+    --print ('pred', pred)
+
+    cost      = nn.MSECriterion()           -- Loss function
+    err       = cost:forward(pred, y)
+    gradcrit  = cost:backward(pred, y)
+
+
+    --https://github.com/torch/nn/blob/master/doc/module.md
+    --neunet:accGradParameters(x, pred, 1)    --https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.accGradParameters
+    neunet:zeroGradParameters();
+    neunet:backward(x, gradcrit);
+    neunet:updateParameters(learningRate);
+   -- print(err)
+return pred, err
+end
+collectgarbage()                           --yeah, sure. come in and argue :)
+
 
 local i = {}
 if opt.optimizer == 'mse' then
 	print('Running optimization with mean-squared error')
 	for i = 0, opt.maxIter do
-		mse_error = msetrain(neunet, u_off, y_off, learningRate)
-		i = i + 1		
+		pred, mse_error = msetrain(neunet, u_off, y_off, opt.learningRate)
 		if mse_error > 150 then learningRate = opt.learningRate
 		elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-		print('MSE iteration', i, 'MSE error: ', mse_error, '\n')
+    i = i + 1   
+		print('MSE iteration', i, '\tMSE error: ', mse_error)
+    --'\tPrediction', pred, 
 		-- print('neunet gradient weights', neunet.gradWeight)
 		-- print('neunet gradient biases', neunet.gradBias)
 	end
@@ -277,7 +317,7 @@ if opt.optimizer == 'mse' then
 elseif opt.optimizer == 'l-bfgs' then
   print('Running optimization with L-BFGS')
   for i = 0, opt.maxIter do
-  	local i, losses = optim.lbfgs(msetrain, u_off, config, state)
+  	local losses = optim.lbfgs(grad, u_off, config, state)
   	i = i + 1
   	if losses > 150 then learningRate = opt.learningRate
   	elseif losses <= 150 then learningRate = opt.learningRateDecay end
@@ -295,27 +335,5 @@ elseif opt.optimizer == 'nll' then
   	end
 end
 
---[[ Function to evaluate loss and gradient.
--- optim.lbfgs internally handles iteration and calls this fucntion many
--- times]]
 
-
-local num_calls = 0
-local function grad(x, y)
-  num_calls = num_calls + 1
-  net:forward(x)
-  local grad = net:backward(x, y)
-  local loss = 0
-  for _, mod in ipairs(content_losses) do
-    loss = loss + mod.loss
-  end
-  for _, mod in ipairs(style_losses) do
-    loss = loss + mod.loss
-  end
-  maybe_print(num_calls, loss)
-  maybe_save(num_calls)
-
-  collectgarbage()
-  -- optim.lbfgs expects a vector for gradients
-  return loss, grad:view(grad:nElement())
-end
+if opt.print == true then perhaps_print() end
