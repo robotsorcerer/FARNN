@@ -10,6 +10,7 @@
 require 'torch'
 require 'nn'
 require 'optim'
+require 'image'
 matio   	= require 'matio'  
 orderdet 	= require 'order.order_det'     
 
@@ -71,10 +72,13 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-maxIter', 20000, 'maximum iteration for training the neural network')
-cmd:option('-optimizer', 'nll', 'nll|mse|l-bfgs|adam')
+cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
 
+-- LBFGS Settings
+cmd:option('Correction', 60, 'number of corrections for linesearch. Max is 100')
+cmd:option('linesearch', 0.5, 'Line Search')
 --parse input params
-params = cmd:parse(arg)
+--params = cmd:parse(arg)
 
 
 -- misc
@@ -83,9 +87,9 @@ torch.manualSeed(opt.seed)
 
 -- create log file if user specifies true for rundir
 if(opt.rundir==true) then
-	params.rundir = cmd:string('experiment', params, {dir=false})
-	paths.mkdir(params.rundir)
-	cmd:log(params.rundir .. '/log', params)
+	opt.rundir = cmd:string('experiment', opt, {dir=false})
+	paths.mkdir(opt.rundir)
+	cmd:log(opt.rundir .. '/log', opt)
 end
 
 cmd:addTime('FARNN Identification', '%F %T')
@@ -93,28 +97,31 @@ cmd:text('Code initiated on CPU')
 cmd:text()
 cmd:text()
 
-
 -------------------------------------------------------------------------------
--- Basic Torch initializations
+-- Fundamental initializations
 -------------------------------------------------------------------------------
 --torch.setdefaulttensortype('torch.FloatTensor')            -- for CPU
+
+data        = opt.pose 
 if opt.gpuid >= 0 then
   require 'cutorch'
   require 'cunn'
-  if opt.backend == 'cudnn' then require 'cudnn' end
   cutorch.manualSeed(opt.seed)
   cutorch.setDevice(opt.gpuid + 1)                         -- +1 because lua is 1-indexed
-  idx 			= cutorch.getDevice()
+  idx       = cutorch.getDevice()
   print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
-  data    		= opt.pose       --ship raw data to gpu
-else 
-	data 		= opt.pose
+end
+
+if opt.backend == 'cudnn' then
+ require 'cudnn'
+else
+  opt.backend = 'nn'
 end
 
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
-input      = matio.load(data, 'in')						--SIMO System
+input      = matio.load(data, 'yn')						--SIMO System
 -- print('\ninput head\n\n', input[{ {1,5}, {1}} ])
 trans     = matio.load(data, {'xn', 'yn', 'zn'})
 roll      = matio.load(data, {'rolln'})
@@ -184,9 +191,23 @@ collectgarbage()
 ]]
 local state = nil
 if opt.optimizer == 'l-bfgs' then
-  state = {
-    maxIter = opt.maxIter,
+  state = 
+  {
+    maxIter = opt.maxIter,  --Maximum number of iterations allowed
     verbose=true,
+    maxEval = 1000,      --Maximum number of function evaluations
+    tolFun  = 1e-1      --Termination tol on progress in terms of func/param changes
+  }
+end
+
+local config = {}
+if opt.optimizer == 'l-fbgs' then
+  config =   
+  {
+    nCorrection = opt.Correction,    
+    lineSearch  = opt.linesearch,
+    lineSearchOpts = {},
+    learningRate = opt.learningRate
   }
 
 elseif opt.optimizer == 'adam' then
@@ -232,14 +253,11 @@ end
 --Train using the Negative Log Likelihood Criterion
 function nllOptim(neunetnll, u_off, y_off, learningRate)
   local x = u_off   local y = y_off	
-   local NLLcriterion 	= nn.ClassNLLCriterion()
-   local pred 	  			= neunetnll:forward(x)
-   local NLLerr 				= NLLcriterion:forward(pred, y)
-   neunet:zeroGradParameters()
-   local t              = NLLcriterion:backward(pred, y)
-   neunet:backward(x, t)
-   neunetnll:updateParameters(opt.learningRate)
-   return t, NLLerr
+   local mse_crit      	= nn.MSECriterion()
+   local trainer        = nn.StochasticGradient(neunet2, mse_crit)
+   trainer.learningRate = learningRate
+   trainer:train({u_off, y_off})
+   return neunet2
 end
 
 
@@ -259,7 +277,7 @@ if opt.optimizer == 'mse' then
 elseif opt.optimizer == 'l-bfgs' then
   print('Running optimization with L-BFGS')
   for i = 0, opt.maxIter do
-  	local i, losses = optim.lbfgs(msetrain, u_off, state)
+  	local i, losses = optim.lbfgs(msetrain, u_off, config, state)
   	i = i + 1
   	if losses > 150 then learningRate = opt.learningRate
   	elseif losses <= 150 then learningRate = opt.learningRateDecay end
@@ -281,12 +299,12 @@ end
 -- optim.lbfgs internally handles iteration and calls this fucntion many
 -- times]]
 
---[[
+
 local num_calls = 0
-local function feval(x)
+local function grad(x, y)
   num_calls = num_calls + 1
   net:forward(x)
-  local grad = net:backward(x, dy)
+  local grad = net:backward(x, y)
   local loss = 0
   for _, mod in ipairs(content_losses) do
     loss = loss + mod.loss
@@ -301,4 +319,3 @@ local function feval(x)
   -- optim.lbfgs expects a vector for gradients
   return loss, grad:view(grad:nElement())
 end
-]]
