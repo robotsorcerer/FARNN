@@ -53,33 +53,33 @@ cmd:text()
 cmd:text()
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial random seed to use')
-cmd:option('-rundir', false, 'false|true')
+cmd:option('-rundir', 0, 'false|true: 0 for false, 1 for true')
 
 -- Model Order Determination Parameters
-cmd:option('-pose','posemat7.mat','path to preprocessed data(save in Matlab -v7.3 format)')
+cmd:option('-pose','data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)')
 cmd:option('-tau', 1, 'what is the delay in the data?')
 cmd:option('-quots', 0, 'do you want to print the Lipschitz quotients?; 0 to silence, 1 to print')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
-cmd:option('-trainStop', 0.5, 'stopping criterion for input order determination')
+cmd:option('-trainStop', 0.5, 'stopping criterion for neural net training')
 cmd:option('-sigma', 0.01, 'initialize weights with this std. dev from a normally distributed Gaussian distribution')
 
 --Gpu settings
-cmd:option('-gpuid', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
+cmd:option('-gpu', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
-cmd:option('-maxIter', 20000, 'maximum iteration for training the neural network')
+cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
 
 -- LBFGS Settings
-cmd:option('Correction', 60, 'number of corrections for linesearch. Max is 100')
-cmd:option('linesearch', 0.5, 'Line Search')
+cmd:option('-Correction', 60, 'number of corrections for linesearch. Max is 100')
+cmd:option('-linesearch', 0.5, 'Line Search')
 
 -- Print options
-cmd:option('print', false, 'false|true')  -- print System order/Lipschitz parameters
+cmd:option('-print', 0, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
 
 
 
@@ -88,7 +88,7 @@ local opt = cmd:parse(arg)
 torch.manualSeed(opt.seed)
 
 -- create log file if user specifies true for rundir
-if(opt.rundir==true) then
+if(opt.rundir==1) then
 	opt.rundir = cmd:string('experiment', opt, {dir=false})
 	paths.mkdir(opt.rundir)
 	cmd:log(opt.rundir .. '/log', opt)
@@ -103,13 +103,12 @@ cmd:text()
 -- Fundamental initializations
 -------------------------------------------------------------------------------
 --torch.setdefaulttensortype('torch.FloatTensor')            -- for CPU
-
 data        = opt.pose 
-if opt.gpuid >= 0 then
+if opt.gpu >= 0 then
   require 'cutorch'
   require 'cunn'
   cutorch.manualSeed(opt.seed)
-  cutorch.setDevice(opt.gpuid + 1)                         -- +1 because lua is 1-indexed
+  cutorch.setDevice(opt.gpu + 1)                         -- +1 because lua is 1-indexed
   idx       = cutorch.getDevice()
   print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
 end
@@ -123,41 +122,46 @@ end
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
-input      = matio.load(data, 'in')						--SIMO System
--- print('\ninput head\n\n', input[{ {1,5}, {1}} ])
-trans     = matio.load(data, {'xn', 'yn', 'zn'})
-roll      = matio.load(data, {'rolln'})
-pitch     = matio.load(data, {'pitchn'})
-yaw       = matio.load(data, {'yawn'})
-rot       = {roll, pitch, yaw}
+input       = matio.load(data, 'in')						--SIMO System
+out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
 
+local   k   = input:size()[1]
 
-out        = matio.load(data, 'zn')
-out        = out/10;							--because zn was erroneosly multipled by 10 in the LabVIEW Code.
-print('\nSISO output head\n\n', out[{ {1,5}, {1}} ])
+y           = {out.xn, out.yn, 
+               out.zn, out.rolln, 
+               out.pitchn, out.yawn}
 
-u 		   = input[{ {}, {1}}]
-y 		   = out  [{ {}, {1}}]
+--Determine training data               
+off         = torch.ceil( torch.abs(0.6*k))
+u_off       = input[{{1, off}, {1}}]     --offline data
+y_off       = {
+               out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}], 
+               out.zn[{{1, off}, {1}}], out.rolln[{{1, off}, {1}}], 
+               out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
+              }
 
-local   k  = u:size()[1]
-off  = torch.ceil( torch.abs(0.6*k))
-dataset    = {input, out}
-u_off      = input[{{1, off}, {1}}]     --offline data
-y_off      = out  [{{1, off}, {1}}]
+--print('k', input:size()[1], 'off', off, '\nout\n', out, '\ny_off\n', y_off)
+--print('xn', out.xn[{{1, off}, {1}}])
 
-u_on       = input[{{off + 1, k}, {1}}]	--online data
-y_on       = out  [{{off + 1, k}, {1}}]
+u_on        = input[{{off + 1, k}, {1}}]	--online data
+y_on       = {
+               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
+               out.zn[{{off+1, k}, {1}}], out.rolln[{{off+1, k}, {1}}], 
+               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
+              }
+
+print('u_on', u_on:size(), 'y_on', y_on)              
 
 
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 
 --find optimal # of input variables from data
-qn  = order_det.computeqn(u_off, y_off)
+qn  = order_det.computeqn(u_off, y_off[3])
 
 --compute actual system order
 utils = require 'order.utils'
-inorder, outorder, q =  order_det.computeq(u_off, y_off, opt)
+inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
 
 
 --[[Set up the network, add layers in place as we add more abstraction]]
@@ -175,25 +179,28 @@ neunet          = contruct_net()
 neunetnll       = neunet:clone('weight', bias);
 neunetlbfgs     = neunet:clone('weight', bias);collectgarbage()
 
-local function perhaps_print()
+local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off)
   print('\nqn:' , qn)
   print('Optimal number of input variables is: ', torch.ceil(qn))
   print('inorder: ', inorder, 'outorder: ', outorder)
   print('system order:', inorder + outorder)
+
+  print('\ninput head', input[{ {1,5}, {1}} ]) 
+  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ny_off\n', y_off)
+  print('\noutput head\n\n', out[{ {1,5}, {1}} ])
   --Print out some Lipschitz quotients (first 5) for user
   if opt.quots == 1 then
    for k, v in pairs( q ) do
     print(k, v)
     if k == 5 then break end
-   end
+    end
   end
-
   --print neural net parameters
   print('neunet biases Linear', neunet.bias)
   print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
 end
 
-
+if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, y_off) end
 --[[ Run optimization: User has three options:
 We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
 Negative Log Likelihood Function ]]
@@ -240,18 +247,15 @@ else
   error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
 end
 
-
-
 --[[ Function to evaluate loss and gradient.
 -- optim.lbfgs internally handles iteration and calls this fucntion many
 -- times]]
-
 
 local num_calls = 0
 local function grad(x, y)
   num_calls = num_calls + 1
   neunetlbfgs:forward(x, y)
-  local grad = net:backward(x, y)
+  local grad = neunetlbfgs:backward(x, y)
   local loss = 0
   for _, mod in ipairs(content_losses) do
     loss = loss + mod.loss
@@ -304,7 +308,7 @@ local i = {}
 if opt.optimizer == 'mse' then
 	print('Running optimization with mean-squared error')
 	for i = 0, opt.maxIter do
-		pred, mse_error = msetrain(neunet, u_off, y_off, opt.learningRate)
+		pred, mse_error = msetrain(neunet, u_off, y_off[3], opt.learningRate)
 		if mse_error > 150 then learningRate = opt.learningRate
 		elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
     i = i + 1   
@@ -327,13 +331,10 @@ elseif opt.optimizer == 'l-bfgs' then
 elseif opt.optimizer == 'nll' then
 	print('Running optimization with negative log likelihood criterion')
   	for i = 0, opt.maxIter do
-  		delta = nllOptim(neunetnll, u_off, y_off, opt.learningRate)
+  		delta = nllOptim(neunetnll, u_off, y_off[3], opt.learningRate)
   		i = i + 1
   		if delta > 150 then learningRate = opt.learningRate
   		elseif delta <= 150 then learningRate = opt.learningRateDecay end
   		print('nll iter', i, 'bkwd error', t, 'fwd error', delta )
   	end
 end
-
-
-if opt.print == true then perhaps_print() end

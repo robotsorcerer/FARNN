@@ -18,6 +18,9 @@ function order_det.computeqn(u_off, y_off)
 	local qinner = {}
 	for i = 1, p do
 		local qk = {}
+		--hack to use pitch of head as output only
+		--y_off = y_off[3]
+		-- print('y_off', y_off)
 		qk[i]		 = torch.abs(y_off[i] - y_off[i + 1])  / torch.norm(u_off[i] - u_off[i + 1]) 
 		--print('qk[i', qk[i], 'sqrt(i)', torch.sqrt(i), 'p', p)
 		qinner[i] 	 = qk[i] * torch.sqrt(i) 
@@ -81,30 +84,30 @@ function order_det.computeq (u_off, y_off, opt)
 		--check
 		--print('i', i, 'm[i]', m[i], 'n[i]', n[i], 'l[i]', l[i])
 	repeat
-		n[i]   = i;        m[i]  = n[i] - m[i - 1]  ; l[i] = n[i] - m[i]  ;
-		--print('m[i]', m[i])
-		x[n[i]]   = u_off[i - m[i] * tau]   		--reselect x3
-		q[n[i]]   = torch.abs(y[i] - y[i - m[i]*tau]) / torch.norm(x[i] - x[i - tau])
-		local delta = q[i] - q[i - tau]
-		--establish the inequality that makes input order determination possible
-		if torch.lt(delta, torch.Tensor({0}) ) and torch.lt(delta, torch.Tensor({-0.5})) then                      -- this is when q(i) is sig. smaller than q(i-1)
-			i = i + 1
-			n[i]	   = i;        m[i]  = n[i] - m[i - 1]  ; l[i] = n[i] - m[i]  ;
-			x[i] = u_off[i - m[i] * tau]							  		-- select next x
-			q[i] = torch.abs(y[i] - y[i - m[i] * tau]) / torch.norm(x[i] - x[i - m[i] * tau])  -- this is q(2+2)
-			--print('q[2 + 2] ', q[i])
-			qlt = {}  qgt = {}
-			qlt[i]  = q[i - 1] - opt.l_eps		--  lower bound on l stopping criterion
-			qgt[i]  = q[i - 1] + opt.l_eps		--	upper bound on l stopping criterion
+			n[i]   = i;        m[i]  = n[i] - m[i - 1]  ; l[i] = n[i] - m[i]  ;
+			--print('m[i]', m[i])
+			x[n[i]]   = u_off[i - m[i] * tau]   		--reselect x3
+			q[n[i]]   = torch.abs(y_off[i] - y_off[i - m[i]*tau]) / torch.norm(x[i] - x[i - tau])
+			local delta = q[i] - q[i - tau]
+			--establish the inequality that makes input order determination possible
+			if torch.lt(delta, torch.Tensor({0}) ) and torch.lt(delta, torch.Tensor({-0.5})) then                      -- this is when q(i) is sig. smaller than q(i-1)
+				i = i + 1
+				n[i]	   = i;        m[i]  = n[i] - m[i - 1]  ; l[i] = n[i] - m[i]  ;
+				x[i] = u_off[i - m[i] * tau]							  		-- select next x
+				q[i] = torch.abs(y_off[i] - y_off[i - m[i] * tau]) / torch.norm(x[i] - x[i - m[i] * tau])  -- this is q(2+2)
+				--print('q[2 + 2] ', q[i])
+				qlt = {}  qgt = {}
+				qlt[i]  = q[i - 1] - opt.l_eps		--  lower bound on l stopping criterion
+				qgt[i]  = q[i - 1] + opt.l_eps		--	upper bound on l stopping criterion
 
-			--Create inequality q(m+l) - epsilon < q(m + l) < q(m + l - 1) + epsilon
-			if torch.gt(q[i], qlt[i]) and torch.lt(q[i], qgt[i]) then --i.e. m_eps - 0.05 < q < m_eps + 0.05
-				inorder = l[n[i] - m[i]]
-			else
-				break
+				--Create inequality q(m+l) - epsilon < q(m + l) < q(m + l - 1) + epsilon
+				if torch.gt(q[i], qlt[i]) and torch.lt(q[i], qgt[i]) then --i.e. m_eps - 0.05 < q < m_eps + 0.05
+					inorder = l[n[i] - m[i]]
+				else
+					break
+				end
 			end
-		end
-	until torch.gt(q[i], qlt[i]) and torch.lt(q[i], qgt[i]) 
+		until torch.gt(q[i], qlt[i]) and torch.lt(q[i], qgt[i]) 
 		
     return inorder, outorder, q
 end
