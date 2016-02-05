@@ -72,11 +72,12 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
+cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
 
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for linesearch. Max is 100')
-cmd:option('-linesearch', 0.5, 'Line Search')
+cmd:option('-batchSize', 10, 'Batch Size')
 
 -- Print options
 cmd:option('-print', 0, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
@@ -86,6 +87,8 @@ cmd:option('-print', 0, 'false = 0 | true = 1 : Option to make code print neural
 -- misc
 local opt = cmd:parse(arg)
 torch.manualSeed(opt.seed)
+
+torch.setnumthreads(4)
 
 -- create log file if user specifies true for rundir
 if(opt.rundir==1) then
@@ -177,7 +180,12 @@ end
 
 neunet          = contruct_net()
 neunetnll       = neunet:clone('weight', bias);
-neunetlbfgs     = neunet:clone('weight', bias);collectgarbage()
+neunetlbfgs     = neunet:clone('weight', bias);
+
+-- retrieve parameters and gradients
+parameters,gradParameters = neunet:getParameters()
+
+collectgarbage()
 
 local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off)
   print('\nqn:' , qn)
@@ -218,6 +226,7 @@ if opt.optimizer == 'l-bfgs' then
     verbose=true,
     maxEval = 1000,      --Maximum number of function evaluations
     tolFun  = 1e-1      --Termination tol on progress in terms of func/param changes
+    lineSearch = optim.lswolfe
   }
 
   config =   
@@ -227,6 +236,27 @@ if opt.optimizer == 'l-bfgs' then
     lineSearchOpts = {},
     learningRate = opt.learningRate
   }
+  optim.lbfgs(feval, parameters, state)
+
+  -- disp report:
+  print('LBFGS step')
+  print(' - progress in batch: ' .. t .. '/' .. data:size())
+  print(' - nb of iterations: ' .. state.nIter)
+  print(' - nb of function evalutions: ' .. state.funcEval)
+
+elseif opt.optimization == 'SGD' then
+
+  -- Perform SGD step:
+  sgdState = sgdState or {
+    learningRate = opt.learningRate,
+    momentum = opt.momentum,
+    learningRateDecay = 5e-7
+  }
+  optim.sgd(feval, parameters, sgdState)
+  
+  -- disp progress
+  xlua.progress(t, dataset:size())
+
 
 elseif opt.optimizer == 'adam' then
   state = {
@@ -247,94 +277,115 @@ else
   error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
 end
 
---[[ Function to evaluate loss and gradient.
--- optim.lbfgs internally handles iteration and calls this fucntion many
--- times]]
+--training function
+function train(data)
+  --track the epochs
+  epoch = epoch or 1
+  local time = sys.clock()
 
-local num_calls = 0
-local function grad(x, y)
-  num_calls = num_calls + 1
-  neunetlbfgs:forward(x, y)
-  local grad = neunetlbfgs:backward(x, y)
-  local loss = 0
-  for _, mod in ipairs(content_losses) do
-    loss = loss + mod.loss
+  --do one epoch
+  print('<trainer> on training set: ')
+  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+
+  for t = 1, data:size(), opt.batchSize do
+    --create mini batch
+
+
+  local num_calls = 0
+  local function grad(x, y)
+    num_calls = num_calls + 1
+    neunetlbfgs:forward(x, y)
+    local grad = neunetlbfgs:backward(x, y)
+    local loss = 0
+    for _, mod in ipairs(content_losses) do
+      loss = loss + mod.loss
+    end
+    for _, mod in ipairs(style_losses) do
+      loss = loss + mod.loss
+    end
+    maybe_print(num_calls, loss)
+    maybe_save(num_calls)
+
+    collectgarbage()
+    -- optim.lbfgs expects a vector for gradients
+    return loss, grad:view(grad:nElement())
   end
-  for _, mod in ipairs(style_losses) do
-    loss = loss + mod.loss
+
+  --Train using the Negative Log Likelihood Criterion
+  function nllOptim(neunetnll, u_off, y_off, learningRate)
+    local x = u_off   local y = y_off 
+     local mse_crit       = nn.MSECriterion()
+     local trainer        = nn.StochasticGradient(neunet2, mse_crit)
+     trainer.learningRate = learningRate
+     trainer:train({u_off, y_off})
+     return neunet2
   end
-  maybe_print(num_calls, loss)
-  maybe_save(num_calls)
 
-  collectgarbage()
-  -- optim.lbfgs expects a vector for gradients
-  return loss, grad:view(grad:nElement())
-end
+  --Training using the MSE criterion
+  local i = 0
+  local function msetrain(neunet, x, y, learningRate)
+    --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
+      pred      = neunet:forward(x)
+      --print ('pred', pred)
 
---Train using the Negative Log Likelihood Criterion
-function nllOptim(neunetnll, u_off, y_off, learningRate)
-  local x = u_off   local y = y_off	
-   local mse_crit      	= nn.MSECriterion()
-   local trainer        = nn.StochasticGradient(neunet2, mse_crit)
-   trainer.learningRate = learningRate
-   trainer:train({u_off, y_off})
-   return neunet2
-end
-
---Training using the MSE criterion
-local i = 0
-local function msetrain(neunet, x, y, learningRate)
-  --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
-    pred      = neunet:forward(x)
-    --print ('pred', pred)
-
-    cost      = nn.MSECriterion()           -- Loss function
-    err       = cost:forward(pred, y)
-    gradcrit  = cost:backward(pred, y)
+      cost      = nn.MSECriterion()           -- Loss function
+      err       = cost:forward(pred, y)
+      gradcrit  = cost:backward(pred, y)
 
 
-    --https://github.com/torch/nn/blob/master/doc/module.md
-    --neunet:accGradParameters(x, pred, 1)    --https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.accGradParameters
-    neunet:zeroGradParameters();
-    neunet:backward(x, gradcrit);
-    neunet:updateParameters(learningRate);
-   -- print(err)
-return pred, err
-end
-collectgarbage()                           --yeah, sure. come in and argue :)
-
-
-local i = {}
-if opt.optimizer == 'mse' then
-	print('Running optimization with mean-squared error')
-	for i = 0, opt.maxIter do
-		pred, mse_error = msetrain(neunet, u_off, y_off[3], opt.learningRate)
-		if mse_error > 150 then learningRate = opt.learningRate
-		elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-    i = i + 1   
-		print('MSE iteration', i, '\tMSE error: ', mse_error)
-    --'\tPrediction', pred, 
-		-- print('neunet gradient weights', neunet.gradWeight)
-		-- print('neunet gradient biases', neunet.gradBias)
-	end
-
-elseif opt.optimizer == 'l-bfgs' then
-  print('Running optimization with L-BFGS')
-  for i = 0, opt.maxIter do
-  	local losses = optim.lbfgs(grad, u_off, config, state)
-  	i = i + 1
-  	if losses > 150 then learningRate = opt.learningRate
-  	elseif losses <= 150 then learningRate = opt.learningRateDecay end
-  	print('lbfgs iter', i,  'error', losses)
+      --https://github.com/torch/nn/blob/master/doc/module.md
+      --neunet:accGradParameters(x, pred, 1)    --https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.accGradParameters
+      neunet:zeroGradParameters();
+      neunet:backward(x, gradcrit);
+      neunet:updateParameters(learningRate);
+     -- print(err)
+  return pred, err
   end
- 
-elseif opt.optimizer == 'nll' then
-	print('Running optimization with negative log likelihood criterion')
-  	for i = 0, opt.maxIter do
-  		delta = nllOptim(neunetnll, u_off, y_off[3], opt.learningRate)
-  		i = i + 1
-  		if delta > 150 then learningRate = opt.learningRate
-  		elseif delta <= 150 then learningRate = opt.learningRateDecay end
-  		print('nll iter', i, 'bkwd error', t, 'fwd error', delta )
-  	end
+
+  --Train using the L-BFGS Algorithm
+  function lbfgs(neunetnll, u_off, y_off, learningRate)
+    local x = u_off   local y = y_off 
+     local mse_crit       = nn.MSECriterion()
+     local trainer        = nn.StochasticGradient(neunet2, mse_crit)
+     trainer.learningRate = learningRate
+     trainer:train({u_off, y_off})
+     return neunet2
+  end
+  collectgarbage()                           --yeah, sure. come in and argue :)
+
+
+  local i = {}
+  if opt.optimizer == 'mse' then
+    print('Running optimization with mean-squared error')
+    for i = 0, opt.maxIter do
+      pred, mse_error = msetrain(neunet, u_off, y_off[3], opt.learningRate)
+      if mse_error > 150 then learningRate = opt.learningRate
+      elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
+      i = i + 1   
+      print('MSE iteration', i, '\tMSE error: ', mse_error)
+      --'\tPrediction', pred, 
+      -- print('neunet gradient weights', neunet.gradWeight)
+      -- print('neunet gradient biases', neunet.gradBias)
+    end
+
+  elseif opt.optimizer == 'l-bfgs' then
+    print('Running optimization with L-BFGS')
+    for i = 0, opt.maxIter do
+      local losses = optim.lbfgs(grad, u_off, config, state)
+      i = i + 1
+      if losses > 150 then learningRate = opt.learningRate
+      elseif losses <= 150 then learningRate = opt.learningRateDecay end
+      print('lbfgs iter', i,  'error', losses)
+    end
+   
+  elseif opt.optimizer == 'nll' then
+    print('Running optimization with negative log likelihood criterion')
+      for i = 0, opt.maxIter do
+        delta = nllOptim(neunetnll, u_off, y_off[3], opt.learningRate)
+        i = i + 1
+        if delta > 150 then learningRate = opt.learningRate
+        elseif delta <= 150 then learningRate = opt.learningRateDecay end
+        print('nll iter', i, 'bkwd error', t, 'fwd error', delta )
+      end
+  end
 end
