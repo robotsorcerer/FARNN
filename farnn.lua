@@ -130,6 +130,9 @@ out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
 
 local   k   = input:size()[1]
 
+--geometry of input
+geometry    = {k, 1}
+
 y           = {out.xn, out.yn, 
                out.zn, out.rolln, 
                out.pitchn, out.yawn}
@@ -183,7 +186,7 @@ neunetnll       = neunet:clone('weight', bias);
 neunetlbfgs     = neunet:clone('weight', bias);
 
 -- retrieve parameters and gradients
-parameters,gradParameters = neunet:getParameters()
+parameters, gradParameters = neunet:getParameters()
 
 collectgarbage()
 
@@ -289,6 +292,7 @@ function train(data)
 
   for t = 1, data:size(), opt.batchSize do
     --create mini batch
+    local inputs = torch.Tensor(opt.batchSize, )
 
 
   local num_calls = 0
