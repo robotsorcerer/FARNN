@@ -241,14 +241,15 @@ function train(data)
   --do one epoch
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
-  for t = 1,data:size(),opt.batchSize do
+  for t = 1, data[1]:size()[1], opt.batchSize do
      -- create mini batch
      local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
      local targets = torch.Tensor(opt.batchSize)
      local k = 1
-     for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
+     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
         -- load new sample
-        local sample = dataset[i]
+        local sample = {data[i], (data[2][3])/10}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+        --for ii, kk in ipairs(sample) do print(ii, kk) end
         local input = sample[1]:clone()
         local _,target = sample[2]:clone():max(1)
         target = target:squeeze()
