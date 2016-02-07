@@ -26,7 +26,7 @@ function order_det.computeqn(u_off, y_off)
 		qinner[i] 	 = qk[i] * torch.sqrt(i) 
 		qbrace       = torch.cumprod(qinner[i])		
 	end		
-		print('qbrace', qbrace)
+		--print('qbrace', qbrace)
 		qn         	 = torch.pow(qbrace, 1/p)
 		--print('qbrace', qbrace:size())
 		--print('off', off)
