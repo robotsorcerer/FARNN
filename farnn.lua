@@ -127,8 +127,7 @@ end
 ----------------------------------------------------------------------------------------
 input       = matio.load(data, 'in')						--SIMO System
 out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
-
-local   k   = input:size()[1]
+k           = input:size()[1]
 
 --geometry of input
 geometry    = {k, 1}
@@ -201,9 +200,9 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off)
   print('\noutput head\n\n', out[{ {1,5}, {1}} ])
   --Print out some Lipschitz quotients (first 5) for user
   if opt.quots == 1 then
-   for k, v in pairs( q ) do
-    print(k, v)
-    if k == 5 then break end
+   for ii, v in pairs( q ) do
+    print(ii, v)
+    if ii == 5 then break end
     end
   end
   --print neural net parameters
@@ -219,67 +218,6 @@ Negative Log Likelihood Function ]]
 --[[Declare states for limited BFGS
  See: https://github.com/torch/optim/blob/master/lbfgs.lua
 ]]
-local state = nil
-local config = nil
-
-if opt.optimizer == 'l-bfgs' then
-  state = 
-  {
-    maxIter = opt.maxIter,  --Maximum number of iterations allowed
-    verbose=true,
-    maxEval = 1000,      --Maximum number of function evaluations
-    tolFun  = 1e-1      --Termination tol on progress in terms of func/param changes
-    lineSearch = optim.lswolfe
-  }
-
-  config =   
-  {
-    nCorrection = opt.Correction,    
-    lineSearch  = opt.linesearch,
-    lineSearchOpts = {},
-    learningRate = opt.learningRate
-  }
-  optim.lbfgs(feval, parameters, state)
-
-  -- disp report:
-  print('LBFGS step')
-  print(' - progress in batch: ' .. t .. '/' .. data:size())
-  print(' - nb of iterations: ' .. state.nIter)
-  print(' - nb of function evalutions: ' .. state.funcEval)
-
-elseif opt.optimization == 'SGD' then
-
-  -- Perform SGD step:
-  sgdState = sgdState or {
-    learningRate = opt.learningRate,
-    momentum = opt.momentum,
-    learningRateDecay = 5e-7
-  }
-  optim.sgd(feval, parameters, sgdState)
-  
-  -- disp progress
-  xlua.progress(t, dataset:size())
-
-
-elseif opt.optimizer == 'adam' then
-  state = {
-    learningRate = opt.learningRate
-  }
-
-elseif opt.optimizer == 'nll' then
-  state = {
-    learningRate = opt.learningRate
-  }
-
-elseif opt.optimizer == 'mse' then
-  state = {
-    learningRate = opt.learningRate
-  }
-
-else
-  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
-end
-
 --training function
 function train(data)
   --track the epochs
@@ -289,10 +227,132 @@ function train(data)
   --do one epoch
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
-
   for t = 1, data:size(), opt.batchSize do
+
     --create mini batch
-    local inputs = torch.Tensor(opt.batchSize, )
+    local inputs = torch.Tensor(opt.batchSize, 1, k)
+    local targets = torch.Tensor(opt.batchSize)
+    local k = 1
+    for i = t, math.min(t + opt.batchSize - 1, data:size()) do
+      --load new sample
+      local sample = data[i]
+      local input  = sample[1]:clone
+      local _, traget = sample[2]:clone():max(1)
+      target        = target:squeeze()
+      inputs[k]     = input
+      targets[k]    = target
+      k             = k + 1
+      print('input local', input)
+    end
+
+    --create closure to evaluate f(x)
+    local feval = function(x)
+      collectgarbage()
+
+      --retrieve new params
+      if x~=parameters then
+        parameters:copy(x)
+      end
+
+      --reset grads
+      gradParameters:zero()
+
+      --eval function for complete mini-batch
+      local outputs   = model:forward(inputs)
+      local f         = criterion:forward(outputs, targets)
+
+      --find df/dw
+      local df_do     = criterion:backward(outouts, targets)
+      model:backward(inputs, df_do)
+
+      --L1 and L2 regularization (penalties )
+      if opt.coefL1  ~= 0 or opt.coefL2 ~=0 then
+        --locals
+        local norm, sign = torch.norm, torch.sign
+
+        --Loss:
+        f = f + opt.coefL1 * norm(parameters, 1)
+        f = f + opt.coefL2 * norm(parameters, 2)^2/2
+
+        --Gradients
+        gradParameters:add( sign(parameters):mul(opt.coefL1) + parametsrs:clone():mul(opt.coefL2))
+      end
+
+      --update confusion
+      for i = 1, opt.batchSize do
+        confusion:add(outputs[i], targets[i])
+      end
+
+      --retrun f and df/dx
+      return f, gradParameters
+    end
+
+    local state = nil
+    local config = nil
+
+    if opt.optimizer == 'l-bfgs' then
+      state = 
+      {
+        maxIter = opt.maxIter,  --Maximum number of iterations allowed
+        verbose=true,
+        maxEval = 1000,      --Maximum number of function evaluations
+        tolFun  = 1e-1,      --Termination tol on progress in terms of func/param changes
+      }
+
+      config =   
+      {
+        nCorrection = opt.Correction,    
+        lineSearch  = optim.lswolfe,
+        lineSearchOpts = {},
+        learningRate = opt.learningRate
+      }
+      optim.lbfgs(feval, parameters, config, state)
+
+      -- disp report:
+      print('LBFGS step')
+      print(' - progress in batch: ' .. t .. '/' .. data:size())
+      print(' - nb of iterations: ' .. state.nIter)
+      print(' - nb of function evalutions: ' .. state.funcEval)
+
+    elseif opt.optimization == 'SGD' then
+
+      -- Perform SGD step:
+      sgdState = sgdState or {
+        learningRate = opt.learningRate,
+        momentum = opt.momentum,
+        learningRateDecay = 5e-7
+      }
+      optim.sgd(feval, parameters, sgdState)
+      
+      -- disp progress
+      xlua.progress(t, data:size())
+
+
+    elseif opt.optimizer == 'adam' then
+      state = {
+        learningRate = opt.learningRate
+      }
+
+    elseif opt.optimizer == 'nll' then
+      state = {
+        learningRate = opt.learningRate
+      }
+
+    elseif opt.optimizer == 'mse' then
+      state = {
+        learningRate = opt.learningRate
+      }
+      msetrain(neunet, parameters, targets, opt.learningRate)
+
+    else
+      error(string.format('Unrecognized optimizer "%s"', opt.optimizer))
+    end
+
+
+    --create cost function evaluator
+    local feval = function(x)
+
+  end
 
 
   local num_calls = 0
