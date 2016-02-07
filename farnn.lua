@@ -59,7 +59,6 @@ cmd:option('-rundir', 0, 'false|true: 0 for false, 1 for true')
 -- Model Order Determination Parameters
 cmd:option('-pose','data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)')
 cmd:option('-tau', 1, 'what is the delay in the data?')
-cmd:option('-quots', 0, 'do you want to print the Lipschitz quotients?; 0 to silence, 1 to print')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
 cmd:option('-trainStop', 0.5, 'stopping criterion for neural net training')
@@ -75,9 +74,11 @@ cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desire
 cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
+cmd:option('-coefL1',   0, 'L1 penalty on the weights')
+cmd:option('-coeffL2',  0, 'L2 penalty on the weights')
 
 -- LBFGS Settings
-cmd:option('-Correction', 60, 'number of corrections for linesearch. Max is 100')
+cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
 cmd:option('-batchSize', 10, 'Batch Size')
 
 -- Print options
@@ -158,9 +159,8 @@ y_on        = {
 
 off_data = {u_off, y_off}
 on_data  = {u_on,  y_on}
- 
-
-
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 
@@ -170,8 +170,8 @@ qn  = order_det.computeqn(u_off, y_off[3])
 --compute actual system order
 utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
-
-
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
   local input = 1 	 output = 1 	HUs = 1;
@@ -191,7 +191,8 @@ neunetlbfgs     = neunet:clone('weight', bias);
 parameters, gradParameters = neunet:getParameters()
 
 collectgarbage()
-
+--=============================================================================================
+--print a bunch of stuff if user enabkes print option
 local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, off_data)
   
   print('training_data', off_data)
@@ -217,11 +218,9 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, o
   print('system order:', inorder + outorder)
 
   --Print out some Lipschitz quotients (first 5) for user
-  if opt.quots == 1 then
-   for ii, v in pairs( q ) do
+  for ii, v in pairs( q ) do
     print(ii, v)
     if ii == 5 then break end
-    end
   end
   --print neural net parameters
   print('neunet biases Linear', neunet.bias)
@@ -229,6 +228,7 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, o
 end
 
 if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, off_data) end
+--=====================================================================================================
 
 cost      = nn.MSECriterion()           -- Loss function
 
@@ -243,13 +243,16 @@ function train(data)
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
   for t = 1, data[1]:size()[1], opt.batchSize do
      -- create mini batch
-     local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
+     --local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
+     local inputs = torch.Tensor(opt.batchSize,1,data[1]:size()[1],data[1]:size()[2])
+     --print('inputs[k]', inputs:size())
      local targets = torch.Tensor(opt.batchSize)
      local k = 1
      for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
         -- load new sample
-        local sample = {data[i], (data[2][3])/10}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+        local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
         --for ii, kk in ipairs(sample) do print(ii, kk) end
+        --print(data[i]:clone())
         local input = sample[1]:clone()
         local _,target = sample[2]:clone():max(1)
         target = target:squeeze()
