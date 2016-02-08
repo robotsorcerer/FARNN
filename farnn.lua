@@ -11,9 +11,10 @@ require 'torch'
 require 'nn'
 require 'optim'
 require 'image'
+require 'order.order_det'   
 matio   	= require 'matio'  
-orderdet 	= require 'order.order_det'   
-optim_    = require 'optima._optim'  
+--optim_    = 
+require 'optima.optim_'  
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -123,7 +124,6 @@ if opt.backend == 'cudnn' then
 else
   opt.backend = 'nn'
 end
-
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -159,8 +159,7 @@ y_on        = {
 
 off_data = {u_off, y_off}
 on_data  = {u_on,  y_on}
----------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------
+--===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 
@@ -174,7 +173,7 @@ inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
 ----------------------------------------------------------------------------------------------
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
-  local input = 1 	 output = 1 	HUs = 1;
+  local input = 1 	 output = 6 	HUs = 1;
   local neunet 	  = {}
         neunet        	= nn.Sequential()
         neunet:add(nn.Linear(input, HUs))
@@ -219,7 +218,7 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, o
 
   --Print out some Lipschitz quotients (first 5) for user
   for ii, v in pairs( q ) do
-    print(ii, v)
+    print('Lipschitz quotients head', ii, v)
     if ii == 5 then break end
   end
   --print neural net parameters
@@ -252,20 +251,19 @@ function train(data)
         -- load new sample
         local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
         --for ii, kk in ipairs(sample) do print(ii, kk) end
-        --print(data[i]:clone())
         local input = sample[1]:clone()
-        local _,target = sample[2]:clone():max(1)
+        local _,target = sample[4]:clone():max(1)
         target = target:squeeze()
         inputs[k] = input
         targets[k] = target
         k = k + 1
      end
-
+     print(targets)
     --create closure to evaluate f(x)
     local feval = function(x)
       collectgarbage()
 
-      --retrieve new params
+  --retrieve new params
       if x~=parameters then
         parameters:copy(x)
       end
@@ -274,12 +272,12 @@ function train(data)
       gradParameters:zero()
 
       --eval function for complete mini-batch
-      local outputs   = model:forward(inputs)
+      local outputs   = neunetlbfgs:forward(input)
       local f         = cost:forward(outputs, targets)
 
       --find df/dw
       local df_do     = cost:backward(outouts, targets)
-      model:backward(inputs, df_do)
+      neunetlbfgs:backward(inputs, df_do)
 
       --L1 and L2 regularization (penalties )
       if opt.coefL1  ~= 0 or opt.coefL2 ~=0 then
@@ -306,6 +304,8 @@ function train(data)
     local state = nil
     local config = nil
 
+    parameters = data[1]
+
     --[[Declare states for limited BFGS
      See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
     if opt.optimizer == 'l-bfgs' then
@@ -325,19 +325,20 @@ function train(data)
         lineSearchOpts = {},
         learningRate = opt.learningRate
       }
-      for i_l = 0, opt.maxIter do
-        local losses = optim.lbfgs(feval, parameters, config, state)
-        i_l = i_l + 1
-        if losses > 150 then learningRate = opt.learningRate
-        elseif losses <= 150 then learningRate = opt.learningRateDecay end
-        print('lbfgs iter', i_l,  'error', losses)
-      end
       -- disp report:
       print('LBFGS step')
-      print(' - progress in batch: ' .. t .. '/' .. data:size())
-      print(' - nb of iterations: ' .. state.nIter)
-      print(' - nb of function evalutions: ' .. state.funcEval)
+      print(' - progress in batch: ' .. t .. '/' .. data[1]:size()[1])
+      print(' - nb of iterations: ' .. state.maxIter)
+      print(' - nb of function evaluations: ' .. state.maxEval)
 
+    --  for i_l = 0, opt.maxIter do
+        local u, losses = optim.lbfgs(feval, parameters, config, state)
+    --    i_l = i_l + 1
+        if losses > 150 then learningRate = opt.learningRate
+        elseif losses <= 150 then learningRate = opt.learningRateDecay end
+        print('losses', losses, 'optimal u', u)
+    --  end
+ 
     elseif opt.optimization == 'SGD' then
 
       -- Perform SGD step:
@@ -351,19 +352,13 @@ function train(data)
       -- disp progress
       xlua.progress(t, data:size())
 
-
-    elseif opt.optimizer == 'adam' then
-      state = {
-        learningRate = opt.learningRate
-      }
-
     elseif opt.optimizer == 'nll' then
       state = {
         learningRate = opt.learningRate
       }
     print('Running optimization with negative log likelihood criterion')
       for i_nll = 0, opt.maxIter do
-        delta = optim_.nllOptim(neunetnll, u_off, y_off[3], opt.learningRate)
+        delta = optim_.nllOptim(neunetnll, u_off, targets, opt.learningRate)
         i_nll  = i_nll  + 1
         if delta > 150 then learningRate = opt.learningRate
         elseif delta <= 150 then learningRate = opt.learningRateDecay end
@@ -378,7 +373,7 @@ function train(data)
       print('Running optimization with mean-squared error')
       local i_mse = {}
       for i_mse = 0, opt.maxIter do
-        pred, mse_error = optim_.msetrain(neunet, parameters, targets[3], opt.learningRate)
+        pred, mse_error = optim_.msetrain(neunet, parameters, targets, opt.learningRate)
           --  pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
         if mse_error > 150 then learningRate = opt.learningRate
         elseif mse_error <= 150 then learningRate = opt.learningRateDecay end

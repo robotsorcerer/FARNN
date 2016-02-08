@@ -2,9 +2,9 @@
 We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
 Negative Log Likelihood Function ]]
 require 'torch'
-_optim = {}
+optim_ = {}
 --Training using the MSE criterion
-local function msetrain(neunet, x, y, learningRate)
+function optim_.msetrain(neunet, x, y, learningRate)
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
     pred      = neunet:forward(x)
     --print ('pred', pred)
@@ -21,7 +21,7 @@ local function msetrain(neunet, x, y, learningRate)
 end
 
 --Train using the L-BFGS Algorithm
-function lbfgs(neunetnll, u_off, y_off, learningRate)
+function optim_.lbfgs(neunetnll, u_off, y_off, learningRate)
   local x = u_off   local y = y_off 
    local trainer        = nn.StochasticGradient(neunet2, cost)
    trainer.learningRate = learningRate
@@ -30,7 +30,7 @@ function lbfgs(neunetnll, u_off, y_off, learningRate)
 end
 
 --Train using the Negative Log Likelihood Criterion
-function nllOptim(neunetnll, u_off, y_off, learningRate)
+function optim_.nllOptim(neunetnll, u_off, y_off, learningRate)
   local x = u_off   local y = y_off 
    local mse_crit       = nn.MSECriterion()
    local trainer        = nn.StochasticGradient(neunet2, mse_crit)
@@ -38,4 +38,5 @@ function nllOptim(neunetnll, u_off, y_off, learningRate)
    trainer:train({u_off, y_off})
    return neunet2
 end
+
 collectgarbage()                           --yeah, sure. come in and argue :)
