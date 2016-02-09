@@ -178,7 +178,7 @@ inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
 ----------------------------------------------------------------------------------------------
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
-  local input = 1 	 output = 1 	HUs = 1;
+  local input = 1 	 output = 6 	HUs = 1;
   local neunet 	  = {}
         neunet        	= nn.Sequential()
         neunet:add(nn.Linear(input, HUs))
@@ -247,20 +247,23 @@ function train(data)
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
   for t = 1, data[1]:size()[1], opt.batchSize do
+    --disp progress
+    xlua.progress(t, data[1]:size()[1])
+
      -- create mini batch
     local inputs = {}
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
       -- load new sample
       local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-      --for ii, kk in ipairs(sample) do print(ii, kk) end
-      local input = sample[1]:clone()
-      local target = {sample[2]:clone(), sample[3]:clone(), sample[4]:clone(), sample[5]:clone(), sample[6]:clone(), sample[7]:clone()}
+      local input = sample[1]:clone()[i]
+      local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       --local target = sample[4]:clone()
       table.insert(inputs, input)
-      table.insert(targets, target)
-      -- print('inputs', inputs[t])
+      table.insert(targets, target)      
+      print('input', input, 'target', target)
     end
+    print('inputs', inputs[t], 'targets', targets[t])
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
@@ -382,8 +385,8 @@ function train(data)
       print('Running optimization with mean-squared error')
       local i_mse = {}
       for i_mse = 0, opt.maxIter do
-        --pred, mse_error = optim_.msetrain(neunet, inputs, targets, opt.learningRate)
-        pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
+        pred, mse_error = optim_.msetrain(neunet, inputs[t], targets[t], opt.learningRate)
+        --pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
         if mse_error > 150 then learningRate = opt.learningRate
         elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
         i_mse = i_mse + 1   
