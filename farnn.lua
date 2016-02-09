@@ -15,6 +15,7 @@ require 'order.order_det'
 matio   	= require 'matio'  
 --optim_    = 
 require 'optima.optim_'  
+require 'xlua'
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -177,7 +178,7 @@ inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
 ----------------------------------------------------------------------------------------------
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
-  local input = 1 	 output = 6 	HUs = 1;
+  local input = 1 	 output = 1 	HUs = 1;
   local neunet 	  = {}
         neunet        	= nn.Sequential()
         neunet:add(nn.Linear(input, HUs))
@@ -258,10 +259,8 @@ function train(data)
       --local target = sample[4]:clone()
       table.insert(inputs, input)
       table.insert(targets, target)
-      print('inputs', inputs)
-      print('targets', targets)
+      -- print('inputs', inputs[t])
     end
-     -- print(targets)
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
@@ -280,14 +279,15 @@ function train(data)
 
       -- evaluate function for complete mini batch
       for i_f = 1,#inputs do
+        print('#inputs', #inputs)
          -- estimate f
-         local output = model:forward(inputs[i_f])
-         local err = criterion:forward(output, targets[i_f])
+         local output = neunet:forward(inputs[i_f])
+         local err = cost:forward(output, targets[i_f])
          f = f + err
 
          -- estimate df/dW
-         local df_do = criterion:backward(output, targets[i_f])
-         model:backward(inputs[i_f], df_do)
+         local df_do = cost:backward(output, targets[i_f])
+         neunet:backward(inputs[i_f], df_do)
 
          -- update confusion
          confusion:add(output, targets[i_f])
@@ -341,6 +341,13 @@ function train(data)
         print('losses', losses, 'optimal u', u)
     --  end
  
+    elseif opt.optimizer == 'ASGD' then
+       optimState = {
+          eta0 = opt.learningRate,
+          t0 = data[1]:size()[1] * 1
+       }
+      optim.asgd(feval, parameters, sgdState)
+
     elseif opt.optimization == 'sgd' then
 
       -- Perform SGD step:
@@ -375,17 +382,17 @@ function train(data)
       print('Running optimization with mean-squared error')
       local i_mse = {}
       for i_mse = 0, opt.maxIter do
-        pred, mse_error = optim_.msetrain(neunet, inputs, targets, opt.learningRate)
-          --  pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
+        --pred, mse_error = optim_.msetrain(neunet, inputs, targets, opt.learningRate)
+        pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
         if mse_error > 150 then learningRate = opt.learningRate
         elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
         i_mse = i_mse + 1   
         print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
-          --'\tPrediction', pred, 
-          -- print('neunet gradient weights', neunet.gradWeight)
-          -- print('neunet gradient biases', neunet.gradBias)
       end
 
+    elseif opt.optimizer == 'asgd' then
+       _,_,average = optimMethod(feval, parameters, optimState)
+    
     else  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  end
     
     -- time taken
