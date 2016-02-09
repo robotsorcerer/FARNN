@@ -15,7 +15,6 @@ require 'order.order_det'
 matio   	= require 'matio'  
 --optim_    = 
 require 'optima.optim_'  
-require 'xlua'
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -75,7 +74,7 @@ cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam|sgd')
+cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coeffL2',  0, 'L2 penalty on the weights')
 
@@ -125,10 +124,6 @@ if opt.backend == 'cudnn' then
 else
   opt.backend = 'nn'
 end
-
--- Log results to files
-trainLogger = optim.Logger(paths.concat('results', 'train.log'))
-testLogger  = optim.Logger(paths.concat('results', 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -236,8 +231,7 @@ if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, 
 
 cost      = nn.MSECriterion()           -- Loss function
 
-----------------------------------------------------------------------
-print '==> defining training procedure'
+--training function
 function train(data)
   --track the epochs
   epoch = epoch or 1
@@ -247,33 +241,25 @@ function train(data)
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
   for t = 1, data[1]:size()[1], opt.batchSize do
-    --disp progress
-    xlua.progress(t, data[1]:size()[1])
-
      -- create mini batch
-    local inputs = {}
-    local targets = {}
-    for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
-      -- load new sample
-      local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-      local input = sample[1]:clone()[i]
-      local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
-      --local target = sample[4]:clone()
-      table.insert(inputs, input)
-      table.insert(targets, target)      
-      print('input', input, 'target', target)
-    end
-    print('input', inputs[t])
-    tester = {}
-    for q, w in ipairs(inputs, targets) do   
-        print(q, 'targets', 
-                  targets[t][q]) 
-        tester = targets
-        if q == 6 then break end
-    end
-    print('tester', tester)
-
-    --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+     --local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
+     local inputs = torch.Tensor(opt.batchSize,1,data[1]:size()[1],data[1]:size()[2])
+     --print('inputs[k]', inputs:size())
+     local targets = torch.Tensor(opt.batchSize)
+     local k = 1
+     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
+        -- load new sample
+        local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+        --for ii, kk in ipairs(sample) do print(ii, kk) end
+        local input = sample[1]:clone()
+        local _,target = sample[4]:clone():max(1)
+        target = target:squeeze()
+        inputs[k] = input
+        targets[k] = target
+        k = k + 1
+     end
+     print(targets)
+    --create closure to evaluate f(x)
     local feval = function(x)
       collectgarbage()
 
@@ -285,28 +271,31 @@ function train(data)
       --reset grads
       gradParameters:zero()
 
-      -- f is the average of all criterions
-      local f = 0
+      --eval function for complete mini-batch
+      local outputs   = neunetlbfgs:forward(input)
+      local f         = cost:forward(outputs, targets)
 
-      -- evaluate function for complete mini batch
-      for i_f = 1,#inputs do
-        print('#inputs', #inputs)
-         -- estimate f
-         local output = neunet:forward(inputs[i_f])
-         local err = cost:forward(output, targets[i_f])
-         f = f + err
+      --find df/dw
+      local df_do     = cost:backward(outouts, targets)
+      neunetlbfgs:backward(inputs, df_do)
 
-         -- estimate df/dW
-         local df_do = cost:backward(output, targets[i_f])
-         neunet:backward(inputs[i_f], df_do)
+      --L1 and L2 regularization (penalties )
+      if opt.coefL1  ~= 0 or opt.coefL2 ~=0 then
+        --locals
+        local norm, sign = torch.norm, torch.sign
 
-         -- update confusion
-         confusion:add(output, targets[i_f])
+        --Loss:
+        f = f + opt.coefL1 * norm(parameters, 1)
+        f = f + opt.coefL2 * norm(parameters, 2)^2/2
+
+        --Gradients
+        gradParameters:add( sign(parameters):mul(opt.coefL1) + parametsrs:clone():mul(opt.coefL2))
       end
 
-      -- normalize gradients and f(X)
-      gradParameters:div(#inputs)
-      f = f/#inputs
+      --update confusion
+      for i = 1, opt.batchSize do
+        confusion:add(outputs[i], targets[i])
+      end
 
       --retrun f and df/dx
       return f, gradParameters
@@ -316,8 +305,6 @@ function train(data)
     local config = nil
 
     parameters = data[1]
-
-    print '==> configuring optimizer'
 
     --[[Declare states for limited BFGS
      See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
@@ -345,21 +332,14 @@ function train(data)
       print(' - nb of function evaluations: ' .. state.maxEval)
 
     --  for i_l = 0, opt.maxIter do
-        local u, losses = optim.lbfgs(feval, u_off, config, state)
+        local u, losses = optim.lbfgs(feval, parameters, config, state)
     --    i_l = i_l + 1
         if losses > 150 then learningRate = opt.learningRate
         elseif losses <= 150 then learningRate = opt.learningRateDecay end
         print('losses', losses, 'optimal u', u)
     --  end
  
-    elseif opt.optimizer == 'ASGD' then
-       optimState = {
-          eta0 = opt.learningRate,
-          t0 = data[1]:size()[1] * 1
-       }
-      optim.asgd(feval, parameters, sgdState)
-
-    elseif opt.optimization == 'sgd' then
+    elseif opt.optimization == 'SGD' then
 
       -- Perform SGD step:
       sgdState = sgdState or {
@@ -393,43 +373,18 @@ function train(data)
       print('Running optimization with mean-squared error')
       local i_mse = {}
       for i_mse = 0, opt.maxIter do
-        pred, mse_error = optim_.msetrain(neunet, inputs[t], targets[t], opt.learningRate)
-        --pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
+        pred, mse_error = optim_.msetrain(neunet, parameters, targets, opt.learningRate)
+          --  pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
         if mse_error > 150 then learningRate = opt.learningRate
         elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
         i_mse = i_mse + 1   
         print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
+          --'\tPrediction', pred, 
+          -- print('neunet gradient weights', neunet.gradWeight)
+          -- print('neunet gradient biases', neunet.gradBias)
       end
 
-    elseif opt.optimizer == 'asgd' then
-       _,_,average = optimMethod(feval, parameters, optimState)
-    
     else  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  end
-    
-    -- time taken
-    time = sys.clock() - time
-    time = time / off_data[1]:size()
-    print("\n==> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    -- print confusion matrix
-    print(confusion)
-
-    -- update logger/plot
-    trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-    if opt.plot then
-       trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-       trainLogger:plot()
-    end
-
-    -- save/log current net
-    local filename = paths.concat('results', 'model.net')
-    os.execute('mkdir -p ' .. sys.dirname(filename))
-    print('==> saving model to '..filename)
-    torch.save(filename, model)
-
-    -- next epoch
-    confusion:zero()
-    epoch = epoch + 1
   end
 end
 
