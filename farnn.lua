@@ -263,7 +263,15 @@ function train(data)
       table.insert(targets, target)      
       print('input', input, 'target', target)
     end
-    print('inputs', inputs[t], 'targets', targets[t])
+    print('input', inputs[t])
+    tester = {}
+    for q, w in ipairs(inputs, targets) do   
+        print(q, 'targets', 
+                  targets[t][q]) 
+        tester = targets
+        if q == 6 then break end
+    end
+    print('tester', tester)
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
