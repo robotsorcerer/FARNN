@@ -348,7 +348,7 @@ function train(data)
       print(' - nb of function evaluations: ' .. state.maxEval)
 
     --  for i_l = 0, opt.maxIter do
-        local u, losses = optim.lbfgs(feval, train_input, config, state)
+        local u, losses = optim.lbfgs(feval, inputs[t], config, state)
     --    i_l = i_l + 1
         if losses > 150 then learningRate = opt.learningRate
         elseif losses <= 150 then learningRate = opt.learningRateDecay end
