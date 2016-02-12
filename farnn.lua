@@ -71,7 +71,6 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 -- Neural Network settings
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
-cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|convnet|linear')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
@@ -149,28 +148,28 @@ y           = {out.xn, out.yn,
 k           = input:size()[1]
 --Determine training data               
 off         = torch.ceil( torch.abs(0.6*k))
-train_input = input[{{1, off}, {1}}]     --offline data
+train_input = input[{{1, off}, {1}}]     
 train_out   = {
                out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}], 
                (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
                out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
               }
 
+--create testing data
+test_input      = input[{{off + 1, k}, {1}}]  
+test_out        = {
+               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
+               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
+               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
+              }              
+
 kk          = train_input:size()[1]
 
 --geometry of input
 geometry    = {kk, train_input:size()[2]}
 
---create testing data
-test_input      = input[{{off + 1, k}, {1}}]	--online data
-test_out        = {
-               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
-               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
-               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
-              }
-
 trainData     = {train_input, train_out}
-test_data       = {test_input,  test_out}
+testData     = {test_input,  test_out}
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
@@ -302,18 +301,6 @@ end
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
 
--- classes
-classes = {'1','2','3','4','5','6','7','8','9','0'}
-
--- This matrix records the current confusion across classes
-confusion = optim.ConfusionMatrix(classes)
--- collectgarbage()
--- classes = {}
--- for jj, kk in ipairs (train_out) do
---   table.insert(classes, train_out[3][kk])
--- end
-print('classes', classes)
-confusion = optim.ConfusionMatrix(classes)
 --print a bunch of stuff if user enables print option
 local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
   
@@ -364,14 +351,15 @@ function train(data)
   --do one epoch
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+  
+  local targets_X = {} local targets_Y = {} local targets_Z = {}
+  local targets_R = {} local targets_P = {} local targets_YW = {}
+
   for t = 1, data[1]:size()[1], opt.batchSize do
     --disp progress
     xlua.progress(t, data[1]:size()[1])
 
      -- create mini batch
-    -- local inputs  = torch.Tensor(opt.batchSize, 1, geometry[1], geometry[2])
-    -- local targets = torch.Tensor(opt.batchSize)
-    -- local ka = 1
     local inputs = {}
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
@@ -380,15 +368,38 @@ function train(data)
       local input = sample[1]:clone()[i]
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       table.insert(inputs, input)
-      table.insert(targets, target[3]) 
-      -- inputs[ka] = input
-      -- targets[ka] = target
-      -- ka = ka + 1
+      table.insert(targets, target) 
     end
+    
+    targets_X   = {targets[1][1], targets[2][1], targets[3][1], targets[4][1], targets[5][1], targets[6][1]}
+    targets_Y   = {targets[1][2], targets[2][2], targets[3][2], targets[4][2], targets[5][2], targets[6][2]}
+    targets_Z   = {targets[1][3], targets[2][3], targets[3][3], targets[4][3], targets[5][3], targets[6][3]}
+    targets_R   = {targets[1][4], targets[2][4], targets[3][4], targets[4][4], targets[5][4], targets[6][4]}
+    targets_P   = {targets[1][5], targets[2][5], targets[3][5], targets[4][5], targets[5][5], targets[6][5]}
+    targets_YW   = {targets[1][6], targets[2][6], targets[3][6], targets[4][6], targets[5][6], targets[6][6]}
+    -- table.insert(targets_Y, targets[2]) 
+    -- table.insert(targets_Z, targets[3]) 
+    -- table.insert(targets_R, targets[4]) 
+    -- table.insert(targets_P, targets[5])
+    -- table.insert(targets_YW, targets[6])
 
     print('inputs: ', inputs, '#inputs', #inputs)
     print('targets: ', targets)
+    print('targets_X', targets_X)
+    print('targets_Y', targets_Y)
+    print('targets_Z', targets_Z)
+    print('targets_R', targets_R)
+    print('targets_P', targets_P)
+    print('targets_YW', targets_YW)
 
+    -- classes
+    classes = {'targets_X','targets_Y','targets_Z','targets_R','targets_P','targets_YW'}
+
+    -- This matrix records the current confusion across classes
+    confusion = optim.ConfusionMatrix(classes)
+
+    print('classes', classes)
+    confusion = optim.ConfusionMatrix(classes)
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
@@ -406,7 +417,7 @@ function train(data)
                     local f = 0
 
                     -- evaluate function for complete mini batch
-                    for i_f = 1,#inputs do
+                    for i_f = 2,#inputs do
                         print('#inputs', #inputs)
                         -- estimate f
                         local output = neunet:forward(inputs[i_f])
@@ -440,9 +451,9 @@ function train(data)
                     end
 
                     -- normalize gradients and f(X)
---[[                    gradParameters:div(#inputs)
+                    gradParameters:div(#inputs)
                     f = f/#inputs
-]]
+
                     --retrun f and df/dx
                     return f, gradParameters
                   end
@@ -456,15 +467,17 @@ function train(data)
        state = {
          learningRate = opt.learningRate
        }
+       --we do a SISO from input to each of the six outputs in each iteration
        print('Running optimization with mean-squared error')
-       --local i_mse = {}
-       --for i_mse = 0, opt.maxIter do
-           pred, mse_error = optim_.msetrain(neunet, cost, inputs, targets, opt.learningRate, opt)
-           if mse_error > 150 then learningRate = opt.learningRate
-           elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-          -- i_mse = i_mse + 1   
-      --end
-
+           pred_x, mse_error_x = optim_.msetrain(neunet, cost, inputs, targets_X, opt.learningRate, opt)
+           pred_y, mse_error_y = optim_.msetrain(neunet, cost, inputs, targets_Y, opt.learningRate, opt)
+           pred_z, mse_error_z = optim_.msetrain(neunet, cost, inputs, targets_Z, opt.learningRate, opt)
+           pred_r, mse_error_r = optim_.msetrain(neunet, cost, inputs, targets_R, opt.learningRate, opt)
+           pred_p, mse_error_p = optim_.msetrain(neunet, cost, inputs, targets_P, opt.learningRate, opt)
+           pred_yw, mse_error_yw = optim_.msetrain(neunet, cost, inputs, targets_YW, opt.learningRate, opt)
+           -- if mse_error > 150 then learningRate = opt.learningRate
+           -- elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
+      
       local state = nil      local config = nil      parameters = train_input
 
     elseif opt.optimizer == 'l-bfgs' then
@@ -518,19 +531,6 @@ function train(data)
       -- disp progress
       xlua.progress(t, data:size())
 
-    elseif opt.optimizer == 'nll' then
-      state = {
-        learningRate = opt.learningRate
-      }
-    print('Running optimization with negative log likelihood criterion')
-      for i_nll = 0, opt.maxIter do
-        delta = optim_.nllOptim(neunet, inputs[t], targets_out[t], opt.learningRate)
-        i_nll  = i_nll  + 1
-        if delta > 150 then learningRate = opt.learningRate
-        elseif delta <= 150 then learningRate = opt.learningRateDecay end
-        print('nll iter', i_nll , 'bkwd error', t, 'fwd error', delta )
-      end
-
     elseif opt.optimizer == 'asgd' then
        _,_,average = optimMethod(feval, parameters, optimState)
     
@@ -566,5 +566,5 @@ end
 
 while true do
   train(trainData)
-  test(testData)
+  train(testData)
 end
