@@ -140,45 +140,43 @@ k           = input:size()[1]
 geometry    = {k, input:size()[2]}
 
 y           = {out.xn, out.yn, 
-               out.zn, out.rolln, 
+               out.zn/10, out.rolln, 
                out.pitchn, out.yawn}
 
 --Determine training data               
 off         = torch.ceil( torch.abs(0.6*k))
-u_off       = input[{{1, off}, {1}}]     --offline data
-y_off       = {
+train_input = input[{{1, off}, {1}}]     --offline data
+train_out   = {
                out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}], 
-               out.zn[{{1, off}, {1}}], out.rolln[{{1, off}, {1}}], 
+               (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
                out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
               }
 
---print('k', input:size()[1], 'off', off, '\nout\n', out, '\ny_off\n', y_off)
---print('xn', out.xn[{{1, off}, {1}}])
-
-u_on        = input[{{off + 1, k}, {1}}]	--online data
-y_on        = {
+--create testing data
+test_input      = input[{{off + 1, k}, {1}}]	--online data
+test_out        = {
                out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
-               out.zn[{{off+1, k}, {1}}], out.rolln[{{off+1, k}, {1}}], 
+               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
                out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
               }
 
-off_data = {u_off, y_off}
-on_data  = {u_on,  y_on}
+trainData     = {train_input, train_out}
+test_data       = {test_input,  test_out}
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 
 --find optimal # of input variables from data
-qn  = order_det.computeqn(u_off, y_off[3])
+qn  = order_det.computeqn(train_input, train_out[3])
 
 --compute actual system order
 utils = require 'order.utils'
-inorder, outorder, q =  order_det.computeq(u_off, y_off[3], opt)
+inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
 ----------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
-  local input = 1 	 output = 6 	HUs = 1;
+  local input = 1 	 output = 1 	HUs = 1;
   local neunet 	  = {}
         neunet        	= nn.Sequential()
         neunet:add(nn.Linear(input, HUs))
@@ -195,25 +193,30 @@ neunetlbfgs     = neunet:clone('weight', bias);
 parameters, gradParameters = neunet:getParameters()
 
 collectgarbage()
---=============================================================================================
---print a bunch of stuff if user enabkes print option
-local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, off_data)
+classes = {}
+for jj, kk in ipairs (train_out) do
+  table.insert(classes, train_out[3][kk])
+end
+print('classes', classes)
+confusion = optim.ConfusionMatrix(classes)
+--print a bunch of stuff if user enables print option
+local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
   
-  print('training_data', off_data)
-  print('\ntesting_data', on_data)    
+  print('training_data', trainData)
+  print('\ntesting_data', test_data)    
 
   --random checks to be sure data is consistent
-  print('train_data_input', off_data[1]:size())  
-  print('train_data_output', off_data[2])        
-  print('\ntrain_xn', off_data[2][1]:size())  
-  print('\ntrain_yn', off_data[2][2]:size()) 
-  print('\ntrain_zn', off_data[2][3]:size())  
-  print('\ntrain_roll', off_data[2][4]:size()) 
-  print('\ntrain_pitch', off_data[2][5]:size())  
-  print('\ntrain_yaw', off_data[2][6]:size()) 
+  print('train_data_input', trainData[1]:size())  
+  print('train_data_output', trainData[2])        
+  print('\ntrain_xn', trainData[2][1]:size())  
+  print('\ntrain_yn', trainData[2][2]:size()) 
+  print('\ntrain_zn', trainData[2][3]:size())  
+  print('\ntrain_roll', trainData[2][4]:size()) 
+  print('\ntrain_pitch', trainData[2][5]:size())  
+  print('\ntrain_yaw', trainData[2][6]:size()) 
 
   print('\ninput head', input[{ {1,5}, {1}} ]) 
-  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', y_off)
+  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', train_out)
   print('\npitch head\n\n', out.zn[{ {1,5}, {1}} ])
 
   print('\nqn:' , qn)
@@ -231,7 +234,7 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, o
   print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
 end
 
-if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, y_off, off_data) end
+if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 --=====================================================================================================
 
 cost      = nn.MSECriterion()           -- Loss function
@@ -255,23 +258,23 @@ function train(data)
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
       -- load new sample
-      local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+      local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
       local input = sample[1]:clone()[i]
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       --local target = sample[4]:clone()
       table.insert(inputs, input)
       table.insert(targets, target)      
-      print('input', input, 'target', target)
+     -- print('input', input, 'target', target[3])
     end
-    print('input', inputs[t])
-    tester = {}
+
+    print('inputs: ', inputs[t])
+    targets_out = {}
     for q, w in ipairs(inputs, targets) do   
-        print(q, 'targets', 
-                  targets[t][q]) 
-        tester = targets
+        print(q, 'targets', targets[t][q]) 
+        table.insert(targets_out, targets[t][3])
         if q == 6 then break end
     end
-    print('tester', tester)
+    print('targets test', targets_out)
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
@@ -345,7 +348,7 @@ function train(data)
       print(' - nb of function evaluations: ' .. state.maxEval)
 
     --  for i_l = 0, opt.maxIter do
-        local u, losses = optim.lbfgs(feval, u_off, config, state)
+        local u, losses = optim.lbfgs(feval, train_input, config, state)
     --    i_l = i_l + 1
         if losses > 150 then learningRate = opt.learningRate
         elseif losses <= 150 then learningRate = opt.learningRateDecay end
@@ -378,7 +381,7 @@ function train(data)
       }
     print('Running optimization with negative log likelihood criterion')
       for i_nll = 0, opt.maxIter do
-        delta = optim_.nllOptim(neunetnll, u_off, targets, opt.learningRate)
+        delta = optim_.nllOptim(neunetnll, train_input, targets_out[t], opt.learningRate)
         i_nll  = i_nll  + 1
         if delta > 150 then learningRate = opt.learningRate
         elseif delta <= 150 then learningRate = opt.learningRateDecay end
@@ -393,12 +396,11 @@ function train(data)
       print('Running optimization with mean-squared error')
       local i_mse = {}
       for i_mse = 0, opt.maxIter do
-        pred, mse_error = optim_.msetrain(neunet, inputs[t], targets[t], opt.learningRate)
-        --pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
-        if mse_error > 150 then learningRate = opt.learningRate
-        elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-        i_mse = i_mse + 1   
-        print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
+          pred, mse_error = optim_.msetrain(neunet, inputs[t], targets_out[t], opt.learningRate)
+          if mse_error > 150 then learningRate = opt.learningRate
+          elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
+          i_mse = i_mse + 1   
+          print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
       end
 
     elseif opt.optimizer == 'asgd' then
@@ -408,7 +410,8 @@ function train(data)
     
     -- time taken
     time = sys.clock() - time
-    time = time / off_data[1]:size()
+    print("train data size", trainData[1]:size()[1])
+    time = time / trainData[1]:size()[1]
     print("\n==> time to learn 1 sample = " .. (time*1000) .. 'ms')
 
     -- print confusion matrix
@@ -434,5 +437,5 @@ function train(data)
 end
 
 while true do
-  train(off_data)
+  train(trainData)
 end
