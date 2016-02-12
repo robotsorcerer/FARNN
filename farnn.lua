@@ -43,17 +43,15 @@ end
 -------------------------------------------------------------------------------
 cmd = torch.CmdLine()
 cmd:text()
-cmd:text('========================================================================')
-cmd:text('A Fully Automated Dynamic Neural Network for System Identification')
-cmd:text('Based on the IEEE Transactions on Circuits and Systems article by ')
-cmd:text()
-cmd:text('           Jeen-Shing Wang, and Yen-Ping Chen. June 2006          ')
-cmd:text()
-cmd:text()
+cmd:text('===========================================================================')
+cmd:text('          A Convoluted Dynamic Neural Network for System Identification    ')
+cmd:text(                                                                             )
+cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
+cmd:text(                                                                             )
 cmd:text('Code by Olalekan Ogunmolu: FirstName [dot] LastName _at_ utdallas [dot] edu')
-cmd:text('========================================================================')
-cmd:text()
-cmd:text()
+cmd:text('===========================================================================')
+cmd:text(                                                                             )
+cmd:text(                                                                             )
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial random seed to use')
 cmd:option('-rundir', 0, 'false|true: 0 for false, 1 for true')
@@ -75,13 +73,18 @@ cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-maxIter', 200000, 'maximum iteration for training the neural network')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
+cmd:option('-model', 'mlp', 'mlp|convnet|linear')
+cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam|sgd')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
-cmd:option('-coeffL2',  0, 'L2 penalty on the weights')
+cmd:option('-coefL2',  0, 'L2 penalty on the weights')
+cmd:option('-plot', false, 'plot while training')
+
 
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
-cmd:option('-batchSize', 10, 'Batch Size')
+cmd:option('-batchSize', 6, 'Batch Size for mini-batch training, \
+                            preferrably in multiples of six')
 
 -- Print options
 cmd:option('-print', 0, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
@@ -110,6 +113,8 @@ cmd:text()
 -- Fundamental initializations
 -------------------------------------------------------------------------------
 --torch.setdefaulttensortype('torch.FloatTensor')            -- for CPU
+print('==> fundamental initializations')
+
 data        = opt.pose 
 if opt.gpu >= 0 then
   require 'cutorch'
@@ -132,17 +137,16 @@ testLogger  = optim.Logger(paths.concat('results', 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
+print '==> Parsing raw data'
+
 input       = matio.load(data, 'in')						--SIMO System
 out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
-k           = input:size()[1]
-
---geometry of input
-geometry    = {k, input:size()[2]}
 
 y           = {out.xn, out.yn, 
                out.zn/10, out.rolln, 
                out.pitchn, out.yawn}
 
+k           = input:size()[1]
 --Determine training data               
 off         = torch.ceil( torch.abs(0.6*k))
 train_input = input[{{1, off}, {1}}]     --offline data
@@ -151,6 +155,11 @@ train_out   = {
                (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
                out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
               }
+
+kk          = train_input:size()[1]
+
+--geometry of input
+geometry    = {kk, train_input:size()[2]}
 
 --create testing data
 test_input      = input[{{off + 1, k}, {1}}]	--online data
@@ -165,6 +174,7 @@ test_data       = {test_input,  test_out}
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
+print '==> Determining input-output model order parameters'    
 
 --find optimal # of input variables from data
 qn  = order_det.computeqn(train_input, train_out[3])
@@ -173,30 +183,135 @@ qn  = order_det.computeqn(train_input, train_out[3])
 utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
 ----------------------------------------------------------------------------------------------
+--Set up each network properties
 ----------------------------------------------------------------------------------------------
+-- dimension of my feature bank (each input is a 1D array)
+nfeats      = 1   
+
+--dimension of training input
+width       = trainData[1]:size()[2]
+height      = trainData[1]:size()[1]
+ninputs     = 1  --nfeats * width * height
+noutput     = 1
+
+--number of hidden layers (for mlp network)
+nhiddens    = 1     --you may try ninputs / 2
+
+--hidden units, filter kernel (for ConvNet)
+nstates     = {10, 10, 20}
+filtsize    = 3
+poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
+normkernel = image.gaussian1D(7)
+
 --[[Set up the network, add layers in place as we add more abstraction]]
-local function contruct_net()
-  local input = 1 	 output = 1 	HUs = 1;
-  local neunet 	  = {}
-        neunet        	= nn.Sequential()
-        neunet:add(nn.Linear(input, HUs))
-        neunet:add(nn.ReLU())                       	
-        neunet:add(nn.Linear(HUs, output))	
+function contruct_net()
+  if opt.model  == 'mlp' then
+          neunet        	= nn.Sequential()
+          neunet:add(nn.Linear(ninputs, nhiddens))
+          neunet:add(nn.ReLU())                       	
+          neunet:add(nn.Linear(nhiddens, noutput))	
+  elseif opt.model == 'convnet' then
+
+    if opt.backend == 'cudnn' then
+      --typical convnet (convolution + relu + pool)
+      neunet  = nn.Sequential()
+
+      --stage 1: filter bank -> squashing - L2 pooling - > normalization
+      --[[The first layer applies 10 filters to the input map choosing randomly
+      among its different layers ech being a 3x3 kernel. The receptive field of the 
+      first layer is 3x3 and the maps produced are therefore]]
+      neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
+      neunet:add(nn.ReLU())
+      neunet:add(nn.SpatialMaxPooling(poolsize, poolsize, poolsize, poolsize))
+
+      -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
+      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
+      neunet:add(nn.ReLU())
+      neunet:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
+
+      -- stage 3 : standard 2-layer neural network
+      neunet:add(nn.View(nstates[2]*filtsize*filtsize))
+      neunet:add(nn.Dropout(0.5))
+      neunet:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
+      neunet:add(nn.ReLU())
+      neunet:add(nn.Linear(nstates[3], noutputs))
+
+    else
+
+      -- a typical convolutional network, with locally-normalized hidden
+      -- units, and L2-pooling
+
+      -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
+      -- work on this dataset (http://arxiv.org/abs/1204.3968). In particular
+      -- the use of LP-pooling (with P=2) has a very positive impact on
+      -- generalization. Normalization is not done exactly as proposed in
+      -- the paper, and low-level (first layer) features are not fed to
+      -- the classifier.  
+
+      neunet    = nn.Sequential()        
+
+      --stage 1: filter bank -> squashing -> L2 pooling -> normalization
+      neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
+      neunet:add(nn.Tanh())
+      neunet:add(nn.SpatialLPooling(nStates[1], 2, poolsize, poolsize, poolsize, poolsize))
+      neunet:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
+
+      -- stage 2: filter bank -> squashing -> L2 poolong - > normalization
+      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
+      neunet:add(nn.Tanh())
+      neunet:add(nn.SpatialLPooling(nstates[2], 2, poolsize, poolsize, poolsize, poolsize))
+      neunet:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
+
+      -- stage 3: standard 2-layer neural network
+      neunet:add(nn.Reshape(nstates[2] * filtsize * filtsize))
+      neunet:add(nn.Linear(nstates[2] * filtsize * filtsize, nstates[3]))
+      neunet:add(nn.Tanh())
+      neunet:add(nn.Linear(nstates[3], noutputs))
+    end
+    print('neunet biases Linear', neunet.bias)
+    print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
+  else
+    
+      error('you have specified an unknown model')
+    
+  end
+
   return neunet			
 end
 
 neunet          = contruct_net()
-neunetnll       = neunet:clone('weight', bias);
-neunetlbfgs     = neunet:clone('weight', bias);
+--neunetnll       = neunet:clone(weight, bias);
+--===================================================================================
+-- Visualization is quite easy, using itorch.image().
+--===================================================================================
+
+if opt.visualize then
+   if opt.model == 'convnet' then
+      if itorch then
+   print '==> visualizing ConvNet filters'
+   print('Layer 1 filters:')
+   itorch.image(neunet:get(1).weight)
+   print('Layer 2 filters:')
+   itorch.image(neunet:get(5).weight)
+      else
+   print '==> To visualize filters, start the script in itorch notebook'
+      end
+   end
+end
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
 
-collectgarbage()
-classes = {}
-for jj, kk in ipairs (train_out) do
-  table.insert(classes, train_out[3][kk])
-end
+-- classes
+classes = {'1','2','3','4','5','6','7','8','9','0'}
+
+-- This matrix records the current confusion across classes
+confusion = optim.ConfusionMatrix(classes)
+-- collectgarbage()
+-- classes = {}
+-- for jj, kk in ipairs (train_out) do
+--   table.insert(classes, train_out[3][kk])
+-- end
 print('classes', classes)
 confusion = optim.ConfusionMatrix(classes)
 --print a bunch of stuff if user enables print option
@@ -254,6 +369,9 @@ function train(data)
     xlua.progress(t, data[1]:size()[1])
 
      -- create mini batch
+    -- local inputs  = torch.Tensor(opt.batchSize, 1, geometry[1], geometry[2])
+    -- local targets = torch.Tensor(opt.batchSize)
+    -- local ka = 1
     local inputs = {}
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
@@ -261,70 +379,95 @@ function train(data)
       local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
       local input = sample[1]:clone()[i]
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
-      --local target = sample[4]:clone()
       table.insert(inputs, input)
-      table.insert(targets, target)      
-     -- print('input', input, 'target', target[3])
+      table.insert(targets, target[3]) 
+      -- inputs[ka] = input
+      -- targets[ka] = target
+      -- ka = ka + 1
     end
 
-    print('inputs: ', inputs[t])
-    targets_out = {}
-    for q, w in ipairs(inputs, targets) do   
-        print(q, 'targets', targets[t][q]) 
-        table.insert(targets_out, targets[t][3])
-        if q == 6 then break end
-    end
-    print('targets test', targets_out)
+    print('inputs: ', inputs, '#inputs', #inputs)
+    print('targets: ', targets)
+
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
-      collectgarbage()
+                    collectgarbage()
 
-  --retrieve new params
-      if x~=parameters then
-        parameters:copy(x)
-      end
+                    --retrieve new params
+                    if x~=parameters then
+                      parameters:copy(x)
+                    end
 
-      --reset grads
-      gradParameters:zero()
+                    --reset grads
+                    gradParameters:zero()
+          
+                    -- f is the average of all criterions
+                    local f = 0
 
-      -- f is the average of all criterions
-      local f = 0
+                    -- evaluate function for complete mini batch
+                    for i_f = 1,#inputs do
+                        print('#inputs', #inputs)
+                        -- estimate f
+                        local output = neunet:forward(inputs[i_f])
+                        local err = cost:forward(output, targets[i_f])
+                        f = f + err
+                        print('feval error', err)
 
-      -- evaluate function for complete mini batch
-      for i_f = 1,#inputs do
-        print('#inputs', #inputs)
-         -- estimate f
-         local output = neunet:forward(inputs[i_f])
-         local err = cost:forward(output, targets[i_f])
-         f = f + err
+                        -- estimate df/dW
+                        local df_do = cost:backward(output, targets[i_f])
+                        neunet:backward(inputs[i_f], df_do)
 
-         -- estimate df/dW
-         local df_do = cost:backward(output, targets[i_f])
-         neunet:backward(inputs[i_f], df_do)
+                        -- penalties (L1 and L2):
+                        if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+                           -- locals:
+                           local norm,sign= torch.norm,torch.sign
 
-         -- update confusion
-         confusion:add(output, targets[i_f])
-      end
+                           -- Loss:
+                           f = f + opt.coefL1 * norm(parameters,1)
+                           f = f + opt.coefL2 * norm(parameters,2)^2/2
 
-      -- normalize gradients and f(X)
-      gradParameters:div(#inputs)
-      f = f/#inputs
+                           -- Gradients:
+                           gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+                        
+                        else
+                          -- normalize gradients and f(X)
+                          gradParameters:div(#inputs)
+                        end
 
-      --retrun f and df/dx
-      return f, gradParameters
-    end
+                        -- update confusion
+                        confusion:add(output, targets[i_f])
+                    end
 
-    local state = nil
-    local config = nil
-
-    parameters = data[1]
+                    -- normalize gradients and f(X)
+--[[                    gradParameters:div(#inputs)
+                    f = f/#inputs
+]]
+                    --retrun f and df/dx
+                    return f, gradParameters
+                  end
 
     print '==> configuring optimizer'
 
     --[[Declare states for limited BFGS
      See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
-    if opt.optimizer == 'l-bfgs' then
+
+     if opt.optimizer == 'mse' then
+       state = {
+         learningRate = opt.learningRate
+       }
+       print('Running optimization with mean-squared error')
+       --local i_mse = {}
+       --for i_mse = 0, opt.maxIter do
+           pred, mse_error = optim_.msetrain(neunet, cost, inputs, targets, opt.learningRate, opt)
+           if mse_error > 150 then learningRate = opt.learningRate
+           elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
+          -- i_mse = i_mse + 1   
+      --end
+
+      local state = nil      local config = nil      parameters = train_input
+
+    elseif opt.optimizer == 'l-bfgs' then
       print('Running optimization with L-BFGS')
       state = 
       {
@@ -362,7 +505,7 @@ function train(data)
        }
       optim.asgd(feval, parameters, sgdState)
 
-    elseif opt.optimization == 'sgd' then
+    elseif opt.optimizer == 'sgd' then
 
       -- Perform SGD step:
       sgdState = sgdState or {
@@ -381,26 +524,11 @@ function train(data)
       }
     print('Running optimization with negative log likelihood criterion')
       for i_nll = 0, opt.maxIter do
-        delta = optim_.nllOptim(neunetnll, train_input, targets_out[t], opt.learningRate)
+        delta = optim_.nllOptim(neunet, inputs[t], targets_out[t], opt.learningRate)
         i_nll  = i_nll  + 1
         if delta > 150 then learningRate = opt.learningRate
         elseif delta <= 150 then learningRate = opt.learningRateDecay end
         print('nll iter', i_nll , 'bkwd error', t, 'fwd error', delta )
-      end
-      
-
-    elseif opt.optimizer == 'mse' then
-      state = {
-        learningRate = opt.learningRate
-      }
-      print('Running optimization with mean-squared error')
-      local i_mse = {}
-      for i_mse = 0, opt.maxIter do
-          pred, mse_error = optim_.msetrain(neunet, inputs[t], targets_out[t], opt.learningRate)
-          if mse_error > 150 then learningRate = opt.learningRate
-          elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-          i_mse = i_mse + 1   
-          print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
       end
 
     elseif opt.optimizer == 'asgd' then
@@ -425,10 +553,10 @@ function train(data)
     end
 
     -- save/log current net
-    local filename = paths.concat('results', 'model.net')
+    local filename = paths.concat('results', 'neunet.net')
     os.execute('mkdir -p ' .. sys.dirname(filename))
     print('==> saving model to '..filename)
-    torch.save(filename, model)
+    torch.save(filename, neunet)
 
     -- next epoch
     confusion:zero()
@@ -438,4 +566,5 @@ end
 
 while true do
   train(trainData)
+  test(testData)
 end

@@ -4,28 +4,55 @@ Negative Log Likelihood Function ]]
 require 'torch'
 optim_ = {}
 --Training using the MSE criterion
-function optim_.msetrain(neunet, x, y, learningRate)
+function optim_.msetrain(neunet, cost, x, y, learningRate, opt)
+
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
-    pred      = neunet:forward(x)
+
+  --reset grads
+  gradParameters:zero()
+
+  local fm = 0
+  for i_mse = 1,#x do
+    pred      = neunet:forward(x[i_mse])
     --print ('pred', pred)
-    err       = cost:forward(pred, y)
-    gradcrit  = cost:backward(pred, y)
+    errm       = cost:forward(pred, y[i_mse])
+    fm = errm + fm
+    print('epoch', epoch, '\tMSE error: ', fm)
+
+    gradcrit  = cost:backward(pred, y[i_mse])
+    neunet:backward(x[i_mse], gradcrit)
+
+    -- penalties (L1 and L2):
+    if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+       -- locals:
+       local norm,sign= torch.norm,torch.sign
+
+       -- Loss:
+       fm = fm + opt.coefL1 * norm(parameters,1)
+       fm = fm + opt.coefL2 * norm(parameters,2)^2/2
+
+       -- Gradients:
+       gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+    else
+      -- normalize gradients and f(X)
+      gradParameters:div(#x)
+    end
 
     --https://github.com/torch/nn/blob/master/doc/module.md
     --neunet:accGradParameters(x, pred, 1)    --https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.accGradParameters
     neunet:zeroGradParameters();
-    neunet:backward(x, gradcrit);
+    --neunet:backward(x, gradcrit);
     neunet:updateParameters(learningRate);
    -- print(err)
-  return pred, err
+ end
+  return gradParameters, fm
 end
 
 --Train using the L-BFGS Algorithm
-function optim_.lbfgs(neunetnll, u_off, y_off, learningRate)
-  local x = u_off   local y = y_off 
+function optim_.lbfgs(neunet, x, y, learningRate) 
    local trainer        = nn.StochasticGradient(neunet2, cost)
    trainer.learningRate = learningRate
-   trainer:train({u_off, y_off})
+   trainer:train({x, y})
    return neunet2
 end
 
