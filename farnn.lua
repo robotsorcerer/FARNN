@@ -15,6 +15,7 @@ require 'order.order_det'
 matio   	= require 'matio'  
 --optim_    = 
 require 'optima.optim_'  
+require 'xlua'
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -71,13 +72,9 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-
-cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam')
-
 cmd:option('-model', 'mlp', 'mlp|convnet|linear')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam|sgd')
-
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
@@ -129,6 +126,10 @@ if opt.backend == 'cudnn' then
 else
   opt.backend = 'nn'
 end
+
+-- Log results to files
+trainLogger = optim.Logger(paths.concat('results', 'train.log'))
+testLogger  = optim.Logger(paths.concat('results', 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -305,7 +306,8 @@ parameters, gradParameters = neunet:getParameters()
 
 cost      = nn.MSECriterion()           -- Loss function
 
---training function
+----------------------------------------------------------------------
+print '==> defining training procedure'
 function train(data)
   --track the epochs
   epoch = epoch or 1
@@ -319,72 +321,10 @@ function train(data)
   local targets_R = {} local targets_P = {} local targets_YW = {}
 
   for t = 1, data[1]:size()[1], opt.batchSize do
+    --disp progress
+    xlua.progress(t, data[1]:size()[1])
+
      -- create mini batch
-
-     --local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
-     local inputs = torch.Tensor(opt.batchSize,1,data[1]:size()[1],data[1]:size()[2])
-     --print('inputs[k]', inputs:size())
-     local targets = torch.Tensor(opt.batchSize)
-     local k = 1
-     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
-        -- load new sample
-        local sample = {data[1], data[2][1], data[2][2], (data[2][3])/10, data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-        --for ii, kk in ipairs(sample) do print(ii, kk) end
-        local input = sample[1]:clone()
-        local _,target = sample[4]:clone():max(1)
-        target = target:squeeze()
-        inputs[k] = input
-        targets[k] = target
-        k = k + 1
-     end
-     print(targets)
-    --create closure to evaluate f(x)
-    local feval = function(x)
-      collectgarbage()
-
-  --retrieve new params
-      if x~=parameters then
-        parameters:copy(x)
-      end
-
-      --reset grads
-      gradParameters:zero()
-
-      --eval function for complete mini-batch
-      local outputs   = neunetlbfgs:forward(input)
-      local f         = cost:forward(outputs, targets)
-
-      --find df/dw
-      local df_do     = cost:backward(outouts, targets)
-      neunetlbfgs:backward(inputs, df_do)
-
-      --L1 and L2 regularization (penalties )
-      if opt.coefL1  ~= 0 or opt.coefL2 ~=0 then
-        --locals
-        local norm, sign = torch.norm, torch.sign
-
-        --Loss:
-        f = f + opt.coefL1 * norm(parameters, 1)
-        f = f + opt.coefL2 * norm(parameters, 2)^2/2
-
-        --Gradients
-        gradParameters:add( sign(parameters):mul(opt.coefL1) + parametsrs:clone():mul(opt.coefL2))
-      end
-
-      --update confusion
-      for i = 1, opt.batchSize do
-        confusion:add(outputs[i], targets[i])
-      end
-
-      --retrun f and df/dx
-      return f, gradParameters
-    end
-
-    local state = nil
-    local config = nil
-
-    parameters = data[1]
-
     local inputs = {}
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
@@ -474,6 +414,8 @@ function train(data)
                     return f, gradParameters
                   end
 
+    print '==> configuring optimizer'
+
     --[[Declare states for limited BFGS
      See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
 
@@ -518,17 +460,13 @@ function train(data)
       print(' - nb of function evaluations: ' .. state.maxEval)
 
     --  for i_l = 0, opt.maxIter do
-
-        local u, losses = optim.lbfgs(feval, parameters, config, state)
-
         local u, losses = optim.lbfgs(feval, inputs[t], config, state)
-   --    i_l = i_l + 1
+    --    i_l = i_l + 1
         if losses > 150 then learningRate = opt.learningRate
         elseif losses <= 150 then learningRate = opt.learningRateDecay end
         print('losses', losses, 'optimal u', u)
     --  end
  
-    elseif opt.optimization == 'SGD' then
     elseif opt.optimizer == 'ASGD' then
        optimState = {
           eta0 = opt.learningRate,
@@ -549,46 +487,10 @@ function train(data)
       -- disp progress
       xlua.progress(t, data:size())
 
-
-    elseif opt.optimizer == 'nll' then
-      state = {
-        learningRate = opt.learningRate
-      }
-    print('Running optimization with negative log likelihood criterion')
-      for i_nll = 0, opt.maxIter do
-        delta = optim_.nllOptim(neunetnll, u_off, targets, opt.learningRate)
-        i_nll  = i_nll  + 1
-        if delta > 150 then learningRate = opt.learningRate
-        elseif delta <= 150 then learningRate = opt.learningRateDecay end
-        print('nll iter', i_nll , 'bkwd error', t, 'fwd error', delta )
-      end
-      
-
-    elseif opt.optimizer == 'mse' then
-      state = {
-        learningRate = opt.learningRate
-      }
-      print('Running optimization with mean-squared error')
-      local i_mse = {}
-      for i_mse = 0, opt.maxIter do
-        pred, mse_error = optim_.msetrain(neunet, parameters, targets, opt.learningRate)
-          --  pred, mse_error = optim_.msetrain(neunet, u_off, y_off[3], opt.learningRate)
-        if mse_error > 150 then learningRate = opt.learningRate
-        elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-        i_mse = i_mse + 1   
-        print('MSE iteration', i_mse, '\tMSE error: ', mse_error)
-          --'\tPrediction', pred, 
-          -- print('neunet gradient weights', neunet.gradWeight)
-          -- print('neunet gradient biases', neunet.gradBias)
-      end
-
     elseif opt.optimizer == 'asgd' then
        _,_,average = optimMethod(feval, parameters, optimState)
     
-    else  
-      error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
-    end
-
+    else  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  end
     
     -- time taken
     time = sys.clock() - time
