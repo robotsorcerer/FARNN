@@ -4,37 +4,41 @@ Negative Log Likelihood Function ]]
 require 'torch'
 optim_ = {}
 --Training using the MSE criterion
-function optim_.msetrain(neunet, cost, x, y, learningRate, opt)
+function optim_.msetrain(neunet, cost, x, y, opt, data)
 
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
 
   --reset grads
   gradParameters:zero()
 
-  local fm = 0
-  for i_mse = 1,#x do
-    pred      = neunet:forward(x[i_mse])
-    --print ('pred', pred)
-    errm       = cost:forward(pred, y[i_mse])
-    fm = errm + fm
-    print('epoch', epoch, '\tMSE error: ', errm)
-    -- if fm > 150 then learningRate = opt.learningRate
-    -- elseif fm <= 150 then learningRate = opt.learningRateDecay end
+  local fm = 0     local pred = {}     local error = {}     local fm = {}
+  local gradcrit = {}
 
-    gradcrit  = cost:backward(pred, y[i_mse])
+  for j_mse = 1, data[1]:size()[1] do
+    for i_mse             = 1,#x do
+        pred[j_mse]         = neunet:forward(x[j_mse])
+        error[j_mse][i_mse]  = cost:forward(pred[j_mse], y[j_mse][i_mse])
+        fm[j_mse][i_mse]    = error[j_mse][i_mse] + fm[j_mse][i_mse]
 
-    --https://github.com/torch/nn/blob/master/doc/module.md
-    neunet:zeroGradParameters();
-    neunet:backward(x[i_mse], gradcrit)
-    neunet:updateParameters(learningRate);
+        --print('epoch', epoch, '\tMSE error: ', error)
 
-   -- normalize gradients and f(X)
-    gradParameters:div(#x)
-    fm = fm/#x
+        if fm[j_mse][i_mse] > 150 then learningRate = opt.learningRate
+        elseif fm[j_mse][i_mse] <= 150 then learningRate = opt.learningRateDecay end
 
+        gradcrit[j_mse][i_mse]   = cost:backward(pred[j_mse], y[j_mse][i_mse])
+
+        --https://github.com/torch/nn/blob/master/doc/module.md
+        neunet:zeroGradParameters();
+        neunet:backward(x[j_mse], gradcrit[j_mse][i_mse] )
+        neunet:updateParameters(learningRate);
+
+        -- normalize gradients and f(X)
+        gradParameters:div(#x)
+        fm[j_mse][i_mse] = fm[j_mse][i_mse]/#x
+    end
   end
 
-  return gradParameters, errm
+  return gradParameters, error
 end
 
 --Train using the L-BFGS Algorithm

@@ -188,10 +188,10 @@ nfeats      = 1
 width       = trainData[1]:size()[2]
 height      = trainData[1]:size()[1]
 ninputs     = 1
-noutput     = 1
+noutputs    = 6
 
 --number of hidden layers (for mlp network)
-nhiddens    = 1     --you may try ninputs / 2
+nhiddens    = 1     
 
 --hidden units, filter kernel (for ConvNet)
 nstates     = {10, 10, 20}
@@ -205,7 +205,7 @@ function contruct_net()
           neunet        	= nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(nn.ReLU())                       	
-          neunet:add(nn.Linear(nhiddens, noutput))	
+          neunet:add(nn.Linear(nhiddens, noutputs))	
   elseif opt.model == 'convnet' then
 
     if opt.backend == 'cudnn' then
@@ -335,19 +335,15 @@ function train(data)
       table.insert(inputs, input)
       table.insert(targets, target) 
     end
-    
+    print('inputs\n', inputs)
+    print('targets\n', targets)
+
     targets_X   = {targets[1][1], targets[2][1], targets[3][1], targets[4][1], targets[5][1], targets[6][1]}
     targets_Y   = {targets[1][2], targets[2][2], targets[3][2], targets[4][2], targets[5][2], targets[6][2]}
     targets_Z   = {targets[1][3], targets[2][3], targets[3][3], targets[4][3], targets[5][3], targets[6][3]}
     targets_R   = {targets[1][4], targets[2][4], targets[3][4], targets[4][4], targets[5][4], targets[6][4]}
     targets_P   = {targets[1][5], targets[2][5], targets[3][5], targets[4][5], targets[5][5], targets[6][5]}
     targets_YW   = {targets[1][6], targets[2][6], targets[3][6], targets[4][6], targets[5][6], targets[6][6]}
-    -- table.insert(targets_Y, targets[2]) 
-    -- table.insert(targets_Z, targets[3]) 
-    -- table.insert(targets_R, targets[4]) 
-    -- table.insert(targets_P, targets[5])
-    -- table.insert(targets_YW, targets[6])
-
     -- classes
     classes = target
 
@@ -426,12 +422,12 @@ function train(data)
        --we do a SISO from input to each of the six outputs in each iteration
        --For SIMO data, it seems best to run a different network from input to output.
        print('Running optimization with mean-squared error')
-           pred_x, error_x = optim_.msetrain(neunet, cost, inputs, targets_X, opt.learningRate, opt)
-           pred_y, error_y = optim_.msetrain(neunety, cost, inputs, targets_Y, opt.learningRate, opt)
-           pred_z, error_z = optim_.msetrain(neunetz, cost, inputs, targets_Z, opt.learningRate, opt)
-           pred_r, error_r = optim_.msetrain(neunetr, cost, inputs, targets_R, opt.learningRate, opt)
-           pred_p, error_p = optim_.msetrain(neunetp, cost, inputs, targets_P, opt.learningRate, opt)
-           pred_yw, error_yw = optim_.msetrain(neunetyw, cost, inputs, targets_YW, opt.learningRate, opt)
+           pred_x, error_x = optim_.msetrain(neunet, cost, inputs, targets, opt, data)
+           -- pred_y, error_y = optim_.msetrain(neunety, cost, inputs, targets_Y, opt.learningRate, opt)
+           -- pred_z, error_z = optim_.msetrain(neunetz, cost, inputs, targets_Z, opt.learningRate, opt)
+           -- pred_r, error_r = optim_.msetrain(neunetr, cost, inputs, targets_R, opt.learningRate, opt)
+           -- pred_p, error_p = optim_.msetrain(neunetp, cost, inputs, targets_P, opt.learningRate, opt)
+           -- pred_yw, error_yw = optim_.msetrain(neunetyw, cost, inputs, targets_YW, opt.learningRate, opt)
       print('Error Table at epoch:', epoch)
       print('\t', error_x, '\n', error_y, '\n', error_z, '\n', error_r, '\n', error_p, '\n', error_yw)
       local state = nil      local config = nil      parameters = train_input
