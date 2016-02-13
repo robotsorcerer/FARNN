@@ -79,16 +79,13 @@ cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
 
-
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
 cmd:option('-batchSize', 6, 'Batch Size for mini-batch training, \
                             preferrably in multiples of six')
 
 -- Print options
-cmd:option('-print', 0, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
-
-
+cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
 
 -- misc
 local opt = cmd:parse(arg)
@@ -279,7 +276,11 @@ function contruct_net()
 end
 
 neunet          = contruct_net()
---neunetnll       = neunet:clone(weight, bias);
+neunety         = neunet:clone(weight, bias);
+neunetz         = neunet:clone(weight, bias);
+neunetr         = neunet:clone(weight, bias);
+neunetp         = neunet:clone(weight, bias);
+neunetyw         = neunet:clone(weight, bias);
 --===================================================================================
 -- Visualization is quite easy, using itorch.image().
 --===================================================================================
@@ -301,42 +302,6 @@ end
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
 
---print a bunch of stuff if user enables print option
-local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
-  
-  print('training_data', trainData)
-  print('\ntesting_data', test_data)    
-
-  --random checks to be sure data is consistent
-  print('train_data_input', trainData[1]:size())  
-  print('train_data_output', trainData[2])        
-  print('\ntrain_xn', trainData[2][1]:size())  
-  print('\ntrain_yn', trainData[2][2]:size()) 
-  print('\ntrain_zn', trainData[2][3]:size())  
-  print('\ntrain_roll', trainData[2][4]:size()) 
-  print('\ntrain_pitch', trainData[2][5]:size())  
-  print('\ntrain_yaw', trainData[2][6]:size()) 
-
-  print('\ninput head', input[{ {1,5}, {1}} ]) 
-  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', train_out)
-  print('\npitch head\n\n', out.zn[{ {1,5}, {1}} ])
-
-  print('\nqn:' , qn)
-  print('Optimal number of input variables is: ', torch.ceil(qn))
-  print('inorder: ', inorder, 'outorder: ', outorder)
-  print('system order:', inorder + outorder)
-
-  --Print out some Lipschitz quotients (first 5) for user
-  for ii, v in pairs( q ) do
-    print('Lipschitz quotients head', ii, v)
-    if ii == 5 then break end
-  end
-  --print neural net parameters
-  print('neunet biases Linear', neunet.bias)
-  print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
-end
-
-if (opt.print==1) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 --=====================================================================================================
 
 cost      = nn.MSECriterion()           -- Loss function
@@ -383,23 +348,14 @@ function train(data)
     -- table.insert(targets_P, targets[5])
     -- table.insert(targets_YW, targets[6])
 
-    print('inputs: ', inputs, '#inputs', #inputs)
-    print('targets: ', targets)
-    print('targets_X', targets_X)
-    print('targets_Y', targets_Y)
-    print('targets_Z', targets_Z)
-    print('targets_R', targets_R)
-    print('targets_P', targets_P)
-    print('targets_YW', targets_YW)
-
     -- classes
-    classes = {'targets_X','targets_Y','targets_Z','targets_R','targets_P','targets_YW'}
+    classes = target
 
     -- This matrix records the current confusion across classes
-    confusion = optim.ConfusionMatrix(classes)
+    --confusion = optim.ConfusionMatrix(classes)
 
-    print('classes', classes)
-    confusion = optim.ConfusionMatrix(classes)
+    --print('classes', classes)
+    --confusion = optim.ConfusionMatrix(classes)
 
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
@@ -447,7 +403,7 @@ function train(data)
                         end
 
                         -- update confusion
-                        confusion:add(output, targets[i_f])
+                        --confusion:add(output, targets[i_f])
                     end
 
                     -- normalize gradients and f(X)
@@ -468,16 +424,16 @@ function train(data)
          learningRate = opt.learningRate
        }
        --we do a SISO from input to each of the six outputs in each iteration
+       --For SIMO data, it seems best to run a different network from input to output.
        print('Running optimization with mean-squared error')
-           pred_x, mse_error_x = optim_.msetrain(neunet, cost, inputs, targets_X, opt.learningRate, opt)
-           pred_y, mse_error_y = optim_.msetrain(neunet, cost, inputs, targets_Y, opt.learningRate, opt)
-           pred_z, mse_error_z = optim_.msetrain(neunet, cost, inputs, targets_Z, opt.learningRate, opt)
-           pred_r, mse_error_r = optim_.msetrain(neunet, cost, inputs, targets_R, opt.learningRate, opt)
-           pred_p, mse_error_p = optim_.msetrain(neunet, cost, inputs, targets_P, opt.learningRate, opt)
-           pred_yw, mse_error_yw = optim_.msetrain(neunet, cost, inputs, targets_YW, opt.learningRate, opt)
-           -- if mse_error > 150 then learningRate = opt.learningRate
-           -- elseif mse_error <= 150 then learningRate = opt.learningRateDecay end
-      
+           pred_x, error_x = optim_.msetrain(neunet, cost, inputs, targets_X, opt.learningRate, opt)
+           pred_y, error_y = optim_.msetrain(neunety, cost, inputs, targets_Y, opt.learningRate, opt)
+           pred_z, error_z = optim_.msetrain(neunetz, cost, inputs, targets_Z, opt.learningRate, opt)
+           pred_r, error_r = optim_.msetrain(neunetr, cost, inputs, targets_R, opt.learningRate, opt)
+           pred_p, error_p = optim_.msetrain(neunetp, cost, inputs, targets_P, opt.learningRate, opt)
+           pred_yw, error_yw = optim_.msetrain(neunety, cost, inputs, targets_YW, opt.learningRate, opt)
+      print('Error Table at epoch:', epoch)
+      print('\t', error_x, '\n', error_y, '\n', error_z, '\n', error_r, '\n', error_p, '\n', error_yw)
       local state = nil      local config = nil      parameters = train_input
 
     elseif opt.optimizer == 'l-bfgs' then
@@ -543,10 +499,10 @@ function train(data)
     print("\n==> time to learn 1 sample = " .. (time*1000) .. 'ms')
 
     -- print confusion matrix
-    print(confusion)
+    --print(confusion)
 
     -- update logger/plot
-    trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
+    --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
     if opt.plot then
        trainLogger:style{['% mean class accuracy (train set)'] = '-'}
        trainLogger:plot()
@@ -559,7 +515,7 @@ function train(data)
     torch.save(filename, neunet)
 
     -- next epoch
-    confusion:zero()
+    --confusion:zero()
     epoch = epoch + 1
   end
 end
@@ -568,3 +524,50 @@ while true do
   train(trainData)
   train(testData)
 end
+
+--print a bunch of stuff if user enables print option
+local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
+  
+  print('training_data', trainData)
+  print('\ntesting_data', test_data)    
+
+  --random checks to be sure data is consistent
+  print('train_data_input', trainData[1]:size())  
+  print('train_data_output', trainData[2])        
+  print('\ntrain_xn', trainData[2][1]:size())  
+  print('\ntrain_yn', trainData[2][2]:size()) 
+  print('\ntrain_zn', trainData[2][3]:size())  
+  print('\ntrain_roll', trainData[2][4]:size()) 
+  print('\ntrain_pitch', trainData[2][5]:size())  
+  print('\ntrain_yaw', trainData[2][6]:size()) 
+
+  print('\ninput head', input[{ {1,5}, {1}} ]) 
+  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', train_out)
+  print('\npitch head\n\n', out.zn[{ {1,5}, {1}} ])
+
+  print('\nqn:' , qn)
+  print('Optimal number of input variables is: ', torch.ceil(qn))
+  print('inorder: ', inorder, 'outorder: ', outorder)
+  print('system order:', inorder + outorder)
+
+  --Print out some Lipschitz quotients (first 5) for user
+  for ii, v in pairs( q ) do
+    print('Lipschitz quotients head', ii, v)
+    if ii == 5 then break end
+  end
+  --print neural net parameters
+  print('neunet biases Linear', neunet.bias)
+  print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
+
+  
+  print('inputs: ', inputs, '#inputs', #inputs)
+  print('targets: ', targets)
+  print('targets_X', targets_X)
+  print('targets_Y', targets_Y)
+  print('targets_Z', targets_Z)
+  print('targets_R', targets_R)
+  print('targets_P', targets_P)
+  print('targets_YW', targets_YW)
+end
+
+if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
