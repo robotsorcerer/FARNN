@@ -187,7 +187,7 @@ nfeats      = 1
 --dimension of training input
 width       = trainData[1]:size()[2]
 height      = trainData[1]:size()[1]
-ninputs     = 1  --nfeats * width * height
+ninputs     = 1
 noutput     = 1
 
 --number of hidden layers (for mlp network)
@@ -431,7 +431,7 @@ function train(data)
            pred_z, error_z = optim_.msetrain(neunetz, cost, inputs, targets_Z, opt.learningRate, opt)
            pred_r, error_r = optim_.msetrain(neunetr, cost, inputs, targets_R, opt.learningRate, opt)
            pred_p, error_p = optim_.msetrain(neunetp, cost, inputs, targets_P, opt.learningRate, opt)
-           pred_yw, error_yw = optim_.msetrain(neunety, cost, inputs, targets_YW, opt.learningRate, opt)
+           pred_yw, error_yw = optim_.msetrain(neunetyw, cost, inputs, targets_YW, opt.learningRate, opt)
       print('Error Table at epoch:', epoch)
       print('\t', error_x, '\n', error_y, '\n', error_z, '\n', error_r, '\n', error_p, '\n', error_yw)
       local state = nil      local config = nil      parameters = train_input
