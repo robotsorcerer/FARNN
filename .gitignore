@@ -2,3 +2,5 @@ experiment*/
 Matlab/
 test.lua
 test.mat
+network/
+results/

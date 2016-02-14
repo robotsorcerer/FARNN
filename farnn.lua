@@ -73,8 +73,9 @@ cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|convnet|linear')
+cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
-cmd:option('-optimizer', 'mse', 'mse|l-bfgs|adam|sgd')
+cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
@@ -128,8 +129,8 @@ else
 end
 
 -- Log results to files
-trainLogger = optim.Logger(paths.concat('network', 'train.log'))
-testLogger  = optim.Logger(paths.concat('network', 'test.log'))
+trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
+testLogger  = optim.Logger(paths.concat(opt.netdir, 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -179,7 +180,7 @@ qn  = order_det.computeqn(train_input, train_out[3])
 utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
 ----------------------------------------------------------------------------------------------
---Set up each network properties
+print '==> Seting up neural network parameters'
 ----------------------------------------------------------------------------------------------
 -- dimension of my feature bank (each input is a 1D array)
 nfeats      = 1   
@@ -321,6 +322,27 @@ print '==> configuring optimizer\n'
    }
    optimMethod = optim.sgd
 
+elseif opt.optimizer == 'asgd' then
+   optimState = {
+      eta0 = opt.learningRate,
+      t0 = trainData[1]:size()[1] * 1
+   }
+   optimMethod = optim.asgd
+
+elseif opt.optimization == 'cg' then
+   optimState = {
+      maxIter = opt.maxIter
+   }
+   optimMethod = optim.cg
+
+elseif opt.optimization == 'l-bfgs' then
+   optimState = {
+      learningRate = opt.learningRate,
+      maxIter = opt.maxIter,
+      nCorrection = 10
+   }
+   optimMethod = optim.lbfgs
+
  else  
    error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
  end
@@ -433,6 +455,9 @@ elseif optimMethod == optim_.msetrain then
      --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
    end
 
+elseif optimMethod == optim.asgd then
+  _, _, average = optimMethod(feval, parameters, optimState)
+
 else  
     optimMethod(feval, parameters, optimState)
 end
@@ -452,7 +477,7 @@ end
     --print(confusion)
 
     -- save/log current net
-    local filename = paths.concat('network', 'neunet.net')
+    local filename = paths.concat(opt.netdir, 'neunet.net')
     os.execute('mkdir -p ' .. sys.dirname(filename))
     print('<trainer> saving network model to '..filename)
     torch.save(filename, neunet)
