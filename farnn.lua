@@ -335,8 +335,8 @@ function train(data)
       table.insert(inputs, input)
       table.insert(targets, target) 
     end
-    -- print('inputs\n', inputs)      
-    -- print('targets\n', targets)
+    print('inputs\n', inputs[t])      
+    print('targets\n', targets[t])
     -- classes
     classes = target
 
@@ -415,8 +415,8 @@ function train(data)
        --we do a SIMO from input to each of the six outputs in each iteration
        --For SIMO data, it seems best to run same network from single input to each output of six vector
        print('Running optimization with mean-squared error')
-          a, b, c, error_acc = optim_.msetrain(neunet, cost, inputs, targets, opt, data)
-          --print('epoch', epoch, '\terror_acc: ', error_acc)
+          a, b, c, error_acc = optim_.msetrain(neunet, cost, inputs[t], targets[t], opt, data)
+          print('epoch', epoch, '\terror_acc: ', error_acc)
 
     elseif opt.optimizer == 'l-bfgs' then
       print('Running optimization with L-BFGS')
