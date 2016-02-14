@@ -128,8 +128,8 @@ else
 end
 
 -- Log results to files
-trainLogger = optim.Logger(paths.concat('results', 'train.log'))
-testLogger  = optim.Logger(paths.concat('results', 'test.log'))
+trainLogger = optim.Logger(paths.concat('network', 'train.log'))
+testLogger  = optim.Logger(paths.concat('network', 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -311,6 +311,8 @@ print '==> defining training procedure'
 function train(data)
   --track the epochs
   epoch = epoch or 1
+
+  --time we started training
   local time = sys.clock()
 
   --do one epoch
@@ -321,6 +323,7 @@ function train(data)
   local targets_R = {} local targets_P = {} local targets_YW = {}
 
   for t = 1, data[1]:size()[1], opt.batchSize do
+    print('\n\n', 'evaluating batch [',t,'to',t+opt.batchSize,']')
     --disp progress
     xlua.progress(t, data[1]:size()[1])
 
@@ -335,165 +338,58 @@ function train(data)
       table.insert(inputs, input)
       table.insert(targets, target) 
     end
-    print('inputs\n', inputs[t])      
-    print('targets\n', targets[t])
-    -- classes
-    classes = target
-
-    -- This matrix records the current confusion across classes
-    --confusion = optim.ConfusionMatrix(classes)
-
-    --print('classes', classes)
-    --confusion = optim.ConfusionMatrix(classes)
-
-    --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-    local feval = function(x)
-                    collectgarbage()
-
-                    --retrieve new params
-                    if x~=parameters then
-                      parameters:copy(x)
-                    end
-
-                    --reset grads
-                    gradParameters:zero()
-          
-                    -- f is the average of all criterions
-                    local f = 0
-
-                    -- evaluate function for complete mini batch
-                    for i_f = 2,#inputs do
-                        print('#inputs', #inputs)
-                        -- estimate f
-                        local output = neunet:forward(inputs[i_f])
-                        local err = cost:forward(output, targets[i_f])
-                        f = f + err
-                        print('feval error', err)
-
-                        -- estimate df/dW
-                        local df_do = cost:backward(output, targets[i_f])
-                        neunet:backward(inputs[i_f], df_do)
-
-                        -- penalties (L1 and L2):
-                        if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
-                           -- locals:
-                           local norm,sign= torch.norm,torch.sign
-
-                           -- Loss:
-                           f = f + opt.coefL1 * norm(parameters,1)
-                           f = f + opt.coefL2 * norm(parameters,2)^2/2
-
-                           -- Gradients:
-                           gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
-                        
-                        else
-                          -- normalize gradients and f(X)
-                          gradParameters:div(#inputs)
-                        end
-
-                        -- update confusion
-                        --confusion:add(output, targets[i_f])
-                    end
-
-                    -- normalize gradients and f(X)
-                    gradParameters:div(#inputs)
-                    f = f/#inputs
-
-                    --retrun f and df/dx
-                    return f, gradParameters
-                  end
-
-    print '==> configuring optimizer'
-
-    --[[Declare states for limited BFGS
-     See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
-
-     if opt.optimizer == 'mse' then
-       state = {
-         learningRate = opt.learningRate
-       }
-       --we do a SIMO from input to each of the six outputs in each iteration
-       --For SIMO data, it seems best to run same network from single input to each output of six vector
-       print('Running optimization with mean-squared error')
-          a, b, c, error_acc = optim_.msetrain(neunet, cost, inputs[t], targets[t], opt, data)
-          print('epoch', epoch, '\terror_acc: ', error_acc)
-
-    elseif opt.optimizer == 'l-bfgs' then
-      print('Running optimization with L-BFGS')
-      state = 
-      {
-        maxIter = opt.maxIter,  --Maximum number of iterations allowed
-        verbose=true,
-        maxEval = 1000,      --Maximum number of function evaluations
-        tolFun  = 1e-1,      --Termination tol on progress in terms of func/param changes
-      }
-
-      config =   
-      {
-        nCorrection = opt.Correction,    
-        lineSearch  = optim.lswolfe,
-        lineSearchOpts = {},
-        learningRate = opt.learningRate
-      }
-      -- disp report:
-      print('LBFGS step')
-      print(' - progress in batch: ' .. t .. '/' .. data[1]:size()[1])
-      print(' - nb of iterations: ' .. state.maxIter)
-      print(' - nb of function evaluations: ' .. state.maxEval)
-
-    --  for i_l = 0, opt.maxIter do
-        local u, losses = optim.lbfgs(feval, inputs[t], config, state)
-    --    i_l = i_l + 1
-        if losses > 150 then learningRate = opt.learningRate
-        elseif losses <= 150 then learningRate = opt.learningRateDecay end
-        print('losses', losses, 'optimal u', u)
-    --  end
- 
-    elseif opt.optimizer == 'ASGD' then
-       optimState = {
-          eta0 = opt.learningRate,
-          t0 = data[1]:size()[1] * 1
-       }
-      optim.asgd(feval, parameters, sgdState)
-
-    elseif opt.optimizer == 'sgd' then
-
-      -- Perform SGD step:
-      sgdState = sgdState or {
-        learningRate = opt.learningRate,
-        momentum = opt.momentum,
-        learningRateDecay = 5e-7
-      }
-      optim.sgd(feval, parameters, sgdState)
-      
-      -- disp progress
-      xlua.progress(t, data:size())
-
-    elseif opt.optimizer == 'asgd' then
-       _,_,average = optimMethod(feval, parameters, optimState)
     
-    else  error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  end
-    
-    -- time taken
+    --for v, w in ipairs(targets) do
+      -- print('inputs', inputs[v])      
+      -- print('targets\n', targets[v])
+    --  print('v', v, 'w', w)
+   
+      -- classes
+      classes = target
+
+      -- This matrix records the current confusion across classes
+      --confusion = optim.ConfusionMatrix(classes)
+
+      --print('classes', classes)
+      --confusion = optim.ConfusionMatrix(classes)
+
+     -- print '==> configuring optimizer\n'
+
+      --[[Declare states for limited BFGS
+       See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
+
+      if opt.optimizer == 'mse' then
+         state = {
+          learningRate = opt.learningRate
+        }
+         --we do a SIMO from input to each of the six outputs in each iteration
+         --For SIMO data, it seems best to run same network from single input to each output of six vector
+          for v = 1, #inputs do
+            a, b, c, d = optim_.msetrain(neunet, cost, inputs[v], 
+              targets[v], opt, data)
+            --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
+          end
+      -- disp progress      
+      xlua.progress(t, data[1]:size()[1])
+
+      else  
+        error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
+      end
+
+   -- end
+
+      -- time taken
     time = sys.clock() - time
-    print("train data size", trainData[1]:size()[1])
     time = time / trainData[1]:size()[1]
-    print("\n==> time to learn 1 sample = " .. (time*1000) .. 'ms')
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
 
     -- print confusion matrix
     --print(confusion)
 
-    -- update logger/plot
-    --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-    if opt.plot then
-       trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-       trainLogger:plot()
-    end
-
     -- save/log current net
-    local filename = paths.concat('results', 'neunet.net')
+    local filename = paths.concat('neunet', 'neunet.net')
     os.execute('mkdir -p ' .. sys.dirname(filename))
-    print('==> saving model to '..filename)
+    print('<trainer> saving network model to '..filename)
     torch.save(filename, neunet)
 
     -- next epoch
@@ -502,10 +398,53 @@ function train(data)
   end
 end
 
-while true do
-  train(trainData)
-  train(testData)
+
+--test function
+function test(data)
+   -- local vars
+   local time = sys.clock()
+
+   -- test over given dataset
+   print('<trainer> on testing Set:')
+   for t = 1,data[1]:size()[1],opt.batchSize do
+      -- disp progress
+      xlua.progress(t, data[1]:size()[1])
+
+    -- create mini batch
+    local inputs = {}
+    local targets = {}
+    for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
+      -- load new sample
+      local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+      local input = sample[1]:clone()[i]
+      local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
+      table.insert(inputs, input)
+      table.insert(targets, target) 
+    end
+    print('Test targets size', targets:size())
+
+    for vv, ww in ipairs(inputs) do
+       -- test samples
+       local preds = neunet:forward(inputs[vv])
+
+         -- confusion:
+         -- for i = 1,opt.batchSize do
+         --    confusion:add(preds[i], targets[i])
+         -- end
+      end
+
+      -- timing
+      time = sys.clock() - time
+      time = time / dataset:size()
+      print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
+
+      -- print confusion matrix
+      -- print(confusion)
+      -- testLogger:add{['% mean class accuracy (test set)'] = confusion.totalValid * 100}
+      -- confusion:zero()
+    end
 end
+
 
 --print a bunch of stuff if user enables print option
 local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
@@ -544,12 +483,20 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_ou
   
   print('inputs: ', inputs, '#inputs', #inputs)
   print('targets: ', targets)
-  print('targets_X', targets_X)
-  print('targets_Y', targets_Y)
-  print('targets_Z', targets_Z)
-  print('targets_R', targets_R)
-  print('targets_P', targets_P)
-  print('targets_YW', targets_YW)
 end
 
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
+
+
+while true do
+  train(trainData)
+  test(testData)
+
+
+  -- update logger/plot
+  --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
+  if opt.plot then
+     trainLogger:style{['% mean class accuracy (train set)'] = '-'}
+     trainLogger:plot()
+  end
+end
