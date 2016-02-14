@@ -12,7 +12,7 @@ require 'nn'
 require 'optim'
 require 'image'
 require 'order.order_det'   
-matio   	= require 'matio'  
+matio     = require 'matio'  
 --optim_    = 
 require 'optima.optim_'  
 require 'xlua'
@@ -95,9 +95,9 @@ torch.setnumthreads(4)
 
 -- create log file if user specifies true for rundir
 if(opt.rundir==1) then
-	opt.rundir = cmd:string('experiment', opt, {dir=false})
-	paths.mkdir(opt.rundir)
-	cmd:log(opt.rundir .. '/log', opt)
+  opt.rundir = cmd:string('experiment', opt, {dir=false})
+  paths.mkdir(opt.rundir)
+  cmd:log(opt.rundir .. '/log', opt)
 end
 
 cmd:addTime('FARNN Identification', '%F %T')
@@ -135,7 +135,7 @@ testLogger  = optim.Logger(paths.concat('network', 'test.log'))
 ----------------------------------------------------------------------------------------
 print '==> Parsing raw data'
 
-input       = matio.load(data, 'in')						--SIMO System
+input       = matio.load(data, 'in')            --SIMO System
 out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
 
 y           = {out.xn, out.yn, 
@@ -202,10 +202,10 @@ normkernel = image.gaussian1D(7)
 --[[Set up the network, add layers in place as we add more abstraction]]
 function contruct_net()
   if opt.model  == 'mlp' then
-          neunet        	= nn.Sequential()
+          neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
-          neunet:add(nn.ReLU())                       	
-          neunet:add(nn.Linear(nhiddens, noutputs))	
+          neunet:add(nn.ReLU())                         
+          neunet:add(nn.Linear(nhiddens, noutputs)) 
   elseif opt.model == 'convnet' then
 
     if opt.backend == 'cudnn' then
@@ -272,15 +272,10 @@ function contruct_net()
     
   end
 
-  return neunet			
+  return neunet     
 end
 
 neunet          = contruct_net()
-neunety         = neunet:clone(weight, bias);
-neunetz         = neunet:clone(weight, bias);
-neunetr         = neunet:clone(weight, bias);
-neunetp         = neunet:clone(weight, bias);
-neunetyw         = neunet:clone(weight, bias);
 --===================================================================================
 -- Visualization is quite easy, using itorch.image().
 --===================================================================================
@@ -305,9 +300,33 @@ parameters, gradParameters = neunet:getParameters()
 --=====================================================================================================
 
 cost      = nn.MSECriterion()           -- Loss function
+----------------------------------------------------------------------------------
+print '==> configuring optimizer\n'
 
+ --[[Declare states for limited BFGS
+  See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
+
+ if opt.optimizer == 'mse' then
+    state = {
+     learningRate = opt.learningRate
+   }
+   optimMethod = optim_.msetrain
+
+ elseif opt.optimizer == 'sgd' then      
+   -- Perform SGD step:
+   sgdState = sgdState or {
+   learningRate = opt.learningRate,
+   momentum = opt.momentum,
+   learningRateDecay = 5e-7
+   }
+   optimMethod = optim.sgd
+
+ else  
+   error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
+ end
 ----------------------------------------------------------------------
 print '==> defining training procedure'
+
 function train(data)
   --track the epochs
   epoch = epoch or 1
@@ -338,45 +357,91 @@ function train(data)
       table.insert(inputs, input)
       table.insert(targets, target) 
     end
+    --print('inputs', inputs, 'targets', targets)
     
-    --for v, w in ipairs(targets) do
-      -- print('inputs', inputs[v])      
-      -- print('targets\n', targets[v])
-    --  print('v', v, 'w', w)
-   
       -- classes
       classes = target
+      --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+      local feval = function(x)
+                      collectgarbage()
+
+                      --retrieve new params
+                      if x~=parameters then
+                        parameters:copy(x)
+                      end
+
+                      --reset grads
+                      gradParameters:zero()
+            
+                      -- f is the average of all criterions
+                      local f = 0
+
+                      -- evaluate function for complete mini batch
+                      for i_f = 1,#inputs do
+                          -- estimate f
+                          local output = neunet:forward(inputs[i_f])
+                          local targets_ = {}
+                          targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
+                           targets[i_f][4], targets[i_f][5], targets[i_f][6],})
+                          local err = cost:forward(output, targets_)
+                          f = f + err
+                          print('f', f, 'err', err)
+
+                          -- estimate df/dW
+                          local df_do = cost:backward(output, targets_)
+                          neunet:backward(inputs[i_f], df_do)
+
+                          -- penalties (L1 and L2):
+                          if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+                             -- locals:
+                             local norm,sign= torch.norm,torch.sign
+
+                             -- Loss:
+                             f = f + opt.coefL1 * norm(parameters,1)
+                             f = f + opt.coefL2 * norm(parameters,2)^2/2
+
+                             -- Gradients:
+                             gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+                          
+                          else
+                            -- normalize gradients and f(X)
+                            gradParameters:div(#inputs)
+                          end
+
+                          -- update confusion
+                          --confusion:add(output, targets[i_f])
+                      end
+
+                      -- normalize gradients and f(X)
+                      gradParameters:div(#inputs)
+                      f = f/#inputs
+
+                      --retrun f and df/dx
+                      return f, gradParameters
+                    end
+
+-- optimization on current mini-batch
+if optimMethod == optim.sgd then
+    optimMethod(feval, parameters, sgdState)
+
+elseif optimMethod == optim_.msetrain then
+  --we do a SIMO from input to each of the six outputs in each iteration
+  --For SIMO data, it seems best to run same network from single input to each output of six vector
+   for v = 1, #inputs do
+     a, b, c, d = optimMethod(neunet, cost, inputs[v], 
+       targets[v], opt, data)
+     --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
+   end
+
+else  
+    optimMethod(feval, parameters, optimState)
+end
 
       -- This matrix records the current confusion across classes
       --confusion = optim.ConfusionMatrix(classes)
 
       --print('classes', classes)
       --confusion = optim.ConfusionMatrix(classes)
-
-     -- print '==> configuring optimizer\n'
-
-      --[[Declare states for limited BFGS
-       See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
-
-      if opt.optimizer == 'mse' then
-         state = {
-          learningRate = opt.learningRate
-        }
-         --we do a SIMO from input to each of the six outputs in each iteration
-         --For SIMO data, it seems best to run same network from single input to each output of six vector
-          for v = 1, #inputs do
-            a, b, c, d = optim_.msetrain(neunet, cost, inputs[v], 
-              targets[v], opt, data)
-            --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
-          end
-      -- disp progress      
-      xlua.progress(t, data[1]:size()[1])
-
-      else  
-        error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
-      end
-
-   -- end
 
       -- time taken
     time = sys.clock() - time
@@ -387,7 +452,7 @@ function train(data)
     --print(confusion)
 
     -- save/log current net
-    local filename = paths.concat('neunet', 'neunet.net')
+    local filename = paths.concat('network', 'neunet.net')
     os.execute('mkdir -p ' .. sys.dirname(filename))
     print('<trainer> saving network model to '..filename)
     torch.save(filename, neunet)
@@ -421,7 +486,6 @@ function test(data)
       table.insert(inputs, input)
       table.insert(targets, target) 
     end
-    print('Test targets size', targets:size())
 
     for vv, ww in ipairs(inputs) do
        -- test samples
