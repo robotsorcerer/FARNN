@@ -44,7 +44,7 @@ end
 cmd = torch.CmdLine()
 cmd:text()
 cmd:text('===========================================================================')
-cmd:text('          A Convoluted Dynamic Neural Network for System Identification    ')
+cmd:text('A Dynamic Convoluted Neural Network for System Identification and Control  ')
 cmd:text(                                                                             )
 cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
 cmd:text(                                                                             )
@@ -170,6 +170,12 @@ geometry    = {kk, train_input:size()[2]}
 
 trainData     = {train_input, train_out}
 testData     = {test_input,  test_out}
+
+offsets = {}
+for i=1,opt.batchSize do
+   table.insert(offsets, math.ceil(math.random()*opt.batchSize))
+end
+offsets = torch.LongTensor(offsets)
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
@@ -414,7 +420,7 @@ function train(data)
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       table.insert(inputs, input)
       table.insert(targets, target) 
-
+--[[
       --prepare rnn data within mini batch
       if opt.model == 'rnn' then
         -- 1. create a sequence of rho time-steps
@@ -426,6 +432,7 @@ function train(data)
             table.insert(targets_rnn, target)
           end
           -- increase indices
+          
           offsets:add(1)
           for j=1, opt.batchSize do
              if offsets[j] > off then
@@ -433,7 +440,7 @@ function train(data)
              end
           end
           targets_rnn[i] = input:index(1, offsets)
-      end
+      end]]
     end
     
       --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
@@ -457,8 +464,8 @@ function train(data)
                           if opt.model == 'rnn' then
                             local iter = 0
                             -- 1. create a sequence of rho time-steps
-                            local inputs_rnn, targets_rnn = {}, {} 
-                              
+                            local inputs_rnn, targets_rnn = {}, {}
+                            --for step = 1, rho do                              
                               --batch of inputs
                               inputs_rnn[i_f] = input:index(1, offsets)
                               print('inputs_rnn', inputs_rnn)
@@ -470,17 +477,23 @@ function train(data)
                                     offsets[j] = 1
                                  end
                               end
-                              targets_rnn[i] = input:index(1, offsets)
+                              targets_rnn[i_f] = input:index(1, offsets)
+                            --end
                           
                             --2. Forward sequence of inputs thru rnn
 
                             neunet:zeroGradParameters()
                             neunet:forget()  --forget all past time steps
 
-                            local output, err = {}, 0               
-                            output  = neunet:forward(inputs_rnn)
-                            err     = err + cost:forward(output, targets_rnn)
-
+                            local output, err = {}, 0 
+                            targets_rnn_ = torch.cat({targets_rnn[i_f][1], targets_rnn[i_f][2], targets_rnn[i_f][3],
+                                                      targets_rnn[i_f][4], targets_rnn[i_f][5], targets_rnn[i_f][6],})
+                            print('targets_rnn_', targets_rnn_)
+                            --for step = 1, rho do              
+                              output  = neunet:forward(inputs_rnn)
+                              print('output',output)
+                              err     = err + cost:forward(output, targets_rnn_)
+                            --end
                             print(string.format("Step %d, Loss error = %f ", iter, err ))
 
                             --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
