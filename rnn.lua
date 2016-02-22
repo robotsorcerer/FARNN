@@ -70,9 +70,10 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
+cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|convnet|linear')
+cmd:option('-model', 'mlp', 'mlp|convnet|linear|rnn')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
@@ -181,7 +182,7 @@ qn  = order_det.computeqn(train_input, train_out[3])
 utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
 ----------------------------------------------------------------------------------------------
-print '==> Seting up neural network parameters'
+print '==> Setting up neural network parameters'
 ----------------------------------------------------------------------------------------------
 -- dimension of my feature bank (each input is a 1D array)
 nfeats      = 1   
@@ -202,13 +203,47 @@ dW          = 1           --convolution step
 poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
 normkernel = image.gaussian1D(7)
 
+  --Recurrent Neural Net Initializations 
+if opt.model == 'rnn' then
+  rho         = 5                           -- the max amount of bacprop steos to take back in time
+  start       = 1         
+  rnnInput    = nn.Linear(ninputs, start)     --the size of the output
+  feedback    = nn.Linear(start, 1)           --module that feeds back prev/output to transfer module
+  transfer    = nn.ReLU()                     -- transfer function
+
+  nIndex = 6
+end
 --[[Set up the network, add layers in place as we add more abstraction]]
 function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
-          neunet:add(nn.ReLU())                         
+          neunet:add(transfer)                         
           neunet:add(nn.Linear(nhiddens, noutputs)) 
+
+  elseif opt.model == 'rnn' then
+    require 'rnn'
+    --RNN
+    r = nn.Recurrent(start, 
+                     rnnInput,  --input module from inputs to outs
+                     feedback,
+                     transfer,
+                     rho             
+                     )
+
+    neunet     = nn.Sequential()
+              :add(r)
+              :add(nn.Linear(nhiddens, noutputs))
+
+    --[[next we decorate the rnn with a sequencer such that the entire sequence can be presented 
+    with a single forward/backward call. allows RNNs to be stacked and makes the rnn conform to 
+    the Module interface, i.e. each call to forward can be followed by its own immediate call to
+     backward]]
+    neunet    = nn.Sequencer(neunet)
+    print('rnn')
+    print(neunet)
+    --======================================================================================
+
   elseif opt.model == 'convnet' then
 
     if opt.backend == 'cudnn' then
@@ -221,23 +256,22 @@ function contruct_net()
       first layer is 3x3 and the maps produced are therefore]]
       --neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
       neunet:add(nn.TemporalConvolution(ninputs, noutputs, kW, dW))
-      neunet:add(nn.ReLU())
+      neunet:add(transfer)
       neunet:add(nn.SpatialMaxPooling(poolsize, poolsize, poolsize, poolsize))
 
       -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
       neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      neunet:add(nn.ReLU())
+      neunet:add(transfer)
       neunet:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
 
       -- stage 3 : standard 2-layer neural network
       neunet:add(nn.View(nstates[2]*filtsize*filtsize))
       neunet:add(nn.Dropout(0.5))
       neunet:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-      neunet:add(nn.ReLU())
+      neunet:add(transfer)
       neunet:add(nn.Linear(nstates[3], noutputs))
 
     else
-
       -- a typical convolutional network, with locally-normalized hidden
       -- units, and L2-pooling
 
@@ -300,9 +334,13 @@ end
 parameters, gradParameters = neunet:getParameters()
 
 --=====================================================================================================
+if opt.model == 'rnn' then
+  cost    = nn.SequencerCriterion(nn.MSECriterion())
+else
+  cost      = nn.MSECriterion()           -- Loss function
+end
+--======================================================================================
 
-cost      = nn.MSECriterion()           -- Loss function
-----------------------------------------------------------------------------------
 print '==> configuring optimizer\n'
 
  --[[Declare states for limited BFGS
@@ -348,6 +386,7 @@ elseif opt.optimization == 'l-bfgs' then
    error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
  end
 ----------------------------------------------------------------------
+
 print '==> defining training procedure'
 
 function train(data)
@@ -360,9 +399,6 @@ function train(data)
   --do one epoch
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
-  
-  local targets_X = {} local targets_Y = {} local targets_Z = {}
-  local targets_R = {} local targets_P = {} local targets_YW = {}
 
   for t = 1, data[1]:size()[1], opt.batchSize do
     print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
@@ -370,8 +406,7 @@ function train(data)
     xlua.progress(t, data[1]:size()[1])
 
      -- create mini batch
-    local inputs = {}
-    local targets = {}
+    local inputs, targets = {}, {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
       -- load new sample
       local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
@@ -379,6 +414,26 @@ function train(data)
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       table.insert(inputs, input)
       table.insert(targets, target) 
+
+      --prepare rnn data within mini batch
+      if opt.model == 'rnn' then
+        -- 1. create a sequence of rho time-steps
+        local inputs_rnn, targets_rnn = {}, {} 
+          
+          for step = 1,rho do            
+            --batch of inputs
+            table.insert(inputs_rnn, input)
+            table.insert(targets_rnn, target)
+          end
+          -- increase indices
+          offsets:add(1)
+          for j=1, opt.batchSize do
+             if offsets[j] > off then
+                offsets[j] = 1
+             end
+          end
+          targets_rnn[i] = input:index(1, offsets)
+      end
     end
     
       --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
@@ -399,38 +454,82 @@ function train(data)
                       -- evaluate function for complete mini batch
                       for i_f = 1,#inputs do
                           -- estimate f
-                          local output = neunet:forward(inputs[i_f])
-                          -- for istates = 1, opt.batchSize do
-                          -- end
-                          local targets_ = {}
-                          targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
-                           targets[i_f][4], targets[i_f][5], targets[i_f][6],})
-                          local err = cost:forward(output, targets_)
-                          f = f + err
-
-                          -- estimate df/dW
-                          local df_do = cost:backward(output, targets_)
-                          neunet:backward(inputs[i_f], df_do)
-
-                          -- penalties (L1 and L2):
-                          if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
-                             -- locals:
-                             local norm,sign= torch.norm,torch.sign
-
-                             -- Loss:
-                             f = f + opt.coefL1 * norm(parameters,1)
-                             f = f + opt.coefL2 * norm(parameters,2)^2/2
-
-                             -- Gradients:
-                             gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+                          if opt.model == 'rnn' then
+                            local iter = 0
+                            -- 1. create a sequence of rho time-steps
+                            local inputs_rnn, targets_rnn = {}, {} 
+                              
+                              --batch of inputs
+                              inputs_rnn[i_f] = input:index(1, offsets)
+                              print('inputs_rnn', inputs_rnn)
+                              -- increase indices
+                              offsets:add(1)
+                              print(offsets)
+                              for j=1, opt.batchSize do
+                                 if offsets[j] > off then
+                                    offsets[j] = 1
+                                 end
+                              end
+                              targets_rnn[i] = input:index(1, offsets)
                           
-                          else
-                            -- normalize gradients and f(X)
-                            gradParameters:div(#inputs)
-                          end
+                            --2. Forward sequence of inputs thru rnn
 
-                          print(' err ')
-                          print(df_do)
+                            neunet:zeroGradParameters()
+                            neunet:forget()  --forget all past time steps
+
+                            local output, err = {}, 0               
+                            output  = neunet:forward(inputs_rnn)
+                            err     = err + cost:forward(output, targets_rnn)
+
+                            print(string.format("Step %d, Loss error = %f ", iter, err ))
+
+                            --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
+                            local gradOutputs, gradInputs = {}, {}
+                            for step = rho, 1, -1 do --we basically reverse order of forward calls
+                              gradOutputs[step] = cost:backward(outputs[step], targets_rnn[step])
+                              gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
+                            end
+
+                            --4. update lr
+                            neunet:updateParameters(opt.rnnlearningRate)
+
+                            iter = iter + 1
+                          else
+                            local output = neunet:forward(inputs[i_f])
+                            -- for istates = 1, opt.batchSize do
+                            -- end
+                            local targets_ = {}
+                            targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
+                             targets[i_f][4], targets[i_f][5], targets[i_f][6],})
+                            local err = cost:forward(output, targets_)
+                            f = f + err
+
+                            -- estimate df/dW
+                            local df_do = cost:backward(output, targets_)
+                            neunet:backward(inputs[i_f], df_do)
+
+                            -- penalties (L1 and L2):
+                            if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+                               -- locals:
+                               local norm,sign= torch.norm,torch.sign
+
+                               -- Loss:
+                               f = f + opt.coefL1 * norm(parameters,1)
+                               f = f + opt.coefL2 * norm(parameters,2)^2/2
+
+                               -- Gradients:
+                               gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+                            
+                            else
+                              -- normalize gradients and f(X)
+                              gradParameters:div(#inputs)
+                            end
+
+                            print(' err ')
+                            print(err)
+                            print('\ndf_do')
+                            print(df_do)
+                          end                      
                       end
 
                       -- normalize gradients and f(X)
