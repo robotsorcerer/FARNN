@@ -497,21 +497,23 @@ function train(data)
                             print(string.format("Step %d, Loss error = %f ", iter, err ))
 
                             --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
-                            local gradOutputs, gradInputs = {}, {}
+                            --[[local gradOutputs, gradInputs = {}, {}
                             for step = rho, 1, -1 do --we basically reverse order of forward calls
                               gradOutputs[step] = cost:backward(outputs[step], targets_rnn[step])
                               gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
                             end
+                            ]]
+                            local gradOutputs, gradInputs = {}, {}
+                              --we basically reverse order of forward calls
+                              gradOutputs   = cost:backward(outputs, targets_rnn)
+                              gradInputs    = neunet:backward(inputs, gradOutputs)
 
                             --4. update lr
                             neunet:updateParameters(opt.rnnlearningRate)
 
                             iter = iter + 1
                           else
-                            local output = neunet:forward(inputs[i_f])
-                            -- for istates = 1, opt.batchSize do
-                            -- end
-                            local targets_ = {}
+                            local output, targets_ = neunet:forward(inputs[i_f]), {}
                             targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
                              targets[i_f][4], targets[i_f][5], targets[i_f][6],})
                             local err = cost:forward(output, targets_)
