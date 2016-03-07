@@ -412,7 +412,7 @@ function train(data)
     xlua.progress(t, data[1]:size()[1])
 
      -- create mini batch
-    local inputs, targets = {}, {}
+    local inputs, targets, offsets = {}, {}, {}
     for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
       -- load new sample
       local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
@@ -420,31 +420,17 @@ function train(data)
       local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       table.insert(inputs, input)
       table.insert(targets, target) 
---[[
-      --prepare rnn data within mini batch
-      if opt.model == 'rnn' then
-        -- 1. create a sequence of rho time-steps
-        local inputs_rnn, targets_rnn = {}, {} 
-          
-          for step = 1,rho do            
-            --batch of inputs
-            table.insert(inputs_rnn, input)
-            table.insert(targets_rnn, target)
-          end
-          -- increase indices
-          
-          offsets:add(1)
-          for j=1, opt.batchSize do
-             if offsets[j] > off then
-                offsets[j] = 1
-             end
-          end
-          targets_rnn[i] = input:index(1, offsets)
-      end]]
+
+      table.insert(offsets, input)      
     end
+
+    offsets = torch.cat({offsets[1], offsets[2], offsets[3], offsets[4], offsets[5], offsets[6]})
+    --convert from double tensor to long tensor
+    offsets = torch.LongTensor():resize(offsets:size()):copy(offsets)
+    print('offsets', offsets)
     
-      --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-      local feval = function(x)
+     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+     local feval = function(x)
                       collectgarbage()
 
                       --retrieve new params
@@ -459,41 +445,37 @@ function train(data)
                       local f = 0
 
                       -- evaluate function for complete mini batch
-                      for i_f = 1,#inputs do
+                    for i_f = 1,#inputs do
                           -- estimate f
-                          if opt.model == 'rnn' then
+                      if opt.model == 'rnn' then
                             local iter = 0
                             -- 1. create a sequence of rho time-steps
                             local inputs_rnn, targets_rnn = {}, {}
-                            --for step = 1, rho do                              
+                            for step = 1, rho do                              
                               --batch of inputs
+                              -- inputs_rnn[step] = input:index(1, offsets)
                               inputs_rnn[i_f] = input:index(1, offsets)
-                              print('inputs_rnn', inputs_rnn)
-                              -- increase indices
                               offsets:add(1)
-                              print(offsets)
                               for j=1, opt.batchSize do
                                  if offsets[j] > off then
                                     offsets[j] = 1
                                  end
                               end
+                              -- targets_rnn[step] = input:index(1, offsets)
                               targets_rnn[i_f] = input:index(1, offsets)
-                            --end
-                          
+                            end                          
+                            print('targets_rnn', targets_rnn)
                             --2. Forward sequence of inputs thru rnn
 
                             neunet:zeroGradParameters()
                             neunet:forget()  --forget all past time steps
 
-                            local output, err = {}, 0 
-                            targets_rnn_ = torch.cat({targets_rnn[i_f][1], targets_rnn[i_f][2], targets_rnn[i_f][3],
-                                                      targets_rnn[i_f][4], targets_rnn[i_f][5], targets_rnn[i_f][6],})
-                            print('targets_rnn_', targets_rnn_)
-                            --for step = 1, rho do              
-                              output  = neunet:forward(inputs_rnn)
-                              print('output',output)
-                              err     = err + cost:forward(output, targets_rnn_)
-                            --end
+                            print('inputs_rnn', inputs_rnn)
+                            local outputs = {}       
+                            outputs  = neunet:forward(inputs_rnn)
+                            outputs = output[i_f]:viewAs(inputs_rnn[i_f])
+                            print('output', outputs[1])
+                            local err      = cost:forward(outputs, targets_rnn)
                             print(string.format("Step %d, Loss error = %f ", iter, err ))
 
                             --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
@@ -512,7 +494,7 @@ function train(data)
                             neunet:updateParameters(opt.rnnlearningRate)
 
                             iter = iter + 1
-                          else
+                      else
                             local output, targets_ = neunet:forward(inputs[i_f]), {}
                             targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
                              targets[i_f][4], targets[i_f][5], targets[i_f][6],})
