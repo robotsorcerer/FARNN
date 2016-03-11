@@ -170,12 +170,6 @@ geometry    = {kk, train_input:size()[2]}
 
 trainData     = {train_input, train_out}
 testData     = {test_input,  test_out}
-
-offsets = {}
-for i=1,opt.batchSize do
-   table.insert(offsets, math.ceil(math.random()*opt.batchSize))
-end
-offsets = torch.LongTensor(offsets)
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
@@ -405,6 +399,84 @@ function train(data)
   --do one epoch
   print('<trainer> on training set: ')
   print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+  
+  if opt.model == 'rnn' then
+    
+    local offsets = {}
+    --form mini batch
+    print('train_input size', train_input:size()[1])
+    for t = 1, train_input:size()[1], 1 do
+
+      for i = t, t+opt.batchSize-1 do
+         offsets[i] = train_input[i][1]
+        --table.insert(offsets, train_input[i][1])
+      end      
+      print('offsets', offsets)
+      offsets = torch.LongTensor(offsets)
+      
+      --BPTT
+
+      local iter = 1
+
+      -- 1. create a sequence of rho time-steps
+      local inputs, targets = {}, {}
+      for step = 1, rho do                              
+        --batch of inputs
+        inputs[step] = train_input:index(1, offsets)
+        --batch of targets
+        offsets = train_input[{ {t+1, t+1+rho} }] --increase indices by 1
+        offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+        targets[step] = train_input:index(1, offsets)
+      end   
+
+--[[
+      --torch.LongTensor():resize():copy(inputs)
+      print('inputs', inputs[1])  
+      print('targets', targets[1])
+
+
+      print('inputs', inputs[2])  
+      print('targets', targets[2])
+]]
+      --2. Forward sequence of in
+      neunet:zeroGradParameters()
+      neunet:forget()  --forget all past time steps
+
+      local outputs, err = {}, 0 
+      local inputs_rnn, outputs_rnn = {}, {}
+      local targets_rnn = {}
+
+      for step = 1, rho do   
+        table.insert(inputs_rnn, inputs[step])
+        print('inputs_rnn', inputs_rnn[1])  
+        outputs = neunet:forward(inputs_rnn)
+        --outputs[step]  = neunet:forward(inputs[step])
+        print('outputs', outputs)
+        --outputs[step]  = neunet:forward(inputs[step])
+        --reshape output data
+        table.insert(outputs_rnn, outputs[step])
+        print('outputs_rnn', outputs_rnn)
+        print('targets', targets)
+        err     = err + cost:forward(outputs_rnn, targets[step])
+        --err     = err + cost:forward(outputs[step], targets[step])
+        print('output', outputs[step])
+      end
+      print(string.format("Step %d, Loss error = %f ", iter, err ))
+
+      --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
+      local gradOutputs, gradInputs = {}, {}
+      for step = rho, 1, -1 do --we basically reverse order of forward calls
+        gradOutputs[step] = cost:backward(outputs[step], targets[step])
+        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
+      end
+
+      --4. update lr
+
+      neunet:updateParameters(opt.rnnlearningRate)
+
+      iter = iter + 1
+    end
+  else
 
   for t = 1, data[1]:size()[1], opt.batchSize do
     print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
@@ -423,14 +495,62 @@ function train(data)
 
       table.insert(offsets, input)      
     end
-
+--[[
     offsets = torch.cat({offsets[1], offsets[2], offsets[3], offsets[4], offsets[5], offsets[6]})
     --convert from double tensor to long tensor
     offsets = torch.LongTensor():resize(offsets:size()):copy(offsets)
     print('offsets', offsets)
     
-     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-     local feval = function(x)
+    if opt.model == 'rnn' then
+          local iter = 0
+          -- 1. create a sequence of rho time-steps
+          local inputs_rnn, targets_rnn = {}, {}
+          for step = 1, rho do                              
+            --batch of inputs
+            inputs_rnn[step] = input:index(1, offsets)
+            inputs_rnn[step] = torch.totable(torch.Tensor(inputs_rnn[step]))
+            print('inputs_rnn', inputs_rnn)
+            --batch of targets
+            offsets:add(1) --increase indices by 1
+            --offsets[offsets:gt(off)] = 1
+            for j=1, opt.batchSize do
+               if offsets[j] > off then
+                  offsets[j] = 1
+               end
+            end
+            targets_rnn[step] = input:index(1, offsets)
+          end   
+
+          print('targets_rnn', targets_rnn)
+
+          --2. Forward sequence of inputs thru rnn
+
+          neunet:zeroGradParameters()
+          neunet:forget()  --forget all past time steps
+
+          local outputs, err = {}, 0   
+          for step = 1, rho do   
+            outputs[step]  = neunet:forward(inputs_rnn[step])
+            err     = err + cost:forward(outputs[step], targets_rnn[step])
+            print('output', outputs[step])
+          end
+          print(string.format("Step %d, Loss error = %f ", iter, err ))
+
+          --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
+          local gradOutputs, gradInputs = {}, {}
+          for step = rho, 1, -1 do --we basically reverse order of forward calls
+            gradOutputs[step] = cost:backward(outputs[step], targets_rnn[step])
+            gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
+          end
+
+          --4. update lr
+
+          neunet:updateParameters(opt.rnnlearningRate)
+
+          iter = iter + 1
+    else]]
+      --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+        local feval = function(x)
                       collectgarbage()
 
                       --retrieve new params
@@ -447,54 +567,6 @@ function train(data)
                       -- evaluate function for complete mini batch
                     for i_f = 1,#inputs do
                           -- estimate f
-                      if opt.model == 'rnn' then
-                            local iter = 0
-                            -- 1. create a sequence of rho time-steps
-                            local inputs_rnn, targets_rnn = {}, {}
-                            for step = 1, rho do                              
-                              --batch of inputs
-                              -- inputs_rnn[step] = input:index(1, offsets)
-                              inputs_rnn[i_f] = input:index(1, offsets)
-                              offsets:add(1)
-                              for j=1, opt.batchSize do
-                                 if offsets[j] > off then
-                                    offsets[j] = 1
-                                 end
-                              end
-                              -- targets_rnn[step] = input:index(1, offsets)
-                              targets_rnn[i_f] = input:index(1, offsets)
-                            end                          
-                            print('targets_rnn', targets_rnn)
-                            --2. Forward sequence of inputs thru rnn
-
-                            neunet:zeroGradParameters()
-                            neunet:forget()  --forget all past time steps
-
-                            print('inputs_rnn', inputs_rnn)
-                            local outputs = {}       
-                            outputs  = neunet:forward(inputs_rnn)
-                            outputs = output[i_f]:viewAs(inputs_rnn[i_f])
-                            print('output', outputs[1])
-                            local err      = cost:forward(outputs, targets_rnn)
-                            print(string.format("Step %d, Loss error = %f ", iter, err ))
-
-                            --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
-                            --[[local gradOutputs, gradInputs = {}, {}
-                            for step = rho, 1, -1 do --we basically reverse order of forward calls
-                              gradOutputs[step] = cost:backward(outputs[step], targets_rnn[step])
-                              gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
-                            end
-                            ]]
-                            local gradOutputs, gradInputs = {}, {}
-                              --we basically reverse order of forward calls
-                              gradOutputs   = cost:backward(outputs, targets_rnn)
-                              gradInputs    = neunet:backward(inputs, gradOutputs)
-
-                            --4. update lr
-                            neunet:updateParameters(opt.rnnlearningRate)
-
-                            iter = iter + 1
-                      else
                             local output, targets_ = neunet:forward(inputs[i_f]), {}
                             targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
                              targets[i_f][4], targets[i_f][5], targets[i_f][6],})
@@ -526,8 +598,7 @@ function train(data)
                             print(err)
                             print('\ndf_do')
                             print(df_do)
-                          end                      
-                      end
+                    end       
 
                       -- normalize gradients and f(X)
                       gradParameters:div(#inputs)
@@ -535,7 +606,8 @@ function train(data)
 
                       --retrun f and df/dx
                       return f, gradParameters
-                    end
+        end --end feval
+    end
 
 -- optimization on current mini-batch
 if optimMethod == optim.sgd then
@@ -557,19 +629,10 @@ else
     optimMethod(feval, parameters, optimState)
 end
 
-      -- This matrix records the current confusion across classes
-      --confusion = optim.ConfusionMatrix(classes)
-
-      --print('classes', classes)
-      --confusion = optim.ConfusionMatrix(classes)
-
       -- time taken
     time = sys.clock() - time
     time = time / trainData[1]:size()[1]
     print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    -- print confusion matrix
-    --print(confusion)
 
     -- save/log current net
     local filename = paths.concat(opt.netdir, 'neunet.net')
