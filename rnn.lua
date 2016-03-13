@@ -470,11 +470,25 @@ function train(data)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
 
+      --Data Reshaping before backprop      
+      local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
+      print('inputs_rnn_ before', inputs_rnn)
+      inputs_rnn_ = torch.cat({inputs_rnn[1], inputs_rnn[2], inputs_rnn[3], 
+                               inputs_rnn[4], inputs_rnn[5]})
+        print('inputs_rnn_ after', inputs_rnn_)
+      inputs_rnn_ = torch.reshape(inputs_rnn_, rho, noutputs)
+      print('inputs_rnn_ after', inputs_rnn_)
+
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
+      local gradOutputs_ = {}
       for step = rho, 1, -1 do --we basically reverse order of forward calls
-        gradOutputs[step] = cost:backward(outputs[step], targets[step])
-        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])
+        gradOutputs[step] = cost:backward(outputs_rnn, targets_rnn)
+        print('gradOutputs[step]', gradOutputs[step][1])
+        print('inputs_rnn_', inputs_rnn_)
+        table.insert(gradOutputs_, gradOutputs[step])
+        print('gradOutputs_', gradOutputs_)
+        gradInputs[step]  = neunet:backward(inputs_rnn_, gradOutputs_)
       end
 
       --4. update lr
