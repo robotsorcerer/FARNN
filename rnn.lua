@@ -407,9 +407,9 @@ function train(data)
     print('train_input size', train_input:size()[1])
     for t = 1, train_input:size()[1], 1 do
 
-      for i = t, t+opt.batchSize-2 do
+      for i = t, t+opt.batchSize-1 do
          offsets[i] = train_input[i][1]
-        --table.insert(offsets, train_input[i][1])
+        --table.insert(offsets, train_input[i][1])  
       end      
       print('offsets', offsets)
       offsets = torch.LongTensor(offsets)
@@ -421,42 +421,51 @@ function train(data)
       -- 1. create a sequence of rho time-steps
 
       local inputs, targets = {}, {}
-      for step = 1, rho do                              
+      for step = 1, 6 do                              
         --batch of inputs
         inputs[step] = train_input:index(1, offsets)
+
+        --print('inputs'); print(inputs[step]); 
         --batch of targets
         offsets = train_input[{ {t+1, t+1+rho} }] --increase indices by 1
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
         targets[step] = train_input:index(1, offsets)
-
         --reshape the targets to fit sequencer dims
         targets[step] = torch.reshape(targets[step], 1, noutputs)
       end  
-
-      print('targets', targets)
+      
+      print('offsets', offsets)
+      print('targets')
+      for ii, vv in ipairs (targets) do
+        print(ii , vv)
+      end
+      
 
       --2. Forward sequence of in
 
       neunet:zeroGradParameters()
       neunet:forget()  --forget all past time steps
 
-      local outputs, err = {}, {} 
+      local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
+      targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
+      targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
+      targets_ = torch.reshape(targets_, noutputs, noutputs)
       local targets_rnn = {}
 
       for step = 1, rho do   
         table.insert(inputs_rnn, inputs[step])
-        print('inputs_rnn', inputs_rnn[1])  
+        print('inputs_rnn'); print(inputs_rnn); 
         outputs = neunet:forward(inputs_rnn)
-        --outputs[step]  = neunet:forward(inputs[step])
-        print('outputs', outputs[step][1])
-        --outputs[step]  = neunet:forward(inputs[step])
+        table.insert(outputs_rnn, outputs[1])
+        print('outputs', outputs[1]);    
+        -- targets_rnn = torch.LongTensor(opt.batchSize, opt.batchSize):copy(targets:view(6,6))
+        print('outputs_rnn'); print(outputs_rnn); 
+        table.insert(targets_rnn, targets_)
+        print('targets_rnn'); print(targets_rnn)
         --reshape output data
-        table.insert(outputs_rnn, outputs[step])
-        print('outputs_rnn[step]', outputs_rnn[step][])
-        print('targets[step]', targets[step])
-        err     = err + cost:forward(outputs_rnn[step], targets[step])
-        --err     = err + cost:forward(outputs[step], targets[step])
+       err     = err + cost:forward(outputs_rnn, targets_rnn)
+        --local err = cost:forward(outputs_rnn, targets_rnn)
         print('output', outputs[step])
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
