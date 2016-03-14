@@ -207,7 +207,7 @@ normkernel = image.gaussian1D(7)
   --Recurrent Neural Net Initializations 
 if opt.model == 'rnn' then
   rho         = 5                           -- the max amount of bacprop steos to take back in time
-  start       = 6                           -- the size of the output (excluding the batch dimension)        
+  start       = 1                          -- the size of the output (excluding the batch dimension)        
   rnnInput    = nn.Linear(ninputs, start)     --the size of the output
   feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
   transfer    = nn.ReLU()                     -- transfer function
@@ -216,9 +216,9 @@ end
 function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.Linear(ninputs, nhiddens_rnn))
+          neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens_rnn, noutputs)) 
+          neunet:add(nn.Linear(nhiddens, noutputs)) 
 
   elseif opt.model == 'rnn' then
     require 'rnn'
@@ -432,19 +432,7 @@ function train(data)
         --increase offsets indices by 1
         offsets = train_input[{ {t+step, t+step+rho} }] 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-        --print('offsets aft'); print(offsets)
-        --targets[step] = train_out:index(1, offsets)
-        --reshape the targets to fit sequencer dims
-        --targets[step] = torch.reshape(targets[step], 1, noutputs)
       end  
---[[      
-      print('targets', targets[1][1])
-      print('targets', targets[2][1])
-
-      for i = 1, #targets do
-        targets[i] = torch.LongTensor():resize(#targets):copy(targets[i])
-      end
-      print('targets', targets)]]
   
    
       --print('offsets', offsets)
