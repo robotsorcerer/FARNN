@@ -207,12 +207,10 @@ normkernel = image.gaussian1D(7)
   --Recurrent Neural Net Initializations 
 if opt.model == 'rnn' then
   rho         = 5                           -- the max amount of bacprop steos to take back in time
-  start       = 1                    -- the size of the output (excluding the batch dimension)        
+  start       = 6                           -- the size of the output (excluding the batch dimension)        
   rnnInput    = nn.Linear(ninputs, start)     --the size of the output
-  feedback    = nn.Linear(start, 1)           --module that feeds back prev/output to transfer module
+  feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
   transfer    = nn.ReLU()                     -- transfer function
-
-  nIndex = 6
 end
 --[[Set up the network, add layers in place as we add more abstraction]]
 function contruct_net()
@@ -234,7 +232,7 @@ function contruct_net()
 
     neunet     = nn.Sequential()
               :add(r)
-              :add(nn.Linear(nhiddens, noutputs))
+              :add(nn.Linear(nhiddens_rnn, noutputs))
 
     --[[next we decorate the rnn with a sequencer such that the entire sequence can be presented 
     with a single forward/backward call. allows RNNs to be stacked and makes the rnn conform to 
@@ -427,26 +425,35 @@ function train(data)
         inputs[step] = train_input:index(1, offsets)
 
         --batch of targets
+        targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+                          train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
+                          train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
 
         --increase offsets indices by 1
         offsets = train_input[{ {t+step, t+step+rho} }] 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
         --print('offsets aft'); print(offsets)
-        targets = train_out
         --targets[step] = train_out:index(1, offsets)
         --reshape the targets to fit sequencer dims
         --targets[step] = torch.reshape(targets[step], 1, noutputs)
       end  
---[[
+--[[      
+      print('targets', targets[1][1])
+      print('targets', targets[2][1])
+
       for i = 1, #targets do
         targets[i] = torch.LongTensor():resize(#targets):copy(targets[i])
       end
       print('targets', targets)]]
   
-  --[[    
-      print('offsets', offsets)
+   
+      --print('offsets', offsets)
+      for ii, vv in ipairs (inputs) do
+        print('inputs', ii , vv)
+      end      
+--[[
       for ii, vv in ipairs (targets) do
-        print(ii , vv)
+        print('targets', ii , vv[1])
       end      
 ]]
       --2. Forward sequence of in
@@ -456,27 +463,23 @@ function train(data)
 
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
+      targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
       --[[
       targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
       targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
       targets_ = torch.reshape(targets_, noutputs, noutputs)
       ]]
-      local targets_rnn = {}
+      local targets_rnn, inputs_ = {}, {}
+      local err = 0
 
       print('inputs'); print(inputs);      
       print('targets', targets) 
       for step = 1, rho do   
-        outputs[step] = neunet:forward(inputs)
-        -- table.insert(outputs_rnn, outputs[step])
-        print('outputs', outputs);    
-        -- targets_rnn = torch.LongTensor(opt.batchSize, opt.batchSize):copy(targets:view(6,6))
-        --print('outputs_rnn'); print(outputs_rnn); 
-        --table.insert(targets_rnn, targets)
-        --print('targets_rnn'); print(targets_rnn)
+        table.insert(inputs_, inputs[step])
+        outputs[step] = neunet:forward(inputs_)
+        print('output[step]', outputs)
         --reshape output data
-       err     = err + cost:forward(outputs[step], targets)
-        --local err = cost:forward(outputs_rnn, targets_rnn)
-        print('output', outputs[step])
+        err     = err + cost:forward(outputs[step], targets[step])
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
 
