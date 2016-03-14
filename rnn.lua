@@ -195,6 +195,7 @@ noutputs    = 6
 
 --number of hidden layers (for mlp network)
 nhiddens    = 1     
+nhiddens_rnn = 6
 
 --hidden units, filter kernel (for Temporal ConvNet)
 nstates     = {1, 1, 2}
@@ -206,7 +207,7 @@ normkernel = image.gaussian1D(7)
   --Recurrent Neural Net Initializations 
 if opt.model == 'rnn' then
   rho         = 5                           -- the max amount of bacprop steos to take back in time
-  start       = 1         
+  start       = 1                    -- the size of the output (excluding the batch dimension)        
   rnnInput    = nn.Linear(ninputs, start)     --the size of the output
   feedback    = nn.Linear(start, 1)           --module that feeds back prev/output to transfer module
   transfer    = nn.ReLU()                     -- transfer function
@@ -217,9 +218,9 @@ end
 function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.Linear(ninputs, nhiddens))
+          neunet:add(nn.Linear(ninputs, nhiddens_rnn))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, noutputs)) 
+          neunet:add(nn.Linear(nhiddens_rnn, noutputs)) 
 
   elseif opt.model == 'rnn' then
     require 'rnn'
@@ -404,16 +405,16 @@ function train(data)
     
     local offsets = {}
     --form mini batch
-    print('train_input size', train_input:size()[1])
     for t = 1, train_input:size()[1], 1 do
 
       for i = t, t+opt.batchSize-1 do
-         offsets[i] = train_input[i][1]
-        --table.insert(offsets, train_input[i][1])  
+        table.insert(offsets, train_input[i])  
       end      
-      print('offsets', offsets)
-      offsets = torch.LongTensor(offsets)
-      
+      offsets = torch.cat({offsets[1], offsets[2], offsets[3], offsets[4], 
+                            offsets[5], offsets[6]})
+     -- print('offsets b4'); print(offsets)
+      offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+
       --BPTT
 
       local iter = 1
@@ -421,26 +422,33 @@ function train(data)
       -- 1. create a sequence of rho time-steps
 
       local inputs, targets = {}, {}
-      for step = 1, 6 do                              
+      for step = 1, rho do                              
         --batch of inputs
         inputs[step] = train_input:index(1, offsets)
 
-        --print('inputs'); print(inputs[step]); 
         --batch of targets
-        offsets = train_input[{ {t+1, t+1+rho} }] --increase indices by 1
+
+        --increase offsets indices by 1
+        offsets = train_input[{ {t+step, t+step+rho} }] 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-        targets[step] = train_input:index(1, offsets)
+        --print('offsets aft'); print(offsets)
+        targets = train_out
+        --targets[step] = train_out:index(1, offsets)
         --reshape the targets to fit sequencer dims
-        targets[step] = torch.reshape(targets[step], 1, noutputs)
+        --targets[step] = torch.reshape(targets[step], 1, noutputs)
       end  
-      
+--[[
+      for i = 1, #targets do
+        targets[i] = torch.LongTensor():resize(#targets):copy(targets[i])
+      end
+      print('targets', targets)]]
+  
+  --[[    
       print('offsets', offsets)
-      print('targets')
       for ii, vv in ipairs (targets) do
         print(ii , vv)
-      end
-      
-
+      end      
+]]
       --2. Forward sequence of in
 
       neunet:zeroGradParameters()
@@ -448,23 +456,25 @@ function train(data)
 
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
+      --[[
       targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
       targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
       targets_ = torch.reshape(targets_, noutputs, noutputs)
+      ]]
       local targets_rnn = {}
 
+      print('inputs'); print(inputs);      
+      print('targets', targets) 
       for step = 1, rho do   
-        table.insert(inputs_rnn, inputs[step])
-        print('inputs_rnn'); print(inputs_rnn); 
-        outputs = neunet:forward(inputs_rnn)
-        table.insert(outputs_rnn, outputs[1])
-        print('outputs', outputs[1]);    
+        outputs[step] = neunet:forward(inputs)
+        -- table.insert(outputs_rnn, outputs[step])
+        print('outputs', outputs);    
         -- targets_rnn = torch.LongTensor(opt.batchSize, opt.batchSize):copy(targets:view(6,6))
-        print('outputs_rnn'); print(outputs_rnn); 
-        table.insert(targets_rnn, targets_)
-        print('targets_rnn'); print(targets_rnn)
+        --print('outputs_rnn'); print(outputs_rnn); 
+        --table.insert(targets_rnn, targets)
+        --print('targets_rnn'); print(targets_rnn)
         --reshape output data
-       err     = err + cost:forward(outputs_rnn, targets_rnn)
+       err     = err + cost:forward(outputs[step], targets)
         --local err = cost:forward(outputs_rnn, targets_rnn)
         print('output', outputs[step])
       end
@@ -475,9 +485,7 @@ function train(data)
       print('inputs_rnn_ before', inputs_rnn)
       inputs_rnn_ = torch.cat({inputs_rnn[1], inputs_rnn[2], inputs_rnn[3], 
                                inputs_rnn[4], inputs_rnn[5]})
-        print('inputs_rnn_ after', inputs_rnn_)
       inputs_rnn_ = torch.reshape(inputs_rnn_, rho, noutputs)
-      print('inputs_rnn_ after', inputs_rnn_)
 
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
