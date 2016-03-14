@@ -451,11 +451,8 @@ function train(data)
       for ii, vv in ipairs (inputs) do
         print('inputs', ii , vv)
       end      
---[[
-      for ii, vv in ipairs (targets) do
-        print('targets', ii , vv[1])
-      end      
-]]
+
+      print('targets', targets) 
       --2. Forward sequence of in
 
       neunet:zeroGradParameters()
@@ -463,23 +460,21 @@ function train(data)
 
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
-      targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
-      --[[
-      targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
-      targets_ = torch.cat({targets[1], targets[2], targets[3], targets[4], targets[5], targets[6]})
-      targets_ = torch.reshape(targets_, noutputs, noutputs)
-      ]]
       local targets_rnn, inputs_ = {}, {}
-      local err = 0
 
       print('inputs'); print(inputs);      
-      print('targets', targets) 
       for step = 1, rho do   
         table.insert(inputs_, inputs[step])
         outputs[step] = neunet:forward(inputs_)
-        print('output[step]', outputs)
+        print('output[step]', outputs[step])
+        
         --reshape output data
-        err     = err + cost:forward(outputs[step], targets[step])
+        targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
+        targets_ = torch.cat({targets[step][1], targets[step][2], targets[step][3], targets[step][4], targets[step][5], targets[step][6]})
+        targets_ = torch.reshape(targets_, noutputs, noutputs)
+        table.insert(targets_rnn, targets_)
+        print('targets_', targets_rnn)
+        err     = err + cost:forward(outputs[step], targets_rnn)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
 
@@ -503,7 +498,6 @@ function train(data)
       end
 
       --4. update lr
-
       neunet:updateParameters(opt.rnnlearningRate)
 
       iter = iter + 1
