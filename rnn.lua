@@ -461,6 +461,7 @@ function train(data)
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
       local targets_rnn, inputs_ = {}, {}
+      targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
 
       print('inputs'); print(inputs);      
       for step = 1, rho do   
@@ -469,7 +470,6 @@ function train(data)
         print('output[step]', outputs[step])
         
         --reshape output data
-        targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
         targets_ = torch.cat({targets[step][1], targets[step][2], targets[step][3], targets[step][4], targets[step][5], targets[step][6]})
         targets_ = torch.reshape(targets_, noutputs, noutputs)
         table.insert(targets_rnn, targets_)
