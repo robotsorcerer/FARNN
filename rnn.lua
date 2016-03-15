@@ -195,7 +195,7 @@ noutputs    = 6
 
 --number of hidden layers (for mlp network)
 nhiddens    = 1     
-nhiddens_rnn = 6
+nhiddens_rnn = 1
 
 --hidden units, filter kernel (for Temporal ConvNet)
 nstates     = {1, 1, 2}
@@ -234,10 +234,6 @@ function contruct_net()
               :add(r)
               :add(nn.Linear(nhiddens_rnn, noutputs))
 
-    --[[next we decorate the rnn with a sequencer such that the entire sequence can be presented 
-    with a single forward/backward call. allows RNNs to be stacked and makes the rnn conform to 
-    the Module interface, i.e. each call to forward can be followed by its own immediate call to
-     backward]]
     neunet    = nn.Sequencer(neunet)
     print('rnn')
     print(neunet)
@@ -448,41 +444,40 @@ function train(data)
 
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
-      local targets_rnn, inputs_ = {}, {}
+      local targets_rnn, inputs_, inputs_bkwd = {}, {}, {}
       targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
+      local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
 
       print('inputs'); print(inputs);      
       for step = 1, rho do   
         table.insert(inputs_, inputs[step])
         outputs[step] = neunet:forward(inputs_)
-        print('output[step]', outputs[step])
         
         --reshape output data
         targets_ = torch.cat({targets[step][1], targets[step][2], targets[step][3], targets[step][4], targets[step][5], targets[step][6]})
         targets_ = torch.reshape(targets_, noutputs, noutputs)
         table.insert(targets_rnn, targets_)
-        print('targets_', targets_rnn)
         err     = err + cost:forward(outputs[step], targets_rnn)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
-
-      --Data Reshaping before backprop      
-      local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
-      print('inputs_rnn_ before', inputs_rnn)
-      inputs_rnn_ = torch.cat({inputs_rnn[1], inputs_rnn[2], inputs_rnn[3], 
-                               inputs_rnn[4], inputs_rnn[5]})
-      inputs_rnn_ = torch.reshape(inputs_rnn_, rho, noutputs)
+      
+      --sequence = torch.LongTensor(100,10):copy(sequence_:view(1,10):expand(100,10))
 
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      local gradOutputs_ = {}
+      local gradOutputs_, gradOutputs_table = {}, {}
+      local inputs_bkwd, inputs_bkwd_table = {}, {}
       for step = rho, 1, -1 do --we basically reverse order of forward calls
-        gradOutputs[step] = cost:backward(outputs_rnn, targets_rnn)
-        print('gradOutputs[step]', gradOutputs[step][1])
-        print('inputs_rnn_', inputs_rnn_)
+        gradOutputs[step] = cost:backward(outputs[step], targets_rnn)
         table.insert(gradOutputs_, gradOutputs[step])
-        print('gradOutputs_', gradOutputs_)
-        gradInputs[step]  = neunet:backward(inputs_rnn_, gradOutputs_)
+        for i = 1, rho do
+          inputs_bkwd[i] = inputs[i]:expand(6,6)
+        end
+        print('gradOutputs_', gradOutputs_[1])
+        table.insert(gradOutputs_table, gradOutputs_[1])
+        print('inputs_bkwd'); print(inputs_bkwd)
+        print('gradOutputs_table', gradOutputs_table[1])
+        gradInputs[step]  = neunet:backward(inputs_bkwd[step], gradOutputs_table)
       end
 
       --4. update lr
