@@ -474,10 +474,12 @@ function train(data)
           inputs_bkwd[i] = inputs[i]:expand(6,6)
         end
         print('gradOutputs_', gradOutputs_[1])
-        table.insert(gradOutputs_table, gradOutputs_[1])
+        table.insert(gradOutputs_table, gradOutputs_[1][step])
+        table.insert(inputs_bkwd_table, inputs_bkwd[step])
         print('inputs_bkwd'); print(inputs_bkwd)
-        print('gradOutputs_table', gradOutputs_table[1])
-        gradInputs[step]  = neunet:backward(inputs_bkwd[step], gradOutputs_table)
+        print('inputs_bkwd_table'); print(inputs_bkwd_table)
+        print('gradOutputs_table', gradOutputs_table)
+        gradInputs[step]  = neunet:backward(inputs_bkwd_table, gradOutputs_table)
       end
 
       --4. update lr
