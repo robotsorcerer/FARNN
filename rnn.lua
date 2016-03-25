@@ -431,48 +431,28 @@ function train(data)
       end  
   
    
-      --[[print('offsets', offsets)
+      --print('offsets', offsets)
       for ii, vv in ipairs (inputs) do
         print('inputs', ii , vv)
       end      
-]]
+
       print('targets', targets) 
       --2. Forward sequence of in
 
       neunet:zeroGradParameters()
       neunet:forget()  --forget all past time steps
 
-      local outputs, outputs_, err = {}, {}, 0
+      local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
       local targets_rnn, inputs_, inputs_bkwd = {}, {}, {}
       targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
       local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
 
-      local outputs_rearr = {}
-
       print('inputs'); print(inputs);      
       for step = 1, rho do   
         table.insert(inputs_, inputs[step])
-        outputs[step] = neunet:forward(inputs_)        
-        --print('outputs'); print(outputs[step][step])
-        outputs_[step] = outputs[step][step] 
-        --print('outputs_[step]'); print(outputs_[step])
-        for i = 1, noutputs do
-          outputs_[step][i] = outputs_[step][{{i}, {}}]
-          table.insert(outputs_rearr, outputs_[step][i])
-        end
-        print('outputs_rearr', outputs_rearr)
-        for i= 1, #outputs_rearr, rho do
-         outputs_rearr[step] = outputs_rearr[{{i,noutputs-1}, {}}]
-
-         print('outputs_rearr', outputs_rearr[step])
-       end
-      end
-
-      -- print('outputs'); print(outputs[step][step])
-      -- outputs[step][step] = 
-
-      for step = 1, rho do    
+        outputs[step] = neunet:forward(inputs_)
+        
         --reshape output data
         targets_ = torch.cat({targets[step][1], targets[step][2], targets[step][3], targets[step][4], targets[step][5], targets[step][6]})
         targets_ = torch.reshape(targets_, noutputs, noutputs)
@@ -485,7 +465,6 @@ function train(data)
 
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      local gradInputs_ = torch.LongTensor(6, 6)
       local gradOutputs_, gradOutputs_table = {}, {}
       local inputs_bkwd, inputs_bkwd_table = {}, {}
       for step = rho, 1, -1 do --we basically reverse order of forward calls
@@ -494,13 +473,11 @@ function train(data)
         for i = 1, rho do
           inputs_bkwd[i] = inputs[i]:expand(6,6)
         end
-        -- print('gradOutputs_', gradOutputs_[1])
-        table.insert(gradOutputs_table, gradOutputs_[1][step])
-        table.insert(inputs_bkwd_table, inputs_bkwd[step])
-        -- print('inputs_bkwd'); print(inputs_bkwd)
-        -- print('inputs_bkwd_table'); print(inputs_bkwd_table)
-        -- print('gradOutputs_table', gradOutputs_table)
-        gradInputs[step]  = neunet:backward(inputs_bkwd_table, gradOutputs_table)
+        print('gradOutputs_', gradOutputs_[1])
+        table.insert(gradOutputs_table, gradOutputs_[1])
+        print('inputs_bkwd'); print(inputs_bkwd)
+        print('gradOutputs_table', gradOutputs_table[1])
+        gradInputs[step]  = neunet:backward(inputs_bkwd[step], gradOutputs_table[1])
       end
 
       --4. update lr
