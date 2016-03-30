@@ -15,6 +15,7 @@ require 'order.order_det'
 matio     = require 'matio'  
 --optim_    = 
 require 'optima.optim_'  
+require 'utils.utils'
 require 'xlua'
 
 --[[modified native Torch Linear class to allow random weight initializations
@@ -22,7 +23,7 @@ require 'xlua'
 do
     local Linear, parent = torch.class('nn.CustomLinear', 'nn.Linear')    
     -- override the constructor to have the additional range of initialization
-    function Linear:__init(inputSize, outputSize, mean, std)
+    function Linear:__initutils(inputSize, outputSize, mean, std)
         parent.__init(self,inputSize,outputSize)                
         self:reset(mean,std)
     end    
@@ -179,9 +180,9 @@ print '==> Determining input-output model order parameters'
 qn  = order_det.computeqn(train_input, train_out[3])
 
 --compute actual system order
-utils = require 'order.utils'
+--utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
-----------------------------------------------------------------------------------------------
+--------------------utils--------------------------------------------------------------------------
 print '==> Setting up neural network parameters'
 ----------------------------------------------------------------------------------------------
 -- dimension of my feature bank (each input is a 1D array)
@@ -445,19 +446,21 @@ function train(data)
       local outputs, err = {}, 0
       local inputs_rnn, outputs_rnn = {}, {}
       local targets_rnn, inputs_, inputs_bkwd = {}, {}, {}
-      targets_ = torch.Tensor(opt.batchSize, opt.batchSize)
       local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
+      local targetsTable =    {}    
 
       print('inputs'); print(inputs);      
       for step = 1, rho do   
         table.insert(inputs_, inputs[step])
         outputs[step] = neunet:forward(inputs_)
-        
+        _, outputs[step] = catOut(outputs, step, noutputs, opt)
+        print('outputs[step]', outputs[step])        
         --reshape output data
-        targets_ = torch.cat({targets[step][1], targets[step][2], targets[step][3], targets[step][4], targets[step][5], targets[step][6]})
-        targets_ = torch.reshape(targets_, noutputs, noutputs)
-        table.insert(targets_rnn, targets_)
-        err     = err + cost:forward(outputs[step], targets_rnn)
+        _, targetsTable = catOut(targets, step, noutputs, opt) 
+        --print('targets_', targets_)
+        --print('tagetsTable', targetsTable)
+        err     = err + cost:forward(outputs[step], targetsTable)
+        print('err', err)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
       
@@ -469,6 +472,7 @@ function train(data)
       local inputs_bkwd, inputs_bkwd_table = {}, {}
       for step = rho, 1, -1 do --we basically reverse order of forward calls
         gradOutputs[step] = cost:backward(outputs[step], targets_rnn)
+        --_gradOutputs[step] = gradOutputs:clone()
         table.insert(gradOutputs_, gradOutputs[step])
         for i = 1, rho do
           inputs_bkwd[i] = inputs[i]:expand(6,6)
