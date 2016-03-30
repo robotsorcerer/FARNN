@@ -420,25 +420,22 @@ function train(data)
       for step = 1, rho do                              
         --batch of inputs
         inputs[step] = train_input:index(1, offsets)
-
         --batch of targets
         targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
                           train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                           train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
-
         --increase offsets indices by 1
         offsets = train_input[{ {t+step, t+step+rho} }] 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
       end  
-  
-   
+     
       --print('offsets', offsets)
       for ii, vv in ipairs (inputs) do
         print('inputs', ii , vv)
       end      
 
       print('targets', targets) 
-      --2. Forward sequence of in
+      --2. Forward sequence through rnn
 
       neunet:zeroGradParameters()
       neunet:forget()  --forget all past time steps
@@ -454,34 +451,27 @@ function train(data)
         table.insert(inputs_, inputs[step])
         outputs[step] = neunet:forward(inputs_)
         _, outputs[step] = catOut(outputs, step, noutputs, opt)
-        print('outputs[step]', outputs[step])        
+        print('outputs[step]'); print(outputs[step])
         --reshape output data
         _, targetsTable = catOut(targets, step, noutputs, opt) 
-        --print('targets_', targets_)
-        --print('tagetsTable', targetsTable)
         err     = err + cost:forward(outputs[step], targetsTable)
         print('err', err)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
       
-      --sequence = torch.LongTensor(100,10):copy(sequence_:view(1,10):expand(100,10))
-
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      local gradOutputs_, gradOutputs_table = {}, {}
-      local inputs_bkwd, inputs_bkwd_table = {}, {}
-      for step = rho, 1, -1 do --we basically reverse order of forward calls
-        gradOutputs[step] = cost:backward(outputs[step], targets_rnn)
-        --_gradOutputs[step] = gradOutputs:clone()
-        table.insert(gradOutputs_, gradOutputs[step])
-        for i = 1, rho do
-          inputs_bkwd[i] = inputs[i]:expand(6,6)
-        end
-        print('gradOutputs_', gradOutputs_[1])
-        table.insert(gradOutputs_table, gradOutputs_[1])
+      -- local gradOutputs_, gradOutputs_table = {}, {}
+      local inputs_bkwd = {}
+      for step = rho, 1, -1 do  --we basically reverse order of forward calls
+              
+        gradOutputs[step] = cost:backward(outputs[step], targets[step])
+        table.insert(inputs_bkwd, inputs[step])
+
         print('inputs_bkwd'); print(inputs_bkwd)
-        print('gradOutputs_table', gradOutputs_table[1])
-        gradInputs[step]  = neunet:backward(inputs_bkwd[step], gradOutputs_table[1])
+        print('gradoutputs[step]'); print(gradOutputs)
+        gradInputs[step]  = neunet:backward(inputs_bkwd, gradOutputs[step])
+        print('gradInputs'); print(gradInputs)
       end
 
       --4. update lr
