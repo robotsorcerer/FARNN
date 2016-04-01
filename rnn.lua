@@ -11,6 +11,7 @@ require 'torch'
 require 'nn'
 require 'optim'
 require 'image'
+require 'dp'
 require 'order.order_det'   
 matio     = require 'matio'  
 --optim_    = 
@@ -441,9 +442,7 @@ function train(data)
       neunet:forget()  --forget all past time steps
 
       local outputs, err = {}, 0
-      local inputs_rnn, outputs_rnn = {}, {}
-      local targets_rnn, inputs_, inputs_bkwd = {}, {}, {}
-      local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
+      local inputs_, inputs_bkwd = {}, {}
       local targetsTable =    {}    
 
       --print('inputs'); print(inputs);      
@@ -461,15 +460,16 @@ function train(data)
       
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      local inputs_bkwd = {}
       for step = rho, 1, -1 do  --we basically reverse order of forward calls              
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
 
         --resize inputs before backward call
         inputs_bkwd = gradInputResize(inputs, step, noutputs, opt)
-        --inputs_bkwd = inputs[step]
+        --inputs_bkwd = inputs[step]:view(6, 1):expand(6,6)
         print('inputs_bkwd'); print(inputs_bkwd)
-        -- print('gradOutputs'); print(gradOutputs[step])
+        print('gradOutputs'); print(gradOutputs[step])
+        print('#inputs_bkwd'); print(#inputs_bkwd)
+        print('#gradOutputs'); print(#gradOutputs[step])
         gradInputs[step]  = neunet:backward(inputs_bkwd, gradOutputs[step])
         -- print('gradInputs'); print(gradInputs)
       end
