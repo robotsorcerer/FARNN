@@ -31,7 +31,7 @@ function gradInputResize(inputs, step, noutputs, opt)
 	for i = 1, opt.batchSize do
 		inputer[i] = inputer[{{i}, {1, opt.batchSize}}]
 		table.insert(inpuTab, inputer[i])
-		inpuTab[i] = torch.reshape(inpuTab[i], opt.batchSize, 1)
+		inpuTab[i] = torch.reshape(inpuTab[i], opt.batchSize)
 	end
 
 	return inpuTab

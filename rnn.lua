@@ -11,7 +11,6 @@ require 'torch'
 require 'nn'
 require 'optim'
 require 'image'
-require 'dp'
 require 'order.order_det'   
 matio     = require 'matio'  
 --optim_    = 
