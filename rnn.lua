@@ -446,12 +446,12 @@ function train(data)
       local inputs_rnn_ = torch.Tensor(noutputs,noutputs)
       local targetsTable =    {}    
 
-      print('inputs'); print(inputs);      
+      --print('inputs'); print(inputs);      
       for step = 1, rho do   
         table.insert(inputs_, inputs[step])
         outputs[step] = neunet:forward(inputs_)
         _, outputs[step] = catOut(outputs, step, noutputs, opt)
-        print('outputs[step]'); print(outputs[step])
+        --print('outputs[step]'); print(outputs[step])
         --reshape output data
         _, targetsTable = catOut(targets, step, noutputs, opt) 
         err     = err + cost:forward(outputs[step], targetsTable)
@@ -464,10 +464,11 @@ function train(data)
       local inputs_bkwd = {}
       for step = rho, 1, -1 do  --we basically reverse order of forward calls              
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
+
         --resize inputs before backward call
         inputs_bkwd = gradInputResize(inputs, step, noutputs, opt)
         --inputs_bkwd = inputs[step]
-        -- print('inputs_bkwd'); print(inputs_bkwd)
+        print('inputs_bkwd'); print(inputs_bkwd)
         -- print('gradOutputs'); print(gradOutputs[step])
         gradInputs[step]  = neunet:backward(inputs_bkwd, gradOutputs[step])
         -- print('gradInputs'); print(gradInputs)

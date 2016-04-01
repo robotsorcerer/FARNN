@@ -178,7 +178,7 @@ print '==> Determining input-output model order parameters'
 qn  = order_det.computeqn(train_input, train_out[3])
 
 --compute actual system order
-utils = require 'order.utils'
+--utils = require 'order.utils'
 inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
 ----------------------------------------------------------------------------------------------
 print '==> Seting up neural network parameters'
