@@ -208,7 +208,7 @@ normkernel = image.gaussian1D(7)
   --Recurrent Neural Net Initializations 
 if opt.model == 'rnn' then
   rho         = 5                           -- the max amount of bacprop steos to take back in time
-  start       = 1                          -- the size of the output (excluding the batch dimension)        
+  start       = 1                         -- the size of the output (excluding the batch dimension)        
   rnnInput    = nn.Linear(ninputs, start)     --the size of the output
   feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
   transfer    = nn.ReLU()                     -- transfer function
@@ -461,17 +461,16 @@ function train(data)
       
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      -- local gradOutputs_, gradOutputs_table = {}, {}
       local inputs_bkwd = {}
-      for step = rho, 1, -1 do  --we basically reverse order of forward calls
-              
+      for step = rho, 1, -1 do  --we basically reverse order of forward calls              
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
-        table.insert(inputs_bkwd, inputs[step])
-
-        print('inputs_bkwd'); print(inputs_bkwd)
-        print('gradoutputs[step]'); print(gradOutputs)
+        --resize inputs before backward call
+        inputs_bkwd = gradInputResize(inputs, step, noutputs, opt)
+        --inputs_bkwd = inputs[step]
+        -- print('inputs_bkwd'); print(inputs_bkwd)
+        -- print('gradOutputs'); print(gradOutputs[step])
         gradInputs[step]  = neunet:backward(inputs_bkwd, gradOutputs[step])
-        print('gradInputs'); print(gradInputs)
+        -- print('gradInputs'); print(gradInputs)
       end
 
       --4. update lr

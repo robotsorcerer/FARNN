@@ -23,3 +23,16 @@ function catOut(targets, step, noutputs, opt)
 
 	return targets_, targTable
 end
+
+function gradInputResize(inputs, step, noutputs, opt)
+	local inputer  = inputs[step]:expand(noutputs, noutputs)
+	local inpuTab = {}
+	--inputs = torch.Tensor(inputs)
+	for i = 1, opt.batchSize do
+		inputer[i] = inputer[{{i}, {1, opt.batchSize}}]
+		table.insert(inpuTab, inputer[i])
+		inpuTab[i] = torch.reshape(inpuTab[i], opt.batchSize, 1)
+	end
+
+	return inpuTab
+end
