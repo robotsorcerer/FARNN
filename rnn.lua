@@ -195,8 +195,8 @@ ninputs     = 1
 noutputs    = 6
 
 --number of hidden layers (for mlp network)
-nhiddens    = 1     
-nhiddens_rnn = 1
+nhiddens    = 1   
+transfer    = nn.ReLU()    
 
 --hidden units, filter kernel (for Temporal ConvNet)
 nstates     = {1, 1, 2}
@@ -205,14 +205,6 @@ dW          = 1           --convolution step
 poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
 normkernel = image.gaussian1D(7)
 
-  --Recurrent Neural Net Initializations 
-if opt.model == 'rnn' then
-  rho         = 5                           -- the max amount of bacprop steos to take back in time
-  start       = 1                         -- the size of the output (excluding the batch dimension)        
-  rnnInput    = nn.Linear(ninputs, start)     --the size of the output
-  feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
-  transfer    = nn.ReLU()                     -- transfer function
-end
 --[[Set up the network, add layers in place as we add more abstraction]]
 function contruct_net()
   if opt.model  == 'mlp' then
@@ -222,20 +214,35 @@ function contruct_net()
           neunet:add(nn.Linear(nhiddens, noutputs)) 
 
   elseif opt.model == 'rnn' then
+-------------------------------------------------------
+--  Recurrent Neural Net Initializations 
     require 'rnn'
-    --RNN
+    rho         = 5                          -- the max amount of bacprop steos to take back in time
+    start       = 1                         -- the size of the output (excluding the batch dimension)        
+    rnnInput    = nn.Linear(ninputs, start)     --the size of the output
+    feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
+------------------------------------------------------
+
+    --we first model the inputs to states
+    ffwd       =   nn.Sequential()
+                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(transfer)
+
+    --then do a self-adaptive feedback of neurons 
     r = nn.Recurrent(start, 
                      rnnInput,  --input module from inputs to outs
                      feedback,
                      transfer,
                      rho             
                      )
-
+    --we then join the feedforward with the recurrent net
     neunet     = nn.Sequential()
-              :add(r)
-              :add(nn.Linear(nhiddens_rnn, noutputs))
+                  :add(ffwd)
+                  :add(r)
+                  :add(nn.Linear(nhiddens, noutputs))
 
-    neunet    = nn.Sequencer(neunet)
+    neunet    = nn.Repeater(neunet, noutputs)
+    --neunet    = nn.Recursor(neunet, noutputs)
     print('rnn')
     print(neunet)
     --======================================================================================
@@ -429,12 +436,13 @@ function train(data)
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
       end  
      
-      --print('offsets', offsets)
-      for ii, vv in ipairs (inputs) do
-        print('inputs', ii , vv)
-      end      
+      print('offsets', offsets)
+      -- for ii, vv in ipairs (inputs) do
+      --   print('inputs', ii , vv)
+      -- end      
 
       print('targets', targets) 
+
       --2. Forward sequence through rnn
 
       neunet:zeroGradParameters()
@@ -443,17 +451,17 @@ function train(data)
       local outputs, err = {}, 0
       local inputs_, inputs_bkwd = {}, {}
       local targetsTable =    {}    
-
-      --print('inputs'); print(inputs);      
-      for step = 1, rho do   
+     
+      for step = 1, rho do     
         table.insert(inputs_, inputs[step])
-        outputs[step] = neunet:forward(inputs_)
+        print('inputs[step]'); print(inputs[step]); 
+        outputs[step] = neunet:forward(inputs[step])
         _, outputs[step] = catOut(outputs, step, noutputs, opt)
-        --print('outputs[step]'); print(outputs[step])
         --reshape output data
         _, targetsTable = catOut(targets, step, noutputs, opt) 
         err     = err + cost:forward(outputs[step], targetsTable)
         print('err', err)
+        neunet:updateParameters(opt.rnnlearningRate)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
       
@@ -461,16 +469,8 @@ function train(data)
       local gradOutputs, gradInputs = {}, {}
       for step = rho, 1, -1 do  --we basically reverse order of forward calls              
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
-
-        --resize inputs before backward call
-        inputs_bkwd = gradInputResize(inputs, step, noutputs, opt)
-        --inputs_bkwd = inputs[step]:view(6, 1):expand(6,6)
-        print('inputs_bkwd'); print(inputs_bkwd)
-        print('gradOutputs'); print(gradOutputs[step])
-        print('#inputs_bkwd'); print(#inputs_bkwd)
-        print('#gradOutputs'); print(#gradOutputs[step])
-        gradInputs[step]  = neunet:backward(inputs_bkwd, gradOutputs[step])
-        -- print('gradInputs'); print(gradInputs)
+        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])      
+        neunet:updateParameters(opt.rnnlearningRate)
       end
 
       --4. update lr

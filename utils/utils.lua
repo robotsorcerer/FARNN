@@ -24,15 +24,27 @@ function catOut(targets, step, noutputs, opt)
 	return targets_, targTable
 end
 
-function gradInputResize(inputs, step, noutputs, opt)
+function gradInputReshape(inputs, step, noutputs, opt)
 	local inputer  = inputs[step]:expand(noutputs, noutputs)
 	local inpuTab = {}
-	--inputs = torch.Tensor(inputs)
 	for i = 1, opt.batchSize do
 		inputer[i] = inputer[{{i}, {1, opt.batchSize}}]
 		table.insert(inpuTab, inputer[i])
-		inpuTab[i] = torch.reshape(inpuTab[i], opt.batchSize)
+		inpuTab[i] = torch.reshape(inpuTab[i], 1, opt.batchSize)
 	end
 
 	return inpuTab
+end
+
+function gradOutputsReshape(gradOutputs, step, opt)
+	local gradder, gradderTab = {}, {}
+	for i = 1, opt.batchSize do		
+		table.insert(gradderTab, gradOutputs[i])
+		gradder[i] = torch.reshape(gradderTab[i], 1, opt.batchSize)
+	end
+
+	print('gradder'); 		print(gradder)
+	print('gradderTab');	print(gradderTab)
+
+	return gradder
 end
