@@ -229,12 +229,14 @@ function contruct_net()
                   :add(transfer)
 
     --then do a self-adaptive feedback of neurons 
-    r = nn.Recurrent(start, 
+   r = nn.Recurrent(start, 
                      rnnInput,  --input module from inputs to outs
                      feedback,
                      transfer,
                      rho             
                      )
+
+   --     r      = nn.AbstractRecurrent(rho)
     --we then join the feedforward with the recurrent net
     neunet     = nn.Sequential()
                   :add(ffwd)
@@ -244,7 +246,7 @@ function contruct_net()
     neunet    = nn.Repeater(neunet, noutputs)
     --neunet    = nn.Recursor(neunet, noutputs)
     print('rnn')
-    print(neunet)
+--   print(neunet)
     --======================================================================================
 
   elseif opt.model == 'convnet' then
@@ -454,7 +456,7 @@ function train(data)
      
       for step = 1, rho do     
         table.insert(inputs_, inputs[step])
-        print('inputs[step]'); print(inputs[step]); 
+        print('inputs[step]'); print(inputs_); 
         outputs[step] = neunet:forward(inputs[step])
         _, outputs[step] = catOut(outputs, step, noutputs, opt)
         --reshape output data
@@ -467,7 +469,9 @@ function train(data)
       
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      for step = rho, 1, -1 do  --we basically reverse order of forward calls              
+      for step = rho, 1, -1 do  --we basically reverse order of forward calls 
+        -- print('outputs[step]'); print(outputs[step]) 
+        -- print('targets[step]', targets[step])            
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
         gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])      
         neunet:updateParameters(opt.rnnlearningRate)
@@ -532,7 +536,7 @@ function train(data)
                                local norm,sign= torch.norm,torch.sign
 
                                -- Loss:
-                               f = f + opt.coefL1 * norm(parameters,1)
+                               f = f + opt.coefL1 * norm(parameters,1)  
                                f = f + opt.coefL2 * norm(parameters,2)^2/2
 
                                -- Gradients:
