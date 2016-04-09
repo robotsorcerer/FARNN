@@ -241,12 +241,11 @@ function contruct_net()
     neunet     = nn.Sequential()
                   :add(ffwd)
                   :add(r)
-                  :add(nn.Linear(nhiddens, noutputs))
+                  :add(nn.Linear(nhiddens, 1))
 
-    neunet    = nn.Repeater(neunet, noutputs)
-    --neunet    = nn.Recursor(neunet, noutputs)
+    neunet    = nn.Repeater(neunet, 6)
     print('rnn')
---   print(neunet)
+    print(neunet)
     --======================================================================================
 
   elseif opt.model == 'convnet' then
@@ -438,12 +437,12 @@ function train(data)
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
       end  
      
-      print('offsets', offsets)
+      --print('offsets', offsets)
       -- for ii, vv in ipairs (inputs) do
       --   print('inputs', ii , vv)
       -- end      
 
-      print('targets', targets) 
+      --print('targets', targets) 
 
       --2. Forward sequence through rnn
 
@@ -454,15 +453,9 @@ function train(data)
       local inputs_, inputs_bkwd = {}, {}
       local targetsTable =    {}    
      
-      for step = 1, rho do     
-        table.insert(inputs_, inputs[step])
-        print('inputs[step]'); print(inputs_); 
+      for step = 1, rho do      
         outputs[step] = neunet:forward(inputs[step])
-        _, outputs[step] = catOut(outputs, step, noutputs, opt)
-        --reshape output data
-        _, targetsTable = catOut(targets, step, noutputs, opt) 
-        err     = err + cost:forward(outputs[step], targetsTable)
-        print('err', err)
+        err     = err + cost:forward(outputs[step], targets[step])
         neunet:updateParameters(opt.rnnlearningRate)
       end
       print(string.format("Step %d, Loss error = %f ", iter, err ))
@@ -470,10 +463,13 @@ function train(data)
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
       for step = rho, 1, -1 do  --we basically reverse order of forward calls 
-        -- print('outputs[step]'); print(outputs[step]) 
-        -- print('targets[step]', targets[step])            
+        table.insert(inputs_, inputs[step])
+        print('inputs[step]'); print(inputs); 
+        --print('outputs[step]'); print(outputs)           
         gradOutputs[step] = cost:backward(outputs[step], targets[step])
-        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])      
+        print('gradOutputs[step]'); print(gradOutputs)
+        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])   
+        print('gradInputs[step]'); print(gradInputs);   
         neunet:updateParameters(opt.rnnlearningRate)
       end
 
