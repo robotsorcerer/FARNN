@@ -2,7 +2,7 @@
 
 ## Maintainer
 
-- [Olalekan Ogunmolu](https://ecs.utdallas.edu/~olalekan.ogunmolu) <<olalekan.ogunmolu@utdallas.edu>>, [Sensing, Robotics, Vision, Control and Estimation Lab](http://ecs.utdallas.edu/research/researchlabs/service-lab/), University of Texas at Dallas
+- [Olalekan Ogunmolu](http://lakehanne.github.io) 
 
 ## Table of contents
 - [Description](#description)
@@ -67,6 +67,16 @@ Then do
 ```bash
 	luarocks install matio
 ```
+
+- [RNN](https://github.com/Element-Research/rnn)
+
+```bash
+	cd ~/torch;
+	git clone https://github.com/Element-Research/rnn.git
+	cd rnn/rocks; 
+	luarocks rnn-scm-1.rockspec
+```
+
 If you want to use a GPU, you will have to install the [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit). Or you could copy out the following lines from this [bash script](https://github.com/lakehanne/Shells/blob/master/packages.sh#L282-L313), place it in a new bash script and it will install cuda-7.0 on your computer.
 
 If you'd like to use the cudnn backend (to speed up the training of your dataset), you also have to install [cudnn](https://github.com/soumith/cudnn.torch). First follow the link to [NVIDIA website](https://developer.nvidia.com/cuDNN), register with them and download the cudnn library. Then make sure you adjust your `LD_LIBRARY_PATH` to point to the `lib64` folder that contains the library (e.g. `libcudnn.so.7.0.64`). Then git clone the `cudnn.torch` repo, `cd` inside and do `luarocks make cudnn-scm-1.rockspec` to build the Torch bindings.
