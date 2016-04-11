@@ -409,59 +409,53 @@ function train(data)
   if opt.model == 'rnn' then
     
     offsets = {}
-    --form mini batch
+    --form mini batch    
+    local iter = 1
+
     for t = 1, train_input:size()[1], 1 do
 
       offsets = train_input[{ {t} }] 
-      --offsets = train_input
       offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-      print('offsets', offsets)
+      --print('offsets', offsets)
 
       --BPTT
 
-      local iter = 1
 
       -- 1. create a sequence of rho time-steps
-     -- print("train_input"); print(train_input)
-
-      inputs, targets = {}, {}   
-      for step = t, t+opt.batchSize-1 do                              
+      inputs, targets = {}, {}                               
         --batch of inputs
-        inputs[step] = train_input[step] 
-        targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+        inputs = train_input:index(1, offsets)
+        targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
                           train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                           train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
         --increase offsets indices by 1
-        offsets = train_input[{ {t+step} }] 
+        offsets = train_input[{ {t+1} }] 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-      end  
-      print('inputs'); print(inputs);     
-
-       print('targets', targets) 
-
+--[[    
+       print('inputs'); print(inputs);  
+       for i,v in ipairs(targets) do         
+         print(i, v);
+       end
+]]
 
       --2. Forward sequence through rnn
       neunet:zeroGradParameters()
       neunet:forget()  --forget all past time steps
 
-      local outputs, err = {}, 0
-      --for step = 1, rho do      
+        outputs, err = {}, 0   
         outputs = neunet:forward(inputs)  
-        err     = err + cost:forward(outputs[step], targets[step])
-        neunet:updateParameters(opt.rnnlearningRate)
-      --end      
-      print('outputs'); print(outputs) 
-      print(string.format("Step %d, Loss error = %f ", iter, err ))
+        --print('outputs'); print(outputs) 
+        err     = err + cost:forward(outputs, targets)
+       -- neunet:updateParameters(opt.rnnlearningRate)
+        print(string.format("Step %d, Loss error = %f ", iter, err ))
             
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-      for step = rho, 1, -1 do  --we basically reverse order of forward calls 
-        gradOutputs[step] = cost:backward(outputs[step], targets[step])
-        print('gradOutputs[step]'); print(gradOutputs)
-        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step])   
-        print('gradInputs[step]'); print(gradInputs);   
-        neunet:updateParameters(opt.rnnlearningRate)
-      end
+        --we basically reverse order of forward calls 
+        gradOutputs = cost:backward(outputs, targets)
+        gradInputs  = neunet:backward(inputs, gradOutputs) 
+        --print('gradOutputs'); print(gradOutputs)  
+        --print('gradInputs', gradInputs);   
 
       --4. update lr
       neunet:updateParameters(opt.rnnlearningRate)
