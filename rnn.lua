@@ -419,8 +419,6 @@ function train(data)
       --print('offsets', offsets)
 
       --BPTT
-
-
       -- 1. create a sequence of rho time-steps
       inputs, targets = {}, {}                               
         --batch of inputs
@@ -429,7 +427,10 @@ function train(data)
                           train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                           train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
         --increase offsets indices by 1
-        offsets = train_input[{ {t+1} }] 
+        if t < train_input:size(1) then
+          offsets = train_input[{ {t+1} }]
+        end
+
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
 --[[    
        print('inputs'); print(inputs);  
@@ -455,7 +456,7 @@ function train(data)
         gradOutputs = cost:backward(outputs, targets)
         gradInputs  = neunet:backward(inputs, gradOutputs) 
         --print('gradOutputs'); print(gradOutputs)  
-        --print('gradInputs', gradInputs);   
+        print('gradInputs', gradInputs[1]);   
 
       --4. update lr
       neunet:updateParameters(opt.rnnlearningRate)
@@ -540,28 +541,61 @@ function train(data)
                       --retrun f and df/dx
                       return f, gradParameters
         end --end feval
-    end
+    end  --end batch for
 
--- optimization on current mini-batch
-if optimMethod == optim.sgd then
+  -- optimization on current mini-batch
+  if optimMethod == optim.sgd then
     optimMethod(feval, parameters, sgdState)
 
-elseif optimMethod == optim_.msetrain then
-  --we do a SIMO from input to each of the six outputs in each iteration
-  --For SIMO data, it seems best to run same network from single input to each output of six vector
-   for v = 1, #inputs do
+  elseif optimMethod == optim_.msetrain then
+    --we do a SIMO from input to each of the six outputs in each iteration
+    --For SIMO data, it seems best to run same network from single input to each output of six vector
+    for v = 1, #inputs do
      a, b, c, d = optimMethod(neunet, cost, inputs[v], 
        targets[v], opt, data)
      --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
-   end
+    end
 
-elseif optimMethod == optim.asgd then
-  _, _, average = optimMethod(feval, parameters, optimState)
+  elseif optimMethod == optim.asgd then
+    _, _, average = optimMethod(feval, parameters, optimState)
 
-else  
+  else  
     optimMethod(feval, parameters, optimState)
-end
+  end
 
+  if opt.model == rnn then
+
+      -- time taken
+    time = sys.clock() - time
+    time = time / trainData[1]:size()[1]
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+    -- save/log current net
+    local filename = paths.concat(opt.netdir, 'rnn-net.net')
+    os.execute('mkdir -p ' .. sys.dirname(filename))
+    print('<trainer> saving network model to '..filename)
+    torch.save(filename, rnn-net)
+
+    -- next epoch
+    --confusion:zero()
+    epoch = epoch + 1
+
+  elseif opt.model == mse then
+      -- time taken
+    time = sys.clock() - time
+    time = time / trainData[1]:size()[1]
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+    -- save/log current net
+    local filename = paths.concat(opt.netdir, 'mlp-net.net')
+    os.execute('mkdir -p ' .. sys.dirname(filename))
+    print('<trainer> saving network model to '..filename)
+    torch.save(filename, mlpnet)
+
+    -- next epoch
+    --confusion:zero()
+    epoch = epoch + 1
+  else    
       -- time taken
     time = sys.clock() - time
     time = time / trainData[1]:size()[1]
@@ -577,6 +611,7 @@ end
     --confusion:zero()
     epoch = epoch + 1
   end
+end
 end
 
 
