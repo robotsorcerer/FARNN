@@ -245,7 +245,7 @@ function contruct_net()
                   :add(r)
                   :add(nn.Linear(nhiddens, outputsize))
 
-    neunet    = nn.Repeater(neunet, seqlen)
+    neunet    = nn.Sequencer(neunet, seqlen)
     print('rnn')
     print(neunet)
     --======================================================================================
@@ -422,7 +422,9 @@ function train(data)
       -- 1. create a sequence of rho time-steps
       inputs, targets = {}, {}                               
         --batch of inputs
-        inputs = train_input:index(1, offsets)
+      for i = t, t+opt.batchSize-1, train_input:size()[1] do
+        input = train_input:index(1, offsets)
+        table.insert(inputs, input)
         targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
                           train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                           train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
@@ -432,8 +434,10 @@ function train(data)
         end
 
         offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
---[[    
-       print('inputs'); print(inputs);  
+
+        print('inputs'); print(inputs);
+        print('targets', targets) 
+--[[      
        for i,v in ipairs(targets) do         
          print(i, v);
        end
@@ -444,19 +448,22 @@ function train(data)
       neunet:forget()  --forget all past time steps
 
         outputs, err = {}, 0   
-        outputs = neunet:forward(inputs)  
-        --print('outputs'); print(outputs) 
-        err     = err + cost:forward(outputs, targets)
+      for step = 1, rho do
+        outputs[step] = neunet:forward(inputs)  
+        err     = err + cost:forward(outputs[step], targets[step])
        -- neunet:updateParameters(opt.rnnlearningRate)
-        print(string.format("Step %d, Loss error = %f ", iter, err ))
+      end
+      print('outputs'); print(outputs) 
+      print(string.format("Step %d, Loss error = %f ", iter, err ))
             
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local gradOutputs, gradInputs = {}, {}
-        --we basically reverse order of forward calls 
-        gradOutputs = cost:backward(outputs, targets)
-        gradInputs  = neunet:backward(inputs, gradOutputs) 
-        --print('gradOutputs'); print(gradOutputs)  
-        print('gradInputs', gradInputs[1]);   
+      for step = rho, 1, -1 do  --we basically reverse order of forward calls 
+        gradOutputs[step] = cost:backward(outputs[step], targets[step])
+        gradInputs[step]  = neunet:backward(inputs, gradOutputs[step]) 
+        print('gradOutputs'); print(gradOutputs)  
+        print('gradInputs', gradInputs);
+        end   
 
       --4. update lr
       neunet:updateParameters(opt.rnnlearningRate)
