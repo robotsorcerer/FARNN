@@ -193,12 +193,13 @@ nfeats      = 1
 width       = trainData[1]:size()[2]
 height      = trainData[1]:size()[1]
 ninputs     = 1
-noutputs    = 6
-outputsize  = 1
+noutputs    = 1
+outputsize  = 6
 seqlen      = 6
 
 --number of hidden layers (for mlp network)
-nhiddens    = 1   
+nhiddens    = 1
+nhiddens_rnn = 6  
 transfer    = nn.ReLU()    
 
 --hidden units, filter kernel (for Temporal ConvNet)
@@ -221,14 +222,14 @@ function contruct_net()
 --  Recurrent Neural Net Initializations 
     require 'rnn'
     rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
-    start       = 1                         -- the size of the output (excluding the batch dimension)        
+    start       = 6                         -- the size of the output (excluding the batch dimension)        
     rnnInput    = nn.Linear(ninputs, start)     --the size of the output
     feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
 ------------------------------------------------------
-
+  --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     ffwd       =   nn.Sequential()
-                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.Linear(ninputs, nhiddens_rnn))
                   :add(transfer)
 
     --then do a self-adaptive feedback of neurons 
@@ -244,7 +245,7 @@ function contruct_net()
     neunet     = nn.Sequential()
                   :add(ffwd)
                   :add(r)
-                  :add(nn.Linear(nhiddens, outputsize))
+                  :add(nn.Linear(nhiddens_rnn, 1))
 
     neunet    = nn.Sequencer(neunet)
     print('rnn')
@@ -492,22 +493,21 @@ function train(data)
 
       local inputs_, outputs = {}, {}
       local loss = 0
-      --for step = 1, rho do
+      for step = 1, rho do
         table.insert(inputs_, inputs[step])
-       outputs = neunet:forward(inputs)  
+       outputs[step] = neunet:forward(inputs_)  
        -- inputs_ = {}      
         -- for i,v in ipairs(targets) do
         --   for x, y in ipairs(v) do
         --     print(i,x, y)
         --   end
         -- end
-       --loss    = loss + cost:forward(outputs[step], targets[step])
+       loss    = loss + cost:forward(outputs[step], targets[step])
       -- neunet:updateParameters(opt.rnnlearningRate)
-      --end      
+      end      
        print('inputs', inputs_)
        print('outputs'); print(outputs)
-       print('targets'); print(targets)  
-
+       print('targets'); print(targets)
       --print('targets'); print(targets)
       print(string.format("Step %d, Loss lossor = %f ", iter, loss ))
             
