@@ -75,6 +75,7 @@ cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural networ
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|convnet|linear|rnn')
+cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
@@ -219,7 +220,7 @@ function contruct_net()
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
-    rho         = 5                          -- the max amount of bacprop steos to take back in time
+    rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
     start       = 1                         -- the size of the output (excluding the batch dimension)        
     rnnInput    = nn.Linear(ninputs, start)     --the size of the output
     feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
@@ -245,7 +246,7 @@ function contruct_net()
                   :add(r)
                   :add(nn.Linear(nhiddens, outputsize))
 
-    neunet    = nn.Sequencer(neunet, seqlen)
+    neunet    = nn.Sequencer(neunet)
     print('rnn')
     print(neunet)
     --======================================================================================
@@ -456,7 +457,6 @@ function train(data)
         --end
 
         offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
-        print('targets'); print(target)
 
         --print('offsets size'); print(offsets:size())
 
@@ -489,17 +489,26 @@ function train(data)
           targets[step][i]:index(target[i], 1, offsets)
         end
       end
+
       local inputs_, outputs = {}, {}
       local loss = 0
-      for step = 1, rho do
+      --for step = 1, rho do
         table.insert(inputs_, inputs[step])
-       outputs[step] = neunet:forward(inputs_)  
-       loss    = loss + cost:forward(outputs[step], targets[step])
+       outputs = neunet:forward(inputs)  
+       -- inputs_ = {}      
+        -- for i,v in ipairs(targets) do
+        --   for x, y in ipairs(v) do
+        --     print(i,x, y)
+        --   end
+        -- end
+       --loss    = loss + cost:forward(outputs[step], targets[step])
       -- neunet:updateParameters(opt.rnnlearningRate)
-      end      
+      --end      
+       print('inputs', inputs_)
+       print('outputs'); print(outputs)
+       print('targets'); print(targets)  
 
-      print('targets'); print(targets)
-      print('outputs'); print(outputs) 
+      --print('targets'); print(targets)
       print(string.format("Step %d, Loss lossor = %f ", iter, loss ))
             
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
