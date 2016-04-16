@@ -198,7 +198,7 @@ noutputs    = 6
 
 --number of hidden layers (for mlp network)
 nhiddens    = 1
-transfer    = nn.ReLU()    
+transfer    =  nn.ReLU()   --
 
 --hidden units, filter kernel (for Temporal ConvNet)
 nstates     = {1, 1, 2}
@@ -219,20 +219,20 @@ function contruct_net()
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
-    nhiddens_rnn = 1  
+    nhiddens_rnn = 6 
 ------------------------------------------------------
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     ffwd       =   nn.Sequential()
                   :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
                   :add(nn.Linear(nhiddens, nhiddens_rnn))
-                  :add(transfer)
 
 
     rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
-    start       = 1                        -- the size of the output (excluding the batch dimension)        
-    rnnInput    = nn.Linear(nhiddens_rnn, start)     --the size of the output
-    feedback    = nn.Linear(start, nhiddens_rnn)           --module that feeds back prev/output to transfer module
+    start       = 6                       -- the size of the output (excluding the batch dimension)        
+    rnnInput    = nn.Linear(start, nhiddens_rnn)     --the size of the output
+    feedback    = nn.Linear(nhiddens_rnn, start)           --module that feeds back prev/output to transfer module
 
     --then do a self-adaptive feedback of neurons 
    r = nn.Recurrent(start, 
@@ -245,8 +245,9 @@ function contruct_net()
     --we then join the feedforward with the recurrent net
     neunet     = nn.Sequential()
                   :add(ffwd)
+                  :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.Linear(nhiddens_rnn, 1))
+                  :add(nn.Linear(start, 1))
                 --  :add(nn.Linear(1, noutputs))
 
     --neunet    = nn.Sequencer(neunet)
@@ -416,71 +417,69 @@ function train(data)
     offsets = {}
     --form mini batch    
     local iter = 1
-    local target, input = {}, {}                               
+  local target, input = {}, {}                               
 
     --batch of inputs
+    --[[
     input = train_input
     target = {
                 train_out[1], train_out[2], train_out[3],
                 train_out[4], train_out[5], train_out[6]
               }
+              ]]
 
-    offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
 
-    for t = 1, train_input:size(1), opt.batchSize do
+    for t = 1, opt.maxIter, opt.batchSize do --1, train_input:size(1), opt.batchSize do
+
+
+      offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
+    
       xlua.progress(t, train_input:size(1))
        print('\n')
 
        -- 1. create a sequence of rho time-steps
       local inputs, targets = {}, {}
-      for step = 1, rho do
-        inputs[step]  = inputs[step] or input.new()
-        inputs[step]:index(input, 1, offsets)      
 
-        -- batch of targets
-        offsets:add(1) -- increase indices by 1
-        offsets[offsets:gt(train_input:size(1))] = 1
-        targets[step] = targets[step] or {target[1].new(), target[2].new(), target[3].new(), target[4].new(), target[5].new(), target[6].new()}   
-        for i = 1, noutputs do     
-          targets[step][i]:index(target[i], 1, offsets)
-        end
-      end
+      inputs = train_input:index(1, offsets)
+      targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+                        train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
+                        train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
+      --increase offsets indices by 1      
+      offsets:add(1) -- increase indices by 1
+      offsets[offsets:gt(train_input:size(1))] = 1
 
+      offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+
+      print('inputs', inputs)
+      print('targets'); print(targets)
+      
       --2. Forward sequence through rnn
       neunet:zeroGradParameters()
       neunet:forget()  --forget all past time steps
 
-      local inputs_, outputs = {}, {}
+      inputs_, outputs = {}, {}
       local loss = 0
-      --for step = 1, rho do
-       -- table.insert(inputs_, inputs[step])
        outputs = neunet:forward(inputs)  
-       print('inputs', inputs)
        print('outputs'); print(outputs)
-       --print('targets'); print(targets)
        loss    = loss + cost:forward(outputs, targets)
-      -- neunet:updateParameters(opt.rnnlearningRate)
-      --end      
-      --print('targets'); print(targets)
-      print(string.format("Step %d, Loss lossor = %f ", iter, loss ))
+      print(string.format("Step %d, Loss = %f ", iter, loss ))
             
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
-      local gradOutputs, gradInputs = {}, {}
-      for step = rho, 1, -1 do  --we basically reverse order of forward calls 
-        gradOutputs[step] = cost:backward(outputs[step], targets[step])
-      end
-        print('gradOutputs'); print(gradOutputs)  
-        print('inputs'); print(inputs);
-      for step = rho, 1, -1 do 
-        gradInputs[step]  = neunet:backward(inputs[step], gradOutputs[step]) 
-        print('gradInputs', gradInputs);
-      end   
+      local  gradOutputs = cost:backward(outputs, targets)
+      local gradInputs  = neunet:backward(inputs, gradOutputs) 
+        
+        print('gradoutputs'); --print(gradOutputs)
+        for i,v in ipairs(gradOutputs) do
+          print(i,v)
+        end
+
+        print('gradInputs'); print(gradInputs)
 
       --4. update lr
       neunet:updateParameters(opt.rnnlearningRate)
 
       iter = iter + 1
-    end
+    end    
   else
 
   for t = 1, data[1]:size()[1], opt.batchSize do
@@ -720,7 +719,7 @@ if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, tra
 
 while true do
   train(trainData)
-  test(testData)
+ -- test(testData)
 
 
   -- update logger/plot
