@@ -75,13 +75,14 @@ cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural networ
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|convnet|linear|rnn')
-cmd:option('-rho', 5, 'length of sequence to go back in time')
+cmd:option('-rho', 6, 'length of sequence to go back in time')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
+cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
@@ -193,13 +194,10 @@ nfeats      = 1
 width       = trainData[1]:size()[2]
 height      = trainData[1]:size()[1]
 ninputs     = 1
-noutputs    = 1
-outputsize  = 6
-seqlen      = 6
+noutputs    = 6
 
 --number of hidden layers (for mlp network)
 nhiddens    = 1
-nhiddens_rnn = 6  
 transfer    = nn.ReLU()    
 
 --hidden units, filter kernel (for Temporal ConvNet)
@@ -221,16 +219,20 @@ function contruct_net()
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
-    rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
-    start       = 6                         -- the size of the output (excluding the batch dimension)        
-    rnnInput    = nn.Linear(ninputs, start)     --the size of the output
-    feedback    = nn.Linear(start, ninputs)           --module that feeds back prev/output to transfer module
+    nhiddens_rnn = 1  
 ------------------------------------------------------
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     ffwd       =   nn.Sequential()
-                  :add(nn.Linear(ninputs, nhiddens_rnn))
+                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.Linear(nhiddens, nhiddens_rnn))
                   :add(transfer)
+
+
+    rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
+    start       = 1                        -- the size of the output (excluding the batch dimension)        
+    rnnInput    = nn.Linear(nhiddens_rnn, start)     --the size of the output
+    feedback    = nn.Linear(start, nhiddens_rnn)           --module that feeds back prev/output to transfer module
 
     --then do a self-adaptive feedback of neurons 
    r = nn.Recurrent(start, 
@@ -240,14 +242,15 @@ function contruct_net()
                      rho             
                      )
 
-   --     r      = nn.AbstractRecurrent(rho)
     --we then join the feedforward with the recurrent net
     neunet     = nn.Sequential()
                   :add(ffwd)
                   :add(r)
                   :add(nn.Linear(nhiddens_rnn, 1))
+                --  :add(nn.Linear(1, noutputs))
 
-    neunet    = nn.Sequencer(neunet)
+    --neunet    = nn.Sequencer(neunet)
+    neunet    = nn.Repeater(neunet, noutputs)
     print('rnn')
     print(neunet)
     --======================================================================================
@@ -406,77 +409,29 @@ function train(data)
 
   --do one epoch
   print('<trainer> on training set: ')
-  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
   
   if opt.model == 'rnn' then
     
     offsets = {}
     --form mini batch    
     local iter = 1
+    local target, input = {}, {}                               
+
+    --batch of inputs
+    input = train_input
+    target = {
+                train_out[1], train_out[2], train_out[3],
+                train_out[4], train_out[5], train_out[6]
+              }
+
+    offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
 
     for t = 1, train_input:size(1), opt.batchSize do
       xlua.progress(t, train_input:size(1))
+       print('\n')
 
-      offsets = train_input[{ {t} }] 
-      offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-      --print('offsets', offsets)
-
-      --BPTT
-      -- 1. create a sequence of rho time-steps
-      local target, input = 0, 0                               
-        --[[batch of inputs
-      for i = t, math.min(t+opt.batchSize-1, train_input:size(1)) do
-        input = train_input[i]
-        --increase offsets indices by 1
-        --if t < train_input:size(1) then
-          target = {
-                          train_out[1][i+1], train_out[2][i+1], train_out[3][i+1],
-                          train_out[4][i+1], train_out[5][i+1], train_out[6][i+1]
-                        }
-        --end
-        table.insert(inputs, input)
-        table.insert(targets, target)
-      end
-      ]]
-                      --[[
-        table.insert(inputs, input)
-        targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
-                          train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
-                          train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
-        --increase offsets indices by 1
-        if t < train_input:size(1) then
-          offsets = train_input[{ {t+1} }]
-        end
-
-        offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-]]
-        input = train_input
-        target = {
-                    train_out[1], train_out[2], train_out[3],
-                    train_out[4], train_out[5], train_out[6]
-                  }
-        --end
-
-        offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
-
-        --print('offsets size'); print(offsets:size())
-
---[[
-        for i,v in ipairs(targets) do
-          for x, y in ipairs(v) do
-            print(i,x, y)
-          end
-        end
-      
-       for i,v in ipairs(targets) do         
-         print(i, v);
-       end
-]]
-
-      --2. Forward sequence through rnn
-      neunet:zeroGradParameters()
-      neunet:forget()  --forget all past time steps
-
+       -- 1. create a sequence of rho time-steps
       local inputs, targets = {}, {}
       for step = 1, rho do
         inputs[step]  = inputs[step] or input.new()
@@ -491,23 +446,21 @@ function train(data)
         end
       end
 
+      --2. Forward sequence through rnn
+      neunet:zeroGradParameters()
+      neunet:forget()  --forget all past time steps
+
       local inputs_, outputs = {}, {}
       local loss = 0
-      for step = 1, rho do
-        table.insert(inputs_, inputs[step])
-       outputs[step] = neunet:forward(inputs_)  
-       -- inputs_ = {}      
-        -- for i,v in ipairs(targets) do
-        --   for x, y in ipairs(v) do
-        --     print(i,x, y)
-        --   end
-        -- end
-       loss    = loss + cost:forward(outputs[step], targets[step])
-      -- neunet:updateParameters(opt.rnnlearningRate)
-      end      
-       print('inputs', inputs_)
+      --for step = 1, rho do
+       -- table.insert(inputs_, inputs[step])
+       outputs = neunet:forward(inputs)  
+       print('inputs', inputs)
        print('outputs'); print(outputs)
-       print('targets'); print(targets)
+       --print('targets'); print(targets)
+       loss    = loss + cost:forward(outputs, targets)
+      -- neunet:updateParameters(opt.rnnlearningRate)
+      --end      
       --print('targets'); print(targets)
       print(string.format("Step %d, Loss lossor = %f ", iter, loss ))
             
