@@ -404,7 +404,7 @@ function train(data)
                           -- end
                           local targets_ = {}
                           targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
-                           targets[i_f][4], targets[i_f][5], targets[i_f][6],})
+                           targets[i_f][4], targets[i_f][5], targets[i_f][6]`})
                           local err = cost:forward(output, targets_)
                           f = f + err
 

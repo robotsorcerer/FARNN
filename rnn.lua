@@ -74,7 +74,7 @@ cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|convnet|linear|rnn')
+cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
 cmd:option('-rho', 6, 'length of sequence to go back in time')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
@@ -348,6 +348,7 @@ parameters, gradParameters = neunet:getParameters()
 --=====================================================================================================
 if opt.model == 'rnn' then
   cost    = nn.SequencerCriterion(nn.MSECriterion())
+  --cost    = nn.RepeaterCriterion(nn.MSECriterion())
 else
   cost      = nn.MSECriterion()           -- Loss function
 end
@@ -401,42 +402,26 @@ elseif opt.optimization == 'l-bfgs' then
 
 print '==> defining training procedure'
 
-function train(data)
-  --track the epochs
-  epoch = epoch or 1
+function train(data)  
+  if opt.model == 'rnn' then        
+    --track the epochs
+    epoch = epoch or 1
+    --time we started training
+    local time = sys.clock()
 
-  --time we started training
-  local time = sys.clock()
+    --do one epoch
+    print('<trainer> on training set: ')
+    print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
 
-  --do one epoch
-  print('<trainer> on training set: ')
-  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
-  
-  if opt.model == 'rnn' then
-    
     offsets = {}
     --form mini batch    
     local iter = 1
-  local target, input = {}, {}                               
-
-    --batch of inputs
-    --[[
-    input = train_input
-    target = {
-                train_out[1], train_out[2], train_out[3],
-                train_out[4], train_out[5], train_out[6]
-              }
-              ]]
-
+    local target, input = {}, {}                               
 
     for t = 1, opt.maxIter, opt.batchSize do --1, train_input:size(1), opt.batchSize do
-
-
-      offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))
-    
+      offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))    
       xlua.progress(t, train_input:size(1))
        print('\n')
-
        -- 1. create a sequence of rho time-steps
       local inputs, targets = {}, {}
 
@@ -450,7 +435,6 @@ function train(data)
 
       offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
 
-      print('inputs', inputs)
       print('targets'); print(targets)
       
       --2. Forward sequence through rnn
@@ -459,10 +443,11 @@ function train(data)
 
       inputs_, outputs = {}, {}
       local loss = 0
-       outputs = neunet:forward(inputs)  
+       outputs = neunet:forward(inputs)
+       print('inputs', inputs)  
        print('outputs'); print(outputs)
        loss    = loss + cost:forward(outputs, targets)
-      print(string.format("Step %d, Loss = %f ", iter, loss ))
+      print(string.format("Step %d, Loss = %f ", iter, loss))
             
       --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
       local  gradOutputs = cost:backward(outputs, targets)
@@ -478,86 +463,95 @@ function train(data)
       --4. update lr
       neunet:updateParameters(opt.rnnlearningRate)
 
-      iter = iter + 1
+      iter = iter + 1 
+
+      saveNet(epoch, time)
     end    
-  else
+  else      
+    --track the epochs
+    epoch = epoch or 1
+    --time we started training
+    local time = sys.clock()
 
-  for t = 1, data[1]:size()[1], opt.batchSize do
-    print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
-    --disp progress
-    xlua.progress(t, data[1]:size()[1])
+    --do one epoch
+    print('<trainer> on training set: ')
+    print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
 
-     -- create mini batch
-    local inputs, targets, offsets = {}, {}, {}
-    for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
-      -- load new sample
-      local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-      local input = sample[1]:clone()[i]
-      local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
-      table.insert(inputs, input)
-      table.insert(targets, target) 
+    for t = 1, data[1]:size()[1], opt.batchSize do
+      print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
+      --disp progress
+      xlua.progress(t, data[1]:size()[1])
 
-      table.insert(offsets, input)      
-    end
+       -- create mini batch
+      local inputs, targets, offsets = {}, {}, {}
+      for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
+        -- load new sample
+        local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
+        local input = sample[1]:clone()[i]
+        local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
+        table.insert(inputs, input)
+        table.insert(targets, target) 
+        table.insert(offsets, input)      
+      end
 
       --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-        local feval = function(x)
-                      collectgarbage()
+      local feval = function(x)
+        collectgarbage()
 
-                      --retrieve new params
-                      if x~=parameters then
-                        parameters:copy(x)
-                      end
+        --retrieve new params
+        if x~=parameters then
+          parameters:copy(x)
+        end
 
-                      --reset grads
-                      gradParameters:zero()
+        --reset grads
+        gradParameters:zero()
             
-                      -- f is the average of all criterions
-                      local f = 0
+        -- f is the average of all criterions
+        local f = 0
 
-                      -- evaluate function for complete mini batch
-                    for i_f = 1,#inputs do
-                          -- estimate f
-                            local output, targets_ = neunet:forward(inputs[i_f]), {}
-                            targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
-                             targets[i_f][4], targets[i_f][5], targets[i_f][6],})
-                            local err = cost:forward(output, targets_)
-                            f = f + err
+        -- evaluate function for complete mini batch
+        for i_f = 1,#inputs do
+        -- estimate f
+          local output, targets_ = neunet:forward(inputs[i_f]), {}
+          targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
+                                targets[i_f][4], targets[i_f][5], targets[i_f][6]})
+          local err = cost:forward(output, targets_)
+          f = f + err
 
-                            -- estimate df/dW
-                            local df_do = cost:backward(output, targets_)
-                            neunet:backward(inputs[i_f], df_do)
+          -- estimate df/dW
+          local df_do = cost:backward(output, targets_)
+          neunet:backward(inputs[i_f], df_do)
 
-                            -- penalties (L1 and L2):
-                            if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
-                               -- locals:
-                               local norm,sign= torch.norm,torch.sign
+          -- penalties (L1 and L2):
+          if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+             -- locals:
+             local norm,sign= torch.norm,torch.sign
 
-                               -- Loss:
-                               f = f + opt.coefL1 * norm(parameters,1)  
-                               f = f + opt.coefL2 * norm(parameters,2)^2/2
+             -- Loss:
+             f = f + opt.coefL1 * norm(parameters,1)  
+             f = f + opt.coefL2 * norm(parameters,2)^2/2
 
-                               -- Gradients:
-                               gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+             -- Gradients:
+              gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
                             
-                            else
-                              -- normalize gradients and f(X)
-                              gradParameters:div(#inputs)
-                            end
+          else
+            -- normalize gradients and f(X)
+            gradParameters:div(#inputs)
+          end
 
-                            print(' err ')
-                            print(err)
-                            print('\ndf_do')
-                            print(df_do)
-                    end       
+            print(' err ')
+            print(err)
+            print('\ndf_do')
+            print(df_do)
+        end       
 
-                      -- normalize gradients and f(X)
-                      gradParameters:div(#inputs)
-                      f = f/#inputs
+        -- normalize gradients and f(X)
+        gradParameters:div(#inputs)
+        f = f/#inputs
 
-                      --retrun f and df/dx
-                      return f, gradParameters
-        end --end feval
+        --retrun f and df/dx
+        return f, gradParameters
+      end --end feval
     end  --end batch for
 
   -- optimization on current mini-batch
@@ -580,55 +574,8 @@ function train(data)
     optimMethod(feval, parameters, optimState)
   end
 
-  if opt.model == rnn then
-
-      -- time taken
-    time = sys.clock() - time
-    time = time / trainData[1]:size()[1]
-    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    -- save/log current net
-    local filename = paths.concat(opt.netdir, 'rnn-net.net')
-    os.execute('mkdir -p ' .. sys.dirname(filename))
-    print('<trainer> saving network model to '..filename)
-    torch.save(filename, rnn-net)
-
-    -- next epoch
-    --confusion:zero()
-    epoch = epoch + 1
-
-  elseif opt.model == mse then
-      -- time taken
-    time = sys.clock() - time
-    time = time / trainData[1]:size()[1]
-    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    -- save/log current net
-    local filename = paths.concat(opt.netdir, 'mlp-net.net')
-    os.execute('mkdir -p ' .. sys.dirname(filename))
-    print('<trainer> saving network model to '..filename)
-    torch.save(filename, mlpnet)
-
-    -- next epoch
-    --confusion:zero()
-    epoch = epoch + 1
-  else    
-      -- time taken
-    time = sys.clock() - time
-    time = time / trainData[1]:size()[1]
-    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    -- save/log current net
-    local filename = paths.concat(opt.netdir, 'neunet.net')
-    os.execute('mkdir -p ' .. sys.dirname(filename))
-    print('<trainer> saving network model to '..filename)
-    torch.save(filename, neunet)
-
-    -- next epoch
-    --confusion:zero()
-    epoch = epoch + 1
-  end
-end
+  saveNet(epoch, time)
+  end  -- end else
 end
 
 
@@ -674,6 +621,28 @@ function test(data)
     end
 end
 
+function saveNet(epoch, time)
+  -- time taken
+  time = sys.clock() - time
+  time = time / trainData[1]:size()[1]
+  print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+  -- save/log current net
+  if opt.model == 'rnn' then
+    netname = 'rnn-net.net'
+  else
+    netname = 'neunet.net'
+  end  
+  
+  local filename = paths.concat(opt.netdir, netname)
+  os.execute('mkdir -p ' .. sys.dirname(filename))
+  print('<trainer> saving network model to '..filename)
+  torch.save(filename, neunet)
+
+  -- next epoch
+    --confusion:zero()
+  epoch = epoch + 1
+end
 
 --print a bunch of stuff if user enables print option
 local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
@@ -719,7 +688,7 @@ if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, tra
 
 while true do
   train(trainData)
- -- test(testData)
+  test(testData)
 
 
   -- update logger/plot
