@@ -4,7 +4,7 @@ Negative Log Likelihood Function ]]
 require 'torch'
 optim_ = {}
 --Training using the MSE criterion
-function optim_.msetrain(neunet, cost, x, y, opt, data)
+function msetrain(neunet, cost, x, y, opt, data)
  
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
 
@@ -46,7 +46,7 @@ end
 collectgarbage()
 
 --Train using the L-BFGS Algorithm
-function optim_.lbfgs(neunet, x, y, learningRate) 
+function lbfgs(neunet, x, y, learningRate) 
    local trainer        = nn.StochasticGradient(neunet2, cost)
    trainer.learningRate = learningRate
    trainer:train({x, y})

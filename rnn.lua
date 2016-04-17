@@ -2,7 +2,7 @@
    A Fully Automated Recurrent Neural Network for System Identification and Control
    Jeen-Shing Wang, and Yen-Ping Chen. IEEE Transactions on Circuits and Systems June 2006
 
-   Author: Olalekan Ogunmolu, SeRViCE Lab, UT Dallas, December 2015
+   Author: Olalekan Ogunmolu, December 2015
    MIT License
    ]]
 
@@ -13,7 +13,6 @@ require 'optim'
 require 'image'
 require 'order.order_det'   
 matio     = require 'matio'  
---optim_    = 
 require 'optima.optim_'  
 require 'utils.utils'
 require 'xlua'
@@ -363,7 +362,7 @@ print '==> configuring optimizer\n'
     state = {
      learningRate = opt.learningRate
    }
-   optimMethod = optim_.msetrain
+   optimMethod = msetrain
 
  elseif opt.optimizer == 'sgd' then      
    -- Perform SGD step:
@@ -467,7 +466,7 @@ function train(data)
 
       saveNet(epoch, time)
     end    
-  else      
+  elseif  opt.model == 'mlp'  then
     --track the epochs
     epoch = epoch or 1
     --time we started training
@@ -477,14 +476,14 @@ function train(data)
     print('<trainer> on training set: ')
     print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
 
-    for t = 1, data[1]:size()[1], opt.batchSize do
-      print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
+    for t = 1, opt.maxIter, opt.batchSize do
+      --print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
       --disp progress
-      xlua.progress(t, data[1]:size()[1])
+      xlua.progress(t, train_input:size(1))
 
        -- create mini batch
       local inputs, targets, offsets = {}, {}, {}
-      for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
+      for i = t,math.min(t+opt.batchSize-1, train_input:size(1)) do
         -- load new sample
         local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
         local input = sample[1]:clone()[i]
@@ -552,31 +551,29 @@ function train(data)
         --retrun f and df/dx
         return f, gradParameters
       end --end feval
-    end  --end batch for
 
-  -- optimization on current mini-batch
-  if optimMethod == optim.sgd then
-    optimMethod(feval, parameters, sgdState)
+      -- optimization on current mini-batch
+      if optimMethod == optim.sgd then
+        optimMethod(feval, parameters, sgdState)
 
-  elseif optimMethod == optim_.msetrain then
-    --we do a SIMO from input to each of the six outputs in each iteration
-    --For SIMO data, it seems best to run same network from single input to each output of six vector
-    for v = 1, #inputs do
-     a, b, c, d = optimMethod(neunet, cost, inputs[v], 
-       targets[v], opt, data)
-     --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
-    end
+      elseif optimMethod == msetrain then
+        for v = 1, #inputs do
+         a, b, c, d = optimMethod(neunet, cost, inputs[v], 
+           targets[v], opt, data)
+         --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
+        end
 
-  elseif optimMethod == optim.asgd then
-    _, _, average = optimMethod(feval, parameters, optimState)
+      elseif optimMethod == optim.asgd then
+        _, _, average = optimMethod(feval, parameters, optimState)
 
-  else  
-    optimMethod(feval, parameters, optimState)
-  end
+      else  
+        optimMethod(feval, parameters, optimState)
+      end
 
-  saveNet(epoch, time)
-  end  -- end else
-end
+      saveNet(epoch, time)
+    end  --end elseif
+  end   --end batch for loop
+end     -- end train function
 
 
 --test function
@@ -630,6 +627,8 @@ function saveNet(epoch, time)
   -- save/log current net
   if opt.model == 'rnn' then
     netname = 'rnn-net.net'
+  elseif opt.model == 'mlp' then
+    netname = 'mlp-net.net'
   else
     netname = 'neunet.net'
   end  
