@@ -509,14 +509,13 @@ function train(data)
       local inputs, targets, offsets = {}, {}, {}
       for i = t,math.min(t+opt.batchSize-1, kk) do
         -- load new sample
-        local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-        local input = sample[1]:clone()[i]
-        local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
+        local input = train_input:clone()[i]
+        local target = {train_out[1]:clone()[i], train_out[2]:clone()[i], train_out[3]:clone()[i], 
+                        train_out[4]:clone()[i], train_out[5]:clone()[i], train_out[6]:clone()[i]}
         table.insert(inputs, input)
         table.insert(targets, target) 
         table.insert(offsets, input)      
       end
-
       --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
       local feval = function(x)
         collectgarbage()
@@ -582,6 +581,8 @@ function train(data)
 
       elseif optimMethod == msetrain then
         for v = 1, #inputs do
+          print('inputs', inputs)
+          print('targets', targets)
          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
            targets[v], opt, data)
          --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
