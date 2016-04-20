@@ -581,11 +581,10 @@ function train(data)
 
       elseif optimMethod == msetrain then
         for v = 1, #inputs do
-          print('inputs', inputs)
-          print('targets', targets)
          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
            targets[v], opt, data)
-         --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
+         print('epoch', epoch)
+         print('pred.errors: ', c, 'acc err', d)
         end
 
       elseif optimMethod == optim.asgd then
