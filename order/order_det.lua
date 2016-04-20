@@ -6,6 +6,9 @@ This function implements He and Asada's order selection algorithm as enumerated 
 --------------------------------------------------------------------------------------------------------------
 
 require 'torch'
+if use_cuda then
+	require 'cutorch'
+end
 
 order_det = {}
 print('Determinining input-output order determination using He and Asada\'s method')
@@ -13,7 +16,7 @@ print('Determinining input-output order determination using He and Asada\'s meth
 --Section 3.2, He and Asada: Find Optimal number of input parameters 
 --------------------------------------------------------------------------------------------------------------
 local qn = {}
-function order_det.computeqn(u_off, y_off)
+function computeqn(u_off, y_off)
 	local p = torch.ceil(0.02 * off)       --parameter p that determines number of iterations
 	local qinner = {}
 	for i = 1, p do
@@ -43,7 +46,7 @@ This function implements He and Asada's order selection algorithm as enumerated 
 --------------------------------------------------------------------------------------------------------------
 local inorder, outorder, q
 
-function order_det.computeq (u_off, y_off, opt)
+function computeq (u_off, y_off, opt)
 	tau   = opt.tau                 		    -- Assume a delay of 1 sample. Feel free to change as you might require 
 	m_eps  = opt.m_eps						 	-- stopping criterion for output order; can be changed from command line args
 
@@ -73,6 +76,9 @@ function order_det.computeq (u_off, y_off, opt)
 		absdiff = torch.abs(q[i] - q[i - tau])
 		--print('absdiff = ', absdiff )
 		m_epstensor = torch.Tensor({m_eps + opt.l_eps})        --hack to convert stopping criterion to torch.Tensor
+		if use_cuda then
+			m_epstensor = m_epstensor:cuda()
+		end
 		if torch.gt(q[i], (q[i - m[i]*tau]) - m_eps ) and torch.lt(absdiff, m_epstensor) then
 			outorder = l[i]
 			--print('out order,m= ', outorder, 'l[i]', l[i])
@@ -89,8 +95,14 @@ function order_det.computeq (u_off, y_off, opt)
 			x[n[i]]   = u_off[i - m[i] * tau]   		--reselect x3
 			q[n[i]]   = torch.abs(y_off[i] - y_off[i - m[i]*tau]) / torch.norm(x[i] - x[i - tau])
 			local delta = q[i] - q[i - tau]
+			if use_cuda then 
+				zero = torch.CudaTensor({0})
+				nut5 = torch.CudaTensor({-0.5})
+			else
+				zero = torch.Tensor({0}); torch.Tensor({-0.5})
+			end
 			--establish the inequality that makes input order determination possible
-			if torch.lt(delta, torch.Tensor({0}) ) and torch.lt(delta, torch.Tensor({-0.5})) then                      -- this is when q(i) is sig. smaller than q(i-1)
+			if torch.lt(delta, zero ) and torch.lt(delta, nut5) then                      -- this is when q(i) is sig. smaller than q(i-1)
 				i = i + 1
 				n[i]	   = i;        m[i]  = n[i] - m[i - 1]  ; l[i] = n[i] - m[i]  ;
 				x[i] = u_off[i - m[i] * tau]							  		-- select next x
