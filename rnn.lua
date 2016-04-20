@@ -116,21 +116,23 @@ cmd:text()
 print('==> fundamental initializations')
 
 data        = opt.pose 
+use_cuda = false
 if opt.gpu >= 0 then
   require 'cutorch'
   require 'cunn'
+  require 'cudnn'
   cutorch.manualSeed(opt.seed)
   cutorch.setDevice(opt.gpu + 1)                         -- +1 because lua is 1-indexed
   idx       = cutorch.getDevice()
   print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
+  use_cuda = true  
 end
 
-if opt.backend == 'cudnn' then
- require 'cudnn'
- --data = data:cuda()
-else
-  opt.backend = 'nn'
-end
+-- if opt.backend == 'cudnn' then
+--  require 'cudnn'
+-- else
+--   opt.backend = 'nn'
+-- end
 
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
@@ -150,6 +152,7 @@ y           = {out.xn, out.yn,
 k           = input:size()[1]
 --Determine training data               
 off         = torch.ceil( torch.abs(0.6*k))
+
 train_input = input[{{1, off}, {1}}]     
 train_out   = {
                out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}], 
@@ -163,7 +166,16 @@ test_out        = {
                out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
                (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
                out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
-              }              
+              }         
+
+if use_cuda then   
+  train_input = train_input:cuda()
+  train_out   = {train_out[1]:cuda(), train_out[2]:cuda(), train_out[3]:cuda(),
+                train_out[4]:cuda(), train_out[5]:cuda(),  train_out[6]:cuda()}
+  test_input  = test_input:cuda()
+  test_out    = {test_out[1]:cuda(), test_out[2]:cuda(), test_out[3]:cuda(),
+                  test_out[4]:cuda(), test_out[5]:cuda(), test_out[6]:cuda()}
+end
 
 kk          = train_input:size()[1]
 
@@ -178,11 +190,12 @@ testData     = {test_input,  test_out}
 print '==> Determining input-output model order parameters'    
 
 --find optimal # of input variables from data
-qn  = order_det.computeqn(train_input, train_out[3])
+qn  = computeqn(train_input, train_out[3])
 
 --compute actual system order
 --utils = require 'order.utils'
-inorder, outorder, q =  order_det.computeq(train_input, (train_out[3])/10, opt)
+inorder, outorder, q =  computeq(train_input, (train_out[3])/10, opt)
+
 --------------------utils--------------------------------------------------------------------------
 print '==> Setting up neural network parameters'
 ----------------------------------------------------------------------------------------------
@@ -257,7 +270,7 @@ function contruct_net()
 
   elseif opt.model == 'convnet' then
 
-    if opt.backend == 'cudnn' then
+    if use_cuda then
       --typical convnet (convolution + relu + pool)
       neunet  = nn.Sequential()
 
@@ -353,6 +366,10 @@ else
 end
 --======================================================================================
 
+if use_cuda then
+  neunet = neunet:cuda() 
+  cost = cost:cuda()
+end
 print '==> configuring optimizer\n'
 
  --[[Declare states for limited BFGS
@@ -419,6 +436,9 @@ function train(data)
 
     for t = 1, opt.maxIter, opt.batchSize do --1, train_input:size(1), opt.batchSize do
       offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))    
+      if use_cuda then
+        offsets = offsets:cuda() 
+      end
       xlua.progress(t, train_input:size(1))
        print('\n')
        -- 1. create a sequence of rho time-steps
@@ -433,8 +453,11 @@ function train(data)
       offsets[offsets:gt(train_input:size(1))] = 1
 
       offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+      if use_cuda then
+        offsets = offsets:cuda()  
+      end
 
-      print('targets'); print(targets)
+
       
       --2. Forward sequence through rnn
       neunet:zeroGradParameters()
@@ -445,6 +468,7 @@ function train(data)
        outputs = neunet:forward(inputs)
        print('inputs', inputs)  
        print('outputs'); print(outputs)
+       print('targets'); print(targets)
        loss    = loss + cost:forward(outputs, targets)
       print(string.format("Step %d, Loss = %f ", iter, loss))
             
@@ -479,11 +503,11 @@ function train(data)
     for t = 1, opt.maxIter, opt.batchSize do
       --print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
       --disp progress
-      xlua.progress(t, train_input:size(1))
+      xlua.progress(t, kk)
 
        -- create mini batch
       local inputs, targets, offsets = {}, {}, {}
-      for i = t,math.min(t+opt.batchSize-1, train_input:size(1)) do
+      for i = t,math.min(t+opt.batchSize-1, kk) do
         -- load new sample
         local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
         local input = sample[1]:clone()[i]
