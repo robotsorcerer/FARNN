@@ -466,9 +466,6 @@ function train(data)
       inputs_, outputs = {}, {}
       local loss = 0
        outputs = neunet:forward(inputs)
-       print('inputs', inputs)  
-       print('outputs'); print(outputs)
-       print('targets'); print(targets)
        loss    = loss + cost:forward(outputs, targets)
       print(string.format("Step %d, Loss = %f ", iter, loss))
             
@@ -476,10 +473,6 @@ function train(data)
       local  gradOutputs = cost:backward(outputs, targets)
       local gradInputs  = neunet:backward(inputs, gradOutputs) 
         
-        print('gradoutputs'); --print(gradOutputs)
-        for i,v in ipairs(gradOutputs) do
-          print(i,v)
-        end
 
         print('gradInputs'); print(gradInputs)
 
@@ -581,9 +574,7 @@ function train(data)
 
       elseif optimMethod == msetrain then
         for v = 1, #inputs do
-          print('inputs', inputs)
-          print('targets', targets)
-         a, b, c, d = optimMethod(neunet, cost, inputs[v], 
+          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
            targets[v], opt, data)
          --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
         end
