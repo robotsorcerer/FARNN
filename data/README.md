@@ -118,7 +118,7 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 
 * `-rundir`,  	false|true: 0 for false, 1 for true.
 
--- Model Order Determination Parameters
+* Model Order Determination Parameters
 * `-pose`,		data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)
 * `-tau`		what is the delay in the data? Default is 1.
 * `-m_eps`		stopping criterion for output order determination; default is 0.01.
@@ -126,11 +126,11 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 * `-trainStop`  stopping criterion for neural net training; default is 0.5.
 * `-sigma` 		initialize weights with this std. dev from a normally distributed Gaussian distribution. default is 0.01
 
-* --Gpu settings
+* Gpu settings
 * `-gpu`, 0, 'which gpu to use. -1 = use CPU; >=0 use gpu.
 * `-backend`, 	`cudnn`, or `nn|cudnn`. Default is `cudnn`.
 
-* `-- Neural Network settings
+* Neural Network settings
 * `-learningRate`,		learning rate for the neural network; default is 1e-2.
 * `-rnnlearningRate`,	learning rate for the reurrent neural network; default is 0.1.
 * `-learningRateDecay`, 	learning rate decay to bring us to desired minimum in style; default is 1e-6.
