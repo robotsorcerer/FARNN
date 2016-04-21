@@ -84,25 +84,20 @@ If you'd like to use the cudnn backend (to speed up the training of your dataset
 
 ## Modifications to original algorithm
 
-This is my implementation for a SISO-based input-output mapping recontruction using the algoithm described in Wang and Chen's [paper](http://ieeexplore.ieee.org/xpl/abstractAuthors.jsp?arnumber=1643442). Feel free to modify the code to a MIMO system as you might want.
-
-- Rather than using the sigmoidal network activation functions which are prone to saturation in the hidden layers of the network, I adopt the rectified linear units, or ReLUs, as proposed by Zeiler, M. D., Ranzato, M., Monga, R., Mao, M., Yang, K., Le, Q. V., … Hinton, G. E. (2013) in their Google paper:  [On rectified linear units for speech processing. ICASSP, IEEE International Conference on Acoustics, Speech and Signal Processing - Proceedings.](http://doi.org/10.1109/ICASSP.2013.6638312). 
-
-This avoids the active region consuming too much memory bandwidth and reduces algorithm complexity in terms of finding optimal regions within the input nonlinearity activation function that is non-saturated such as Yam and Chow proposed in the 2001 paper [Feedforward networks training speed enhancement by optimal initialization of the synaptic coefficients. IEEE Transactions on Neural Networks, 12(2), 430–434.](http://doi.org/10.1109/72.914538).
+This is my implementation of a SIMO-based nonlinear function approximator of an input-output mapping using among others the algorithm described in Wang and Chen's [paper](http://ieeexplore.ieee.org/xpl/abstractAuthors.jsp?arnumber=1643442), [He and Asada's 1993 work](http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=4793346&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D4793346), [On rectified linear units for speech processing. ICASSP, IEEE International Conference on Acoustics, Speech and Signal Processing - Proceedings.](http://doi.org/10.1109/ICASSP.2013.6638312) and  [Feedforward networks training speed enhancement by optimal initialization of the synaptic coefficients. IEEE Transactions on Neural Networks, 12(2), 430–434.](http://doi.org/10.1109/72.914538). Feel free to modify the code to a MIMO system as you might want.
 
 ## Test code
 
-To test this code, make sure `posemat7.mat` is in the root directory of your project. If you have other data other than the above (i.e.single input, six outputs), pass it to the script trainer, `rnn.lua`, using the `-pose` argument. The code will compute the input, output and overall order of your nonlinear system based on [He and Asada's 1993 work](http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=4793346&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D4793346) of using Lipschitz coefficients for estimating input-output model orders, it will compute the optimal number of input variables and then perform the multilayered perceptron training required to identify your system structure.
+To test this code, make sure `posemat7.mat` is in the root directory of your project. If you have other data other than the above (i.e.single input, six outputs), pass it to the script trainer, `rnn.lua`, using the `-pose` argument. The code will compute the input, output and overall order of your nonlinear system based on [He and Asada's 1993 work](http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=4793346&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D4793346) of using Lipschitz coefficients to estimate input-output model orders, it will compute the optimal number of input variables and then perform the deep network training required to identify the system structure.
 
-There are two ways to run the script. 1) With an mlp network, i.e. 1 input, 1 hidden layer and the outputs; and 2) with an mlp network followed by a recurrent network as originally proposed by Wang and Chen. I have made some changes to the original Wang and Chen proposal by using an nn.ReLU() squasher instead of the tanh() and sigmoid activators. Also new to this `rnn` implementation is the addition of two hidden layers in the feedforward network instead of one. So instead of a single hidden network, we use forward an input layer to a single hidden layer, squash the result with nn.ReLU() and connect this nonlinear layer to a 6 layered hidden node. In the recurrent layer, we first squashed feedforward node with a sigmoid function before we forward the six-layered output to a 6-hidden layer node; we then do a self-adaptive feedback of neurons in the recurrent layer back to the output of the feedforward node. The `nn.Repeater` was used to apply all the `Twist` elements of the head motion to the inputs. 
+There are two ways to run the script. 1) With an mlp network, i.e. 1 input, 1 hidden layer and the outputs; and 2) with an mlp feedforward network followed by a recurrent network as originally proposed by Wang and Chen. I have made some changes to the original Wang and Chen argument by using an nn.ReLU() squasher instead of the tanh() and sigmoid activators. Also new to this `rnn` implementation is the addition of two hidden layers in the feedforward network instead of one. So instead of a single hidden network, we forward an input layer to a single hidden layer, squash the result with nn.ReLU() and connect this nonlinear layer to a 6 layered hidden node. In the recurrent layer, we first squash feedforward node with a sigmoid function before we forward the six-layered output to a 6-hidden layer node; we then do a self-adaptive feedback of neurons in the recurrent layer back to the output of the feedforward node. The `nn.Repeater` was used to apply all the `Twist` elements of the head motion to the inputs. 
 
 1) In mlp mode, run the `rnn.lua` script as
 
 ```bash
 	th rnn.lua -model mlp
 ```
-
-to train a multilayered perceptron model and save the resulting network to the `network` directory. The directory can be changed by passing a folder name to `-netdir` on the command line.
+The optimizer is the mean-squared-error by default. The above arguments will train a multilayered perceptron model and save the resulting network to the `network` directory. The directory can be changed by passing a folder name to `-netdir` on the command line.
 
 2) In rnn mode, run the `rnn.lua` script as 
 
@@ -110,22 +105,17 @@ to train a multilayered perceptron model and save the resulting network to the `
 	th rnn.lua -model rnn
 ```
 
-to train a simple recurrent neural network and save it as `rnn-net.net` in the `network` directory.
+to train a simple recurrent neural network and save it as `rnn-net.net` in the `network` directory. By default, the algorithm runs on the gpu. To specify a cpu, pass -1 to the `-gpu` argumaent on the command line.
 
-## Options
+## Options when runing code
 
 * `-seed`, 		initial random seed to use.
-* `-gpuid`, 	which gpu to use. -1 = use CPU; >=0 use gpu.
-* `-pose`, 		path to preprocessed data(save in Matlab -v7.3 format). Default is given `posemat7.mat`.
-* `-tau`, 		what is the delay in the data?` Default is 1.
-* `-m_eps`, 	stopping criterion for order determination. Default is  0.01.
-* `-l_eps`,  	stopping criterion for input order determination. Default is 0.05.
-* `-backend`, 	cudnn`, `nn|cudnn`
 * `-gpuid`,  	which gpu to use. -1 = use CPU; >=0 use gpu.  Default is gpu 0.
 * `-quots`,  	do you want to print the Lipschitz quotients?; 0 to silence, 1 to print
 * `-maxIter`, 	maximaum iteration for training the neural network.' Default is 50.
+*`-batchSize`, 	Batch Size for mini-batch training, \
+                            preferrably in multiples of six; default is 6.
 
-* `-seed`, 		initial random seed to use.
 * `-rundir`,  	false|true: 0 for false, 1 for true.
 
 * -- Model Order Determination Parameters
@@ -138,7 +128,7 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 
 * --Gpu settings
 *`-gpu`, 0, 'which gpu to use. -1 = use CPU; >=0 use gpu.
-*`-backend`, 'cudnn', 'nn|cudnn.
+* `-backend`, 	`cudnn`, or `nn|cudnn`. Default is `cudnn`.
 
 *`-- Neural Network settings
 *`-learningRate`,		learning rate for the neural network; default is 1e-2.
@@ -157,7 +147,5 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 
 *`-- LBFGS Settings
 *`-Correction`, number of corrections for line search. Max is 100; default is 60.
-*`-batchSize`, 	Batch Size for mini-batch training, \
-                            preferrably in multiples of six; default is 6.
 
 	
