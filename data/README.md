@@ -118,7 +118,7 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 
 * `-rundir`,  	false|true: 0 for false, 1 for true.
 
-* -- Model Order Determination Parameters
+-- Model Order Determination Parameters
 * `-pose`,		data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)
 * `-tau`		what is the delay in the data? Default is 1.
 * `-m_eps`		stopping criterion for output order determination; default is 0.01.
@@ -127,25 +127,25 @@ to train a simple recurrent neural network and save it as `rnn-net.net` in the `
 * `-sigma` 		initialize weights with this std. dev from a normally distributed Gaussian distribution. default is 0.01
 
 * --Gpu settings
-*`-gpu`, 0, 'which gpu to use. -1 = use CPU; >=0 use gpu.
+* `-gpu`, 0, 'which gpu to use. -1 = use CPU; >=0 use gpu.
 * `-backend`, 	`cudnn`, or `nn|cudnn`. Default is `cudnn`.
 
-*`-- Neural Network settings
-*`-learningRate`,		learning rate for the neural network; default is 1e-2.
-*`-rnnlearningRate`,	learning rate for the reurrent neural network; default is 0.1.
-*`-learningRateDecay`, 	learning rate decay to bring us to desired minimum in style; default is 1e-6.
-*`-momentum`,	momentum for sgd algorithm; default is 0.
-*`-model`, 		mlp|lstm|linear|rnn; default is 'mlp'.
-*`-rho`,		length of sequence to go back in time; default is  6.
-*`-netdir`, 	directory to save the network; default is network.
-*`-visualize`, 	visualize input data and weights during training; default is true.
-*`-optimizer`, 	mse|l-bfgs|asgd|sgd|cg; default is mse.
-*`-coefL1`, 	L1 penalty on the weights; default is 0.
-*`-coefL2`, 	L2 penalty on the weights; default is 0.
-*`-plot`, 		plot while training; default is false.
-*`-maxIter`, 	max. number of iterations; must be a multiple of batchSize; default is 10000.
+* `-- Neural Network settings
+* `-learningRate`,		learning rate for the neural network; default is 1e-2.
+* `-rnnlearningRate`,	learning rate for the reurrent neural network; default is 0.1.
+* `-learningRateDecay`, 	learning rate decay to bring us to desired minimum in style; default is 1e-6.
+* `-momentum`,	momentum for sgd algorithm; default is 0.
+* `-model`, 		mlp|lstm|linear|rnn; default is 'mlp'.
+* `-rho`,		length of sequence to go back in time; default is  6.
+* `-netdir`, 	directory to save the network; default is network.
+* `-visualize`, 	visualize input data and weights during training; default is true.
+* `-optimizer`, 	mse|l-bfgs|asgd|sgd|cg; default is mse.
+* `-coefL1`, 	L1 penalty on the weights; default is 0.
+* `-coefL2`, 	L2 penalty on the weights; default is 0.
+* `-plot`, 		plot while training; default is false.
+* `-maxIter`, 	max. number of iterations; must be a multiple of batchSize; default is 10000.
 
-*`-- LBFGS Settings
-*`-Correction`, number of corrections for line search. Max is 100; default is 60.
+-- LBFGS Settings
+* `-Correction`, number of corrections for line search. Max is 100; default is 60.
 
 	
