@@ -369,6 +369,7 @@ end
 
 if use_cuda then
   neunet = neunet:cuda() 
+  --neunet = cudnn.convert(neunet, cudnn)
   cost = cost:cuda()
 end
 print '==> configuring optimizer\n'
@@ -575,14 +576,9 @@ function train(data)
 
       elseif optimMethod == msetrain then
         for v = 1, #inputs do
-<<<<<<< HEAD
-         a, b, c, d = optimMethod(neunet, cost, inputs[v], 
-=======
           a, b, c, d = optimMethod(neunet, cost, inputs[v], 
->>>>>>> 80006b45bf8b017346182146247a5200ff5b0fb0
            targets[v], opt, data)
-         print('epoch', epoch)
-         print('pred.errors: ', c, 'acc err', d)
+         --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
         end
 
       elseif optimMethod == optim.asgd then
