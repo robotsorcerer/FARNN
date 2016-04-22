@@ -44,7 +44,8 @@ end
 cmd = torch.CmdLine()
 cmd:text()
 cmd:text('===========================================================================')
-cmd:text('A Dynamic Convoluted Neural Network for System Identification and Control  ')
+cmd:text('Learning Deep Neural Network Policies During H&N Motion Control in         ')
+cmd:text('                      Clinical Cancer Radiotherapy                         ')
 cmd:text(                                                                             )
 cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
 cmd:text(                                                                             )
@@ -466,9 +467,6 @@ function train(data)
       inputs_, outputs = {}, {}
       local loss = 0
        outputs = neunet:forward(inputs)
-       print('inputs', inputs)  
-       print('outputs'); print(outputs)
-       print('targets'); print(targets)
        loss    = loss + cost:forward(outputs, targets)
       print(string.format("Step %d, Loss = %f ", iter, loss))
             
@@ -476,10 +474,6 @@ function train(data)
       local  gradOutputs = cost:backward(outputs, targets)
       local gradInputs  = neunet:backward(inputs, gradOutputs) 
         
-        print('gradoutputs'); --print(gradOutputs)
-        for i,v in ipairs(gradOutputs) do
-          print(i,v)
-        end
 
         print('gradInputs'); print(gradInputs)
 
@@ -581,7 +575,11 @@ function train(data)
 
       elseif optimMethod == msetrain then
         for v = 1, #inputs do
+<<<<<<< HEAD
          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
+=======
+          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
+>>>>>>> 80006b45bf8b017346182146247a5200ff5b0fb0
            targets[v], opt, data)
          print('epoch', epoch)
          print('pred.errors: ', c, 'acc err', d)
