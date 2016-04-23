@@ -121,19 +121,13 @@ use_cuda = false
 if opt.gpu >= 0 then
   require 'cutorch'
   require 'cunn'
-  require 'cudnn'
+  if opt.backend == 'cudnn' then require 'cudnn' end
   cutorch.manualSeed(opt.seed)
   cutorch.setDevice(opt.gpu + 1)                         -- +1 because lua is 1-indexed
   idx       = cutorch.getDevice()
   print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
   use_cuda = true  
 end
-
--- if opt.backend == 'cudnn' then
---  require 'cudnn'
--- else
---   opt.backend = 'nn'
--- end
 
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
@@ -228,7 +222,7 @@ function contruct_net()
           neunet:add(transfer)                         
           neunet:add(nn.Linear(nhiddens, noutputs)) 
 
-  elseif opt.model == 'rnn' then
+  elseif opt.model == 'rnn' then    
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
