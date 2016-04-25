@@ -195,24 +195,17 @@ inorder, outorder, q =  computeq(train_input, (train_out[3])/10, opt)
 print '==> Setting up neural network parameters'
 ----------------------------------------------------------------------------------------------
 -- dimension of my feature bank (each input is a 1D array)
-nfeats      = 1   
+local nfeats      = 1   
 
 --dimension of training input
-width       = trainData[1]:size()[2]
-height      = trainData[1]:size()[1]
-ninputs     = 1
-noutputs    = 6
+local width       = trainData[1]:size()[2]
+local height      = trainData[1]:size()[1]
+local ninputs     = 1
+local noutputs    = 6
 
 --number of hidden layers (for mlp network)
-nhiddens    = 1
-transfer    =  nn.ReLU()   --
-
---hidden units, filter kernel (for Temporal ConvNet)
-nstates     = {1, 1, 2}
-kW          = 5           --kernel width
-dW          = 1           --convolution step
-poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
-normkernel = image.gaussian1D(7)
+local nhiddens    = 1
+local transfer    =  nn.ReLU()   --
 
 --[[Set up the network, add layers in place as we add more abstraction]]
 function contruct_net()
@@ -226,20 +219,20 @@ function contruct_net()
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
-    nhiddens_rnn = 6 
+    local nhiddens_rnn = 6 
 ------------------------------------------------------
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
-    ffwd       =   nn.Sequential()
+    local ffwd  =   nn.Sequential()
                   :add(nn.Linear(ninputs, nhiddens))
                   :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
                   :add(nn.Linear(nhiddens, nhiddens_rnn))
 
 
-    rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
-    start       = 6                       -- the size of the output (excluding the batch dimension)        
-    rnnInput    = nn.Linear(start, nhiddens_rnn)     --the size of the output
-    feedback    = nn.Linear(nhiddens_rnn, start)           --module that feeds back prev/output to transfer module
+    local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
+    local start       = 6                       -- the size of the output (excluding the batch dimension)        
+    local rnnInput    = nn.Linear(start, nhiddens_rnn)     --the size of the output
+    local feedback    = nn.Linear(nhiddens_rnn, start)           --module that feeds back prev/output to transfer module
 
     --then do a self-adaptive feedback of neurons 
    r = nn.Recurrent(start, 
@@ -259,11 +252,39 @@ function contruct_net()
 
     --neunet    = nn.Sequencer(neunet)
     neunet    = nn.Repeater(neunet, noutputs)
-    print('rnn')
-    print(neunet)
     --======================================================================================
+    --Nested LSTM Recurrence
+  elseif opt.model == 'lstm' then   
+    require 'rnn'
+    local nIndex, hiddenSize = 10, 7 
+    local rm = nn.Sequential()
+              :add(nn.ParallelTable()
+              :add(nn.LookupTable(nIndex, hiddenSize)) 
+              :add(nn.Linear(hiddenSize, hiddenSize))) 
+              :add(nn.CAddTable())
+              :add(nn.Sigmoid())
+              :add(nn.FastLSTM(hiddenSize,hiddenSize)) -- an AbstractRecurrent instance
+              :add(nn.Linear(hiddenSize,hiddenSize))
+              :add(nn.Sigmoid())  
 
+    neunet = nn.Sequential()
+       :add(nn.Recurrence(rm, hiddenSize, 0)) -- another AbstractRecurrent instance
+       :add(nn.Linear(hiddenSize, nIndex))
+       :add(nn.LogSoftMax())
+
+       neunet = nn.Sequencer(neunet)
+
+
+   --print('Network Table'); print(neunet)
+--===========================================================================================
+--Convnet
   elseif opt.model == 'convnet' then
+    --hidden units, filter kernel (for Temporal ConvNet)
+    local nstates     = {1, 1, 2}
+    local kW          = 5           --kernel width
+    local dW          = 1           --convolution step
+    local poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
+    local normkernel = image.gaussian1D(7)
 
     if use_cuda then
       --typical convnet (convolution + relu + pool)
@@ -289,6 +310,7 @@ function contruct_net()
       neunet:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
       neunet:add(transfer)
       neunet:add(nn.Linear(nstates[3], noutputs))
+
 
     else
       -- a typical convolutional network, with locally-normalized hidden
@@ -331,6 +353,8 @@ function contruct_net()
 end
 
 neunet          = contruct_net()
+
+print('Network Table'); print(neunet)
 --===================================================================================
 -- Visualization is quite easy, using itorch.image().
 --===================================================================================
@@ -431,11 +455,11 @@ function train(data)
     local target, input = {}, {}                               
 
     for t = 1, opt.maxIter, opt.batchSize do --1, train_input:size(1), opt.batchSize do
-      offsets = torch.LongTensor(opt.batchSize):random(1,train_input:size(1))    
+      offsets = torch.LongTensor(opt.batchSize):random(1,height)    
       if use_cuda then
         offsets = offsets:cuda() 
       end
-      xlua.progress(t, train_input:size(1))
+      xlua.progress(t, height)
        print('\n')
        -- 1. create a sequence of rho time-steps
       local inputs, targets = {}, {}
@@ -446,7 +470,7 @@ function train(data)
                         train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
       --increase offsets indices by 1      
       offsets:add(1) -- increase indices by 1
-      offsets[offsets:gt(train_input:size(1))] = 1
+      offsets[offsets:gt(height)] = 1
 
       offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
       if use_cuda then
@@ -492,11 +516,11 @@ function train(data)
     for t = 1, opt.maxIter, opt.batchSize do
       --print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
       --disp progress
-      xlua.progress(t, kk)
+      xlua.progress(t, height)
 
        -- create mini batch
       local inputs, targets, offsets = {}, {}, {}
-      for i = t,math.min(t+opt.batchSize-1, kk) do
+      for i = t,math.min(t+opt.batchSize-1, height) do
         -- load new sample
         local input = train_input:clone()[i]
         local target = {train_out[1]:clone()[i], train_out[2]:clone()[i], train_out[3]:clone()[i], 
