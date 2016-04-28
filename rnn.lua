@@ -1,8 +1,8 @@
---[[Source Code that implements the algorithm described in the paper:
-   A Fully Automated Recurrent Neural Network for System Identification and Control
-   Jeen-Shing Wang, and Yen-Ping Chen. IEEE Transactions on Circuits and Systems June 2006
+--[[Source Code that implements the the learning controller described in my IEEE T-Ro Journal:
+   Learning deep neural network policies for head motion control in maskless cancer RT
+   Olalekan Ogunmolu. IEEE International Conference on Robotics and Automation (ICRA), 2017
 
-   Author: Olalekan Ogunmolu, December 2015
+   Author: Olalekan Ogunmolu, December 2015 - May 2016
    MIT License
    ]]
 
@@ -49,7 +49,7 @@ cmd:text('                      Clinical Cancer Radiotherapy                    
 cmd:text(                                                                             )
 cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
 cmd:text(                                                                             )
-cmd:text('Code by Olalekan Ogunmolu: FirstName [dot] LastName _at_ utdallas [dot] edu')
+cmd:text('Code by Olalekan Ogunmolu: lexilighty [at] gmail [dot] com')
 cmd:text('===========================================================================')
 cmd:text(                                                                             )
 cmd:text(                                                                             )
@@ -105,9 +105,7 @@ if(opt.rundir==1) then
   cmd:log(opt.rundir .. '/log', opt)
 end
 
-cmd:addTime('FARNN Identification', '%F %T')
-cmd:text('Code initiated on CPU')
-cmd:text()
+cmd:addTime('Deep Head Motion Control', '%F %T')
 cmd:text()
 
 -------------------------------------------------------------------------------

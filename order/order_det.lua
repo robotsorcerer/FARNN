@@ -1,8 +1,8 @@
 --------------------------------------------------------------------------------------------------------------
 --[[Compute the Lipschitz quotients and Estimate Model order
 
-This function implements He and Asada's order selection algorithm as enumerated in their MIT 1993 paper:
-"A New Method for Identifying Orders of Input-Output Models for Nonlinear Dynamic Systems"]]
+This function implements He and Asada's order selection algorithm as enumerated in their 1993 paper:
+"A New Method for Identifying Orders of Input-Output Models for Nonlinear Dynamic Systems" {MIT}]]
 --------------------------------------------------------------------------------------------------------------
 
 require 'torch'
