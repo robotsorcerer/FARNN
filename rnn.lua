@@ -13,8 +13,8 @@ require 'optim'
 require 'image'
 require 'order.order_det'   
 matio     = require 'matio'  
-require 'optima.optim_'  
 require 'utils.utils'
+require 'utils.train'
 require 'xlua'
 
 --[[modified native Torch Linear class to allow random weight initializations
@@ -199,7 +199,7 @@ local nfeats      = 1
 
 --dimension of training input
 local width       = trainData[1]:size()[2]
-local height      = trainData[1]:size()[1]
+height      = trainData[1]:size()[1]
 local ninputs     = 1
 local noutputs    = 6
 
@@ -260,11 +260,11 @@ function contruct_net()
     local rm = nn.Sequential()
               :add(nn.ParallelTable()
               :add(nn.LookupTable(nIndex, hiddenSize)) 
-              :add(nn.Linear(hiddenSize, hiddenSize))) 
+              :add(nn.Linear(hiddenSize, noutputs))) 
               :add(nn.CAddTable())
               :add(nn.Sigmoid())
-              :add(nn.FastLSTM(hiddenSize,hiddenSize)) -- an AbstractRecurrent instance
-              :add(nn.Linear(hiddenSize,hiddenSize))
+              :add(nn.FastLSTM(ninputs, noutputs)) -- an AbstractRecurrent instance
+              :add(nn.Linear(noutputs,hiddenSize))
               :add(nn.Sigmoid())  
 
     neunet = nn.Sequential()
@@ -413,7 +413,7 @@ print '==> configuring optimizer\n'
 elseif opt.optimizer == 'asgd' then
    optimState = {
       eta0 = opt.learningRate,
-      t0 = trainData[1]:size()[1] * 1
+      t0 = height * 1
    }
    optimMethod = optim.asgd
 
@@ -439,176 +439,16 @@ elseif opt.optimization == 'l-bfgs' then
 print '==> defining training procedure'
 
 function train(data)  
-  if opt.model == 'rnn' then        
-    --track the epochs
-    epoch = epoch or 1
-    --time we started training
-    local time = sys.clock()
+  if opt.model == 'rnn' then 
+    train_rnn(opt)      
 
-    --do one epoch
-    print('<trainer> on training set: ')
-    print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
+  elseif opt.model == 'lstm' then
+    train_lstm(opt)
 
-    offsets = {}
-    --form mini batch    
-    local iter = 1
-    local target, input = {}, {}                               
-
-    for t = 1, opt.maxIter, opt.batchSize do --1, train_input:size(1), opt.batchSize do
-      offsets = torch.LongTensor(opt.batchSize):random(1,height)    
-      if use_cuda then
-        offsets = offsets:cuda() 
-      end
-      xlua.progress(t, height)
-       print('\n')
-       -- 1. create a sequence of rho time-steps
-      local inputs, targets = {}, {}
-
-      inputs = train_input:index(1, offsets)
-      targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
-                        train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
-                        train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
-      --increase offsets indices by 1      
-      offsets:add(1) -- increase indices by 1
-      offsets[offsets:gt(height)] = 1
-
-      offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-      if use_cuda then
-        offsets = offsets:cuda()  
-      end
-
-
-      
-      --2. Forward sequence through rnn
-      neunet:zeroGradParameters()
-      neunet:forget()  --forget all past time steps
-
-      inputs_, outputs = {}, {}
-      local loss = 0
-       outputs = neunet:forward(inputs)
-       loss    = loss + cost:forward(outputs, targets)
-      print(string.format("Step %d, Loss = %f ", iter, loss))
-            
-      --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
-      local  gradOutputs = cost:backward(outputs, targets)
-      local gradInputs  = neunet:backward(inputs, gradOutputs) 
-        
-
-        print('gradInputs'); print(gradInputs)
-
-      --4. update lr
-      neunet:updateParameters(opt.rnnlearningRate)
-
-      iter = iter + 1 
-
-      saveNet(epoch, time)
-    end    
   elseif  opt.model == 'mlp'  then
-    --track the epochs
-    epoch = epoch or 1
-    --time we started training
-    local time = sys.clock()
+    train_mlp(opt)
 
-    --do one epoch
-    print('<trainer> on training set: ')
-    print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
-
-    for t = 1, opt.maxIter, opt.batchSize do
-      --print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
-      --disp progress
-      xlua.progress(t, height)
-
-       -- create mini batch
-      local inputs, targets, offsets = {}, {}, {}
-      for i = t,math.min(t+opt.batchSize-1, height) do
-        -- load new sample
-        local input = train_input:clone()[i]
-        local target = {train_out[1]:clone()[i], train_out[2]:clone()[i], train_out[3]:clone()[i], 
-                        train_out[4]:clone()[i], train_out[5]:clone()[i], train_out[6]:clone()[i]}
-        table.insert(inputs, input)
-        table.insert(targets, target) 
-        table.insert(offsets, input)      
-      end
-      --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-      local feval = function(x)
-        collectgarbage()
-
-        --retrieve new params
-        if x~=parameters then
-          parameters:copy(x)
-        end
-
-        --reset grads
-        gradParameters:zero()
-            
-        -- f is the average of all criterions
-        local f = 0
-
-        -- evaluate function for complete mini batch
-        for i_f = 1,#inputs do
-        -- estimate f
-          local output, targets_ = neunet:forward(inputs[i_f]), {}
-          targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
-                                targets[i_f][4], targets[i_f][5], targets[i_f][6]})
-          local err = cost:forward(output, targets_)
-          f = f + err
-
-          -- estimate df/dW
-          local df_do = cost:backward(output, targets_)
-          neunet:backward(inputs[i_f], df_do)
-
-          -- penalties (L1 and L2):
-          if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
-             -- locals:
-             local norm,sign= torch.norm,torch.sign
-
-             -- Loss:
-             f = f + opt.coefL1 * norm(parameters,1)  
-             f = f + opt.coefL2 * norm(parameters,2)^2/2
-
-             -- Gradients:
-              gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
-                            
-          else
-            -- normalize gradients and f(X)
-            gradParameters:div(#inputs)
-          end
-
-            print(' err ')
-            print(err)
-            print('\ndf_do')
-            print(df_do)
-        end       
-
-        -- normalize gradients and f(X)
-        gradParameters:div(#inputs)
-        f = f/#inputs
-
-        --retrun f and df/dx
-        return f, gradParameters
-      end --end feval
-
-      -- optimization on current mini-batch
-      if optimMethod == optim.sgd then
-        optimMethod(feval, parameters, sgdState)
-
-      elseif optimMethod == msetrain then
-        for v = 1, #inputs do
-          a, b, c, d = optimMethod(neunet, cost, inputs[v], 
-           targets[v], opt, data)
-         --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
-        end
-
-      elseif optimMethod == optim.asgd then
-        _, _, average = optimMethod(feval, parameters, optimState)
-
-      else  
-        optimMethod(feval, parameters, optimState)
-      end
-
-      saveNet(epoch, time)
-    end  --end elseif
-  end   --end batch for loop
+  end   
 end     -- end train function
 
 
@@ -625,22 +465,22 @@ function test(data)
 
    -- test over given dataset
    print('<trainer> on testing Set:')
-   for t = 1,data[1]:size()[1],opt.batchSize do
+   for t = 1, math.min(opt.maxIter, height), opt.batchSize do
       -- disp progress
-      xlua.progress(t, data[1]:size()[1])
+      xlua.progress(t, height)
 
     -- create mini batch
     local inputs = {}
     local targets = {}
-    for i = t,math.min(t+opt.batchSize-1,data[1]:size()[1]) do
+    for i = t,math.min(t+opt.batchSize-1,height) do
       -- load new sample
       local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-      local input = sample[1]:clone()[i]
-      local target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
+      input = sample[1]:clone()[i]
+      target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
       table.insert(inputs, input)
       table.insert(targets, target) 
-    end
-
+    end    
+    
     -- test samples
     for j = 1, #inputs do
       local preds = neunet:forward(inputs[j])
@@ -648,7 +488,7 @@ function test(data)
 
     -- timing
     time = sys.clock() - time
-    time = time / data[1]:size()[1]
+    time = time / height
     print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
 
     end
@@ -657,7 +497,7 @@ end
 function saveNet(epoch, time)
   -- time taken
   time = sys.clock() - time
-  time = time / trainData[1]:size()[1]
+  time = time / height
   print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
 
   -- save/log current net

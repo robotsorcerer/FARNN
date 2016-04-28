@@ -1,5 +1,5 @@
 --[[ Run optimization: User has three options:
-We could train usin the genral mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
+We could train usin the general mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
 Negative Log Likelihood Function ]]
 require 'torch'
 
@@ -13,7 +13,7 @@ end
 
 optim_ = {}
 --Training using the MSE criterion
-function msetrain(neunet, cost, x, y, opt, data)
+function msetrain(neunet, cost, x, y, opt)
  
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
 
@@ -46,8 +46,8 @@ function msetrain(neunet, cost, x, y, opt, data)
         neunet:updateParameters(learningRate);
 
         -- normalize gradients and f(X)
-        gradParameters:div(data[1]:size()[1])
-        fm = fm/(data[1]:size()[1])
+        gradParameters:div(height)
+        fm = fm/(height)
   end
 
   return gradParameters, fm, errm, error_acc
