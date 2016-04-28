@@ -9,8 +9,8 @@
 -- needed dependencies
 require 'torch'
 require 'nn'
+require 'nngraph'
 require 'optim'
-require 'image'
 require 'order.order_det'   
 matio     = require 'matio'  
 require 'utils.utils'
@@ -254,21 +254,21 @@ function contruct_net()
     --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
-    local nIndex, hiddenSize = 10, 7 
+    local nIndex = opt.batchSize 
     local rm = nn.Sequential()
               :add(nn.ParallelTable()
-              :add(nn.LookupTable(nIndex, hiddenSize)) 
-              :add(nn.Linear(hiddenSize, noutputs))) 
+              :add(nn.LookupTable(nIndex, noutputs)) 
+              :add(nn.Linear(noutputs, noutputs))) 
               :add(nn.CAddTable())
               :add(nn.Sigmoid())
-              :add(nn.FastLSTM(ninputs, noutputs)) -- an AbstractRecurrent instance
-              :add(nn.Linear(noutputs,hiddenSize))
+              :add(nn.LSTM(ninputs, noutputs)) -- an AbstractRecurrent instance
+              :add(nn.Linear(noutputs,noutputs))
               :add(nn.Sigmoid())  
 
+    --rnn = nn.Recurrence(recurrentModule, outputSize, nInputDim, [rho])
     neunet = nn.Sequential()
-       :add(nn.Recurrence(rm, hiddenSize, 0)) -- another AbstractRecurrent instance
-       :add(nn.Linear(hiddenSize, nIndex))
-       :add(nn.LogSoftMax())
+              :add(nn.Recurrence(rm, noutputs, ninputs, opt.rho)) -- another AbstractRecurrent instance
+          -- :add(nn.Linear(hiddenSize, nIndex))
 
        neunet = nn.Sequencer(neunet)
 
@@ -441,13 +441,13 @@ function train(data)
     train_rnn(opt)      
 
   elseif opt.model == 'lstm' then
-    train_lstm(opt)
+    while true do train_lstm(opt) end
 
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
 
   end   
-end     -- end train function
+end     
 
 
 --test function
@@ -503,6 +503,8 @@ function saveNet(epoch, time)
     netname = 'rnn-net.net'
   elseif opt.model == 'mlp' then
     netname = 'mlp-net.net'
+  elseif opt.model == 'lstm' then
+    netname = 'lstm-net.net'
   else
     netname = 'neunet.net'
   end  
@@ -552,7 +554,7 @@ local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_ou
   print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
 
   
-  print('inputs: ', inputs, '#inputs', #inputs)
+  print('inputs: ', inputs)
   print('targets: ', targets)
 end
 
