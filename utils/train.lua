@@ -6,6 +6,7 @@
 require 'torch'      
 require 'optima.optim_'  
 
+
 function train_rnn(opt)
   --track the epochs
   epoch = epoch or 1
@@ -23,9 +24,11 @@ function train_rnn(opt)
 
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do --1, train_input:size(1), opt.batchSize do
     offsets = torch.LongTensor(opt.batchSize):random(1,height)    
+
     if use_cuda then
-      offsets = offsets:cuda() 
+      offsets = transfer_data(offsets) 
     end
+
     xlua.progress(t, height)
      print('\n')
      -- 1. create a sequence of rho time-steps
@@ -41,7 +44,7 @@ function train_rnn(opt)
 
     offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
     if use_cuda then
-      offsets = offsets:cuda()  
+      offsets = transfer_data(offsets)  
     end
   
     --2. Forward sequence through rnn
@@ -95,7 +98,7 @@ function train_lstm(args)
     print('offsets', offsets)
 
     if use_cuda then
-      offsets = offsets:cuda() 
+      offsets = transfer_data(offsets)
     end
     xlua.progress(epoch, height)
      print('\n')
@@ -111,7 +114,7 @@ function train_lstm(args)
       offsets:add(1) -- increase indices by 1
       offsets[offsets:gt(height)] = 1
       if use_cuda then
-        offsets = offsets:cuda()  
+        offsets = transfer_data(offsets)  
       end
 
       targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
@@ -121,16 +124,17 @@ function train_lstm(args)
     end
 
     print('inputs', '\n', inputs) 
-    -- print('targets', '\n', targets)
+    print('targets', '\n', targets)
 
     
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
 
     inputs_, outputs = {}, {}
+    local loss = 0
     outputs = neunet:forward(inputs)
-    print(outputs, 'outputs')
-    local loss = cost:forward(outputs, targets)
+    print('outputs', outputs)
+    loss = cost:forward(outputs, targets)
 
     print(string.format("Step %d, Loss = %f ", iter, loss))
           

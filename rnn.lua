@@ -76,6 +76,7 @@ cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desire
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
 cmd:option('-rho', 6, 'length of sequence to go back in time')
+cmd:option('--dropout', 0, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
@@ -127,6 +128,12 @@ if opt.gpu >= 0 then
   use_cuda = true  
 end
 
+function transfer_data(x)
+  return x:cuda()
+end
+
+function pprint(x)  print(tostring(x)); print(x); end
+
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
 testLogger  = optim.Logger(paths.concat(opt.netdir, 'test.log'))
@@ -162,12 +169,12 @@ test_out        = {
               }         
 
 if use_cuda then   
-  train_input = train_input:cuda()
-  train_out   = {train_out[1]:cuda(), train_out[2]:cuda(), train_out[3]:cuda(),
-                train_out[4]:cuda(), train_out[5]:cuda(),  train_out[6]:cuda()}
-  test_input  = test_input:cuda()
-  test_out    = {test_out[1]:cuda(), test_out[2]:cuda(), test_out[3]:cuda(),
-                  test_out[4]:cuda(), test_out[5]:cuda(), test_out[6]:cuda()}
+  train_input = transfer_data(train_input)
+  train_out   = {transfer_data(train_out[1]), transfer_data(train_out[2]), transfer_data(train_out[3]),
+                transfer_data(train_out[4]), transfer_data(train_out[5]),  transfer_data(train_out[6])}
+  test_input  = transfer_data(test_input)
+  test_out    = {transfer_data(test_out[1]), transfer_data(test_out[2]), transfer_data(test_out[3]),
+                  transfer_data(test_out[4]), transfer_data(test_out[5]), transfer_data(test_out[6])}
 end
 
 kk          = train_input:size()[1]
@@ -200,13 +207,14 @@ local width       = trainData[1]:size()[2]
 height      = trainData[1]:size()[1]
 local ninputs     = 1
 local noutputs    = 6
+local nhiddens_rnn = 6 
 
 --number of hidden layers (for mlp network)
 local nhiddens    = 1
 local transfer    =  nn.ReLU()   --
 
 --[[Set up the network, add layers in place as we add more abstraction]]
-function contruct_net()
+local function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
@@ -217,7 +225,6 @@ function contruct_net()
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
-    local nhiddens_rnn = 6 
 ------------------------------------------------------
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
@@ -254,26 +261,31 @@ function contruct_net()
     --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
-    local nIndex = opt.batchSize 
-    local rm = nn.Sequential()
-              :add(nn.ParallelTable()
-              :add(nn.LookupTable(nIndex, noutputs)) 
-              :add(nn.Linear(noutputs, noutputs))) 
-              :add(nn.CAddTable())
-              :add(nn.Sigmoid())
-              :add(nn.LSTM(ninputs, noutputs)) -- an AbstractRecurrent instance
-              :add(nn.Linear(noutputs,noutputs))
-              :add(nn.Sigmoid())  
-
-    --rnn = nn.Recurrence(recurrentModule, outputSize, nInputDim, [rho])
+    
+    local nIndex = ninputs 
     neunet = nn.Sequential()
-              :add(nn.Recurrence(rm, noutputs, ninputs, opt.rho)) -- another AbstractRecurrent instance
-          -- :add(nn.Linear(hiddenSize, nIndex))
+                  --:add(nn.ParallelTable()                       -- applies the i-th member module to the i-th input, and outputs a table of the set of outputs.
+                  --:add(nn.LookupTable(nIndex, nhiddens))    -- produces nIndex X nhiddens_rnn  Tensor
+                  :add(nn.Linear(ninputs, nhiddens))
+    neunet       = nn.Sequencer(neunet)      
 
-       neunet = nn.Sequencer(neunet)
+    local rnn = nn.Sequencer(nn.LSTM(ninputs, nhiddens, opt.rho)) -- an AbstractRecurrent instance
+    neunet:add(rnn) 
 
+    pprint(neunet)
 
-   --print('Network Table'); print(neunet)
+    -- neunet = nn.Sequential()
+    --           :add(nn.Recurrence(rm, noutputs, ninputs, opt.rho)) -- another AbstractRecurrent instance
+              
+      if opt.dropout > 0 then
+          neunet:add(nn.Sequencer(nn.Dropout(opt.dropout)))
+      end
+
+      --output layer 
+      neunet:add(nn.Linear(ninputs, nhiddens))
+        --     :add(nn.ReLU())
+      neunet = nn.Repeater(neunet, noutputs)
+
 --===========================================================================================
 --Convnet
   elseif opt.model == 'convnet' then
@@ -375,7 +387,7 @@ end
 parameters, gradParameters = neunet:getParameters()
 
 --=====================================================================================================
-if opt.model == 'rnn' then
+if (opt.model == 'rnn') or (opt.model == 'lstm') then
   cost    = nn.SequencerCriterion(nn.MSECriterion())
   --cost    = nn.RepeaterCriterion(nn.MSECriterion())
 else
@@ -384,9 +396,8 @@ end
 --======================================================================================
 
 if use_cuda then
-  neunet = neunet:cuda() 
-  --neunet = cudnn.convert(neunet, cudnn)
-  cost = cost:cuda()
+  neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
+  cost = transfer_data(cost)
 end
 print '==> configuring optimizer\n'
 
@@ -436,7 +447,7 @@ elseif opt.optimization == 'l-bfgs' then
 
 print '==> defining training procedure'
 
-function train(data)  
+local function train(data)  
   if opt.model == 'rnn' then 
     train_rnn(opt)      
 
@@ -451,7 +462,7 @@ end
 
 
 --test function
-function test(data)
+local function test(data)
    -- local vars
    local time = sys.clock()
 
