@@ -87,6 +87,7 @@ cmd:option('-rho', 6, 'length of sequence to go back in time')
 cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
+cmd:option('-hiddenSize', {1}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
 
 -- LBFGS Settings
@@ -98,7 +99,7 @@ cmd:option('-batchSize', 6, 'Batch Size for mini-batch training, \
 cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
 
 -- misc
-local opt = cmd:parse(arg)
+opt = cmd:parse(arg)
 torch.manualSeed(opt.seed)
 
 torch.setnumthreads(4)
@@ -268,28 +269,36 @@ local function contruct_net()
   elseif opt.model == 'lstm' then   
     require 'rnn'
     neunet = nn.Sequential()
-    local rnn = nn.Sequencer(nn.LSTM(ninputs, nhiddens, opt.rho)) 
-    neunet:add(rnn) 
+    local inputSize = opt.hiddenSize
+    for i,hiddenSize in ipairs(opt.hiddenSize) do 
+      local rnn = nn.Sequencer(nn.LSTM(ninputs, hiddenSize, opt.rho)) 
+      neunet:add(rnn) 
        
-    if opt.dropout then
+      if opt.dropout then
         neunet:add(nn.Sequencer(nn.Dropout(opt.dropoutProb)))
+      end
+
+      -- input layer (i.e. word embedding space)
+      neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
+
+      if opt.dropout then
+        neunet:insert(nn.Dropout(opt.dropoutProb), 1)
+      end
+       inputSize = hiddenSize
     end
---[[
-    -- input layer (i.e. word embedding space)
-    neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
-    
-    if opt.dropout then
-       neunet:insert(nn.Dropout(opt.dropoutProb), 1)
-    end
-]]
+
+    lookup = nn.LookupTable(height, opt.hiddenSize[1])
+    lookup.maxOutNorm = -1 -- disable maxParamNorm on the lookup table
+    neunet:insert(lookup, 1)
+
     -- output layer
-    neunet:add(nn.Sequencer(nn.Linear(ninputs, 1)))
-    neunet:add(nn.Sequencer(nn.ReLU()))
+    neunet:add(nn.Sequencer(nn.Linear(inputSize, noutputs)))
+    neunet:add(nn.Sequencer(nn.LogSoftMax()))
 
     -- will recurse a single continuous sequence
-    neunet:remember(opt.lstm)
+    --neunet:remember(false)
     --output layer 
-    neunet = nn.Repeater(neunet, noutputs)
+    --neunet = nn.Repeater(neunet, noutputs)
 
 --===========================================================================================
 --Convnet
@@ -532,57 +541,22 @@ function saveNet(epoch, time)
   epoch = epoch + 1
 end
 
---print a bunch of stuff if user enables print option
-local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
-  
-  print('training_data', trainData)
-  print('\ntesting_data', test_data)    
-
-  --random checks to be sure data is consistent
-  print('train_data_input', trainData[1]:size())  
-  print('train_data_output', trainData[2])        
-  print('\ntrain_xn', trainData[2][1]:size())  
-  print('\ntrain_yn', trainData[2][2]:size()) 
-  print('\ntrain_zn', trainData[2][3]:size())  
-  print('\ntrain_roll', trainData[2][4]:size()) 
-  print('\ntrain_pitch', trainData[2][5]:size())  
-  print('\ntrain_yaw', trainData[2][6]:size()) 
-
-  print('\ninput head', input[{ {1,5}, {1}} ]) 
-  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', train_out)
-  print('\npitch head\n\n', out.zn[{ {1,5}, {1}} ])
-
-  print('\nqn:' , qn)
-  print('Optimal number of input variables is: ', torch.ceil(qn))
-  print('inorder: ', inorder, 'outorder: ', outorder)
-  print('system order:', inorder + outorder)
-
-  --Print out some Lipschitz quotients (first 5) for user
-  for ii, v in pairs( q ) do
-    print('Lipschitz quotients head', ii, v)
-    if ii == 5 then break end
-  end
-  --print neural net parameters
-  print('neunet biases Linear', neunet.bias)
-  print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
-
-  
-  print('inputs: ', inputs)
-  print('targets: ', targets)
-end
-
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 
+local function main()
+  while true do
+    train(trainData)
+    test(testData)
 
-while true do
-  train(trainData)
-  test(testData)
 
-
-  -- update logger/plot
-  --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-  if opt.plot then
-     trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-     trainLogger:plot()
+    -- update logger/plot
+    --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
+    if opt.plot then
+       trainLogger:style{['% mean class accuracy (train set)'] = '-'}
+       trainLogger:plot()
+    end
   end
 end
+
+
+main()

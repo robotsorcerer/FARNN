@@ -48,3 +48,43 @@ function gradOutputsReshape(gradOutputs, step, opt)
 
 	return gradder
 end
+
+
+--print a bunch of stuff if user enables print option
+local function perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData)
+  
+  print('training_data', trainData)
+  print('\ntesting_data', test_data)    
+
+  --random checks to be sure data is consistent
+  print('train_data_input', trainData[1]:size())  
+  print('train_data_output', trainData[2])        
+  print('\ntrain_xn', trainData[2][1]:size())  
+  print('\ntrain_yn', trainData[2][2]:size()) 
+  print('\ntrain_zn', trainData[2][3]:size())  
+  print('\ntrain_roll', trainData[2][4]:size()) 
+  print('\ntrain_pitch', trainData[2][5]:size())  
+  print('\ntrain_yaw', trainData[2][6]:size()) 
+
+  print('\ninput head', input[{ {1,5}, {1}} ]) 
+  print('k', input:size()[1], 'off', off, '\nout\n', out, '\ttrain_output\n', train_out)
+  print('\npitch head\n\n', out.zn[{ {1,5}, {1}} ])
+
+  print('\nqn:' , qn)
+  print('Optimal number of input variables is: ', torch.ceil(qn))
+  print('inorder: ', inorder, 'outorder: ', outorder)
+  print('system order:', inorder + outorder)
+
+  --Print out some Lipschitz quotients (first 5) for user
+  for ii, v in pairs( q ) do
+    print('Lipschitz quotients head', ii, v)
+    if ii == 5 then break end
+  end
+  --print neural net parameters
+  print('neunet biases Linear', neunet.bias)
+  print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
+
+  
+  print('inputs: ', inputs)
+  print('targets: ', targets)
+end
