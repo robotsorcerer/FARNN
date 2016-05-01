@@ -25,9 +25,8 @@ function train_rnn(opt)
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do --1, train_input:size(1), opt.batchSize do
     offsets = torch.LongTensor(opt.batchSize):random(1,height)    
 
-    if use_cuda then
-      offsets = transfer_data(offsets) 
-    end
+    offsets = transfer_data(offsets) 
+
 
     xlua.progress(t, height)
      print('\n')
@@ -43,9 +42,7 @@ function train_rnn(opt)
     offsets[offsets:gt(height)] = 1
 
     offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-    if use_cuda then
-      offsets = transfer_data(offsets)  
-    end
+    offsets = transfer_data(offsets)  
   
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
@@ -56,6 +53,8 @@ function train_rnn(opt)
      outputs = neunet:forward(inputs)
      loss    = loss + cost:forward(outputs, targets)
     print(string.format("Step %d, Loss = %f ", iter, loss))
+
+    if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
     local  gradOutputs = cost:backward(outputs, targets)
@@ -87,19 +86,15 @@ function train_lstm(args)
   --form mini batch    
   local iter = 1
   local target, input = {}, {}                               
-
-  --for t = 1, math.min(args.maxIter, height), args.batchSize do --1, train_input:size(1), opt.batchSize do
-    --offsets = torch.LongTensor(args.batchSize):random(1,height)    
+  
     for i=1,args.batchSize do
        table.insert(offsets, math.ceil(math.random()*args.batchSize))
     end
     offsets = torch.LongTensor(offsets)
 
     print('offsets', offsets)
-
-    if use_cuda then
-      offsets = transfer_data(offsets)
-    end
+    offsets = transfer_data(offsets)
+    
     xlua.progress(epoch, height)
      print('\n')
 
@@ -107,15 +102,11 @@ function train_lstm(args)
 
     local inputs, targets = {}, {}
     for step = 1, args.rho do
-
-      inputs[step] = train_input:index(1, offsets)  
-
+      inputs[step] = train_input:index(1, offsets) 
       --increase offsets indices by 1      
       offsets:add(1) -- increase indices by 1
       offsets[offsets:gt(height)] = 1
-      if use_cuda then
-        offsets = transfer_data(offsets)  
-      end
+      offsets = transfer_data(offsets)  
 
       targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
                         train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
@@ -134,9 +125,11 @@ function train_lstm(args)
     local loss = 0
     outputs = neunet:forward(inputs)
     print('outputs', outputs)
-    loss = cost:forward(outputs, targets)
+    loss = cost:forward(table.unpack(outputs), targets)
 
     print(string.format("Step %d, Loss = %f ", iter, loss))
+
+    if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
     local  gradOutputs = cost:backward(outputs, targets)

@@ -71,12 +71,9 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
-cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
-cmd:option('-rho', 6, 'length of sequence to go back in time')
-cmd:option('--dropout', 0, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-visualize', true, 'visualize input data and weights during training')
 cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
@@ -84,6 +81,13 @@ cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
+
+-- RNN/LSTM Settings 
+cmd:option('-rho', 6, 'length of sequence to go back in time')
+cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
+cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
+cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
+
 
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
@@ -129,7 +133,11 @@ if opt.gpu >= 0 then
 end
 
 function transfer_data(x)
-  return x:cuda()
+  if use_cuda then
+    return x:cuda()
+  else
+    return x:double()
+  end
 end
 
 function pprint(x)  print(tostring(x)); print(x); end
@@ -168,14 +176,12 @@ test_out        = {
                out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
               }         
 
-if use_cuda then   
-  train_input = transfer_data(train_input)
-  train_out   = {transfer_data(train_out[1]), transfer_data(train_out[2]), transfer_data(train_out[3]),
+train_input = transfer_data(train_input)
+train_out   = {transfer_data(train_out[1]), transfer_data(train_out[2]), transfer_data(train_out[3]),
                 transfer_data(train_out[4]), transfer_data(train_out[5]),  transfer_data(train_out[6])}
-  test_input  = transfer_data(test_input)
-  test_out    = {transfer_data(test_out[1]), transfer_data(test_out[2]), transfer_data(test_out[3]),
-                  transfer_data(test_out[4]), transfer_data(test_out[5]), transfer_data(test_out[6])}
-end
+test_input  = transfer_data(test_input)
+test_out    = {transfer_data(test_out[1]), transfer_data(test_out[2]), transfer_data(test_out[3]),
+                 transfer_data(test_out[4]), transfer_data(test_out[5]), transfer_data(test_out[6])}
 
 kk          = train_input:size()[1]
 
@@ -261,30 +267,29 @@ local function contruct_net()
     --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
-    
-    local nIndex = ninputs 
     neunet = nn.Sequential()
-                  --:add(nn.ParallelTable()                       -- applies the i-th member module to the i-th input, and outputs a table of the set of outputs.
-                  --:add(nn.LookupTable(nIndex, nhiddens))    -- produces nIndex X nhiddens_rnn  Tensor
-                  :add(nn.Linear(ninputs, nhiddens))
-    neunet       = nn.Sequencer(neunet)      
-
-    local rnn = nn.Sequencer(nn.LSTM(ninputs, nhiddens, opt.rho)) -- an AbstractRecurrent instance
+    local rnn = nn.Sequencer(nn.LSTM(ninputs, nhiddens, opt.rho)) 
     neunet:add(rnn) 
+       
+    if opt.dropout then
+        neunet:add(nn.Sequencer(nn.Dropout(opt.dropoutProb)))
+    end
+--[[
+    -- input layer (i.e. word embedding space)
+    neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
+    
+    if opt.dropout then
+       neunet:insert(nn.Dropout(opt.dropoutProb), 1)
+    end
+]]
+    -- output layer
+    neunet:add(nn.Sequencer(nn.Linear(ninputs, 1)))
+    neunet:add(nn.Sequencer(nn.ReLU()))
 
-    pprint(neunet)
-
-    -- neunet = nn.Sequential()
-    --           :add(nn.Recurrence(rm, noutputs, ninputs, opt.rho)) -- another AbstractRecurrent instance
-              
-      if opt.dropout > 0 then
-          neunet:add(nn.Sequencer(nn.Dropout(opt.dropout)))
-      end
-
-      --output layer 
-      neunet:add(nn.Linear(ninputs, nhiddens))
-        --     :add(nn.ReLU())
-      neunet = nn.Repeater(neunet, noutputs)
+    -- will recurse a single continuous sequence
+    neunet:remember(opt.lstm)
+    --output layer 
+    neunet = nn.Repeater(neunet, noutputs)
 
 --===========================================================================================
 --Convnet
@@ -322,7 +327,7 @@ local function contruct_net()
       neunet:add(nn.Linear(nstates[3], noutputs))
 
 
-    else
+  else
       -- a typical convolutional network, with locally-normalized hidden
       -- units, and L2-pooling
 
@@ -352,11 +357,11 @@ local function contruct_net()
       neunet:add(nn.Linear(nstates[2] * filtsize * filtsize, nstates[3]))
       neunet:add(nn.Tanh())
       neunet:add(nn.Linear(nstates[3], noutputs))
-    end
+  end
     print('neunet biases Linear', neunet.bias)
     print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
   else    
-      error('you have specified an unknown model')    
+      error('you have specified an incorrect model. model must be <lstm> or <mlp> or <rnn>')    
   end
 
   return neunet     
@@ -385,7 +390,6 @@ end
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
-
 --=====================================================================================================
 if (opt.model == 'rnn') or (opt.model == 'lstm') then
   cost    = nn.SequencerCriterion(nn.MSECriterion())
@@ -395,10 +399,8 @@ else
 end
 --======================================================================================
 
-if use_cuda then
-  neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
-  cost = transfer_data(cost)
-end
+neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
+cost = transfer_data(cost)
 print '==> configuring optimizer\n'
 
  --[[Declare states for limited BFGS
