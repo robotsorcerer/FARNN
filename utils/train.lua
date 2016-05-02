@@ -125,7 +125,7 @@ function train_lstm(args)
     local loss = 0
     outputs = neunet:forward(inputs)
     print('outputs', outputs)
-    loss = cost:forward(table.unpack(outputs), targets)
+    loss = cost:forward(outputs, targets)
 
     print(string.format("Step %d, Loss = %f ", iter, loss))
 

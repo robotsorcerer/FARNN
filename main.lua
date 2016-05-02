@@ -141,7 +141,7 @@ function transfer_data(x)
   end
 end
 
-function pprint(x)  print(tostring(x)); print(x); end
+local function pprint(x)  print(tostring(x)); print(x); end
 
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
@@ -162,27 +162,20 @@ k           = input:size()[1]
 --Determine training data               
 off         = torch.ceil( torch.abs(0.6*k))
 
-train_input = input[{{1, off}, {1}}]     
+train_input = transfer_data(input[{{1, off}, {1}}])    
 train_out   = {
-               out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}], 
-               (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
-               out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
+               transfer_data(out.xn[{{1, off}, {1}}]), transfer_data(out.yn[{{1, off}, {1}}]), 
+               transfer_data((out.zn[{{1, off}, {1}}])/10), transfer_data(out.rolln[{{1, off}, {1}}]), 
+               transfer_data(out.pitchn[{{1, off}, {1}}]), transfer_data(out.yawn[{{1, off}, {1}}]) 
               }
 
 --create testing data
-test_input      = input[{{off + 1, k}, {1}}]  
+test_input      = transfer_data(input[{{off + 1, k}, {1}}])  
 test_out        = {
-               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
-               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
-               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
+               transfer_data(out.xn[{{off+1, k}, {1}}]), transfer_data(out.yn[{{off+1, k}, {1}}]), 
+               transfer_data((out.zn[{{off+1, k}, {1}}])/10), transfer_data(out.rolln[{{off+1, k}, {1}}]), 
+               transfer_data(out.pitchn[{{off+1, k}, {1}}]), transfer_data(out.yawn[{{off+1, k}, {1}}]) 
               }         
-
-train_input = transfer_data(train_input)
-train_out   = {transfer_data(train_out[1]), transfer_data(train_out[2]), transfer_data(train_out[3]),
-                transfer_data(train_out[4]), transfer_data(train_out[5]),  transfer_data(train_out[6])}
-test_input  = transfer_data(test_input)
-test_out    = {transfer_data(test_out[1]), transfer_data(test_out[2]), transfer_data(test_out[3]),
-                 transfer_data(test_out[4]), transfer_data(test_out[5]), transfer_data(test_out[6])}
 
 kk          = train_input:size()[1]
 
@@ -228,10 +221,13 @@ local function contruct_net()
           neunet:add(transfer)                         
           neunet:add(nn.Linear(nhiddens, noutputs)) 
 
+  cost      = nn.MSECriterion() 
+
   elseif opt.model == 'rnn' then    
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
+    cost    = nn.SequencerCriterion(nn.MSECriterion())
 ------------------------------------------------------
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
@@ -268,6 +264,10 @@ local function contruct_net()
     --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
+
+    --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
+    cost = nn.SequencerCriterion(nn.MSECriterion())
+
     neunet = nn.Sequential()
     local inputSize = opt.hiddenSize
     for i,hiddenSize in ipairs(opt.hiddenSize) do 
@@ -279,7 +279,7 @@ local function contruct_net()
       end
 
       -- input layer (i.e. word embedding space)
-      neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
+      --neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
 
       if opt.dropout then
         neunet:insert(nn.Dropout(opt.dropoutProb), 1)
@@ -287,18 +287,18 @@ local function contruct_net()
        inputSize = hiddenSize
     end
 
-    lookup = nn.LookupTable(height, opt.hiddenSize[1])
-    lookup.maxOutNorm = -1 -- disable maxParamNorm on the lookup table
-    neunet:insert(lookup, 1)
+    -- lookup = nn.LookupTable(torch.Tensor(height), opt.hiddenSize[1])
+    -- lookup.maxOutNorm = -1 -- disable maxParamNorm on the lookup table
+    -- neunet:insert(lookup, 1)
 
     -- output layer
-    neunet:add(nn.Sequencer(nn.Linear(inputSize, noutputs)))
-    neunet:add(nn.Sequencer(nn.LogSoftMax()))
+    neunet:add(nn.Sequencer(nn.Linear(inputSize, 1)))
+    neunet:add(nn.Sequencer(nn.ReLU()))
 
     -- will recurse a single continuous sequence
     --neunet:remember(false)
     --output layer 
-    --neunet = nn.Repeater(neunet, noutputs)
+    neunet = nn.Repeater(neunet, noutputs)
 
 --===========================================================================================
 --Convnet
@@ -373,10 +373,10 @@ local function contruct_net()
       error('you have specified an incorrect model. model must be <lstm> or <mlp> or <rnn>')    
   end
 
-  return neunet     
+  return cost, neunet     
 end
 
-neunet          = contruct_net()
+cost, neunet          = contruct_net()
 
 print('Network Table'); print(neunet)
 --===================================================================================
@@ -400,14 +400,6 @@ end
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
 --=====================================================================================================
-if (opt.model == 'rnn') or (opt.model == 'lstm') then
-  cost    = nn.SequencerCriterion(nn.MSECriterion())
-  --cost    = nn.RepeaterCriterion(nn.MSECriterion())
-else
-  cost      = nn.MSECriterion()           -- Loss function
-end
---======================================================================================
-
 neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
 cost = transfer_data(cost)
 print '==> configuring optimizer\n'
@@ -522,13 +514,13 @@ function saveNet(epoch, time)
 
   -- save/log current net
   if opt.model == 'rnn' then
-    netname = 'rnn-net.net'
+    netname = 'rnn-net.t7'
   elseif opt.model == 'mlp' then
-    netname = 'mlp-net.net'
+    netname = 'mlp-net.t7'
   elseif opt.model == 'lstm' then
-    netname = 'lstm-net.net'
+    netname = 'lstm-net.t7'
   else
-    netname = 'neunet.net'
+    netname = 'neunet.t7'
   end  
   
   local filename = paths.concat(opt.netdir, netname)
