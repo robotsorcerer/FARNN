@@ -284,7 +284,8 @@ local function contruct_net()
 
     -- output layer
     neunet:add(nn.Linear(ninputs, 1))
-    neunet:add(nn.ReLU())
+    --neunet:add(nn.ReLU())
+    neunet:add(nn.SoftSign())
 
     -- will recurse a single continuous sequence
     neunet:remember('eval')
