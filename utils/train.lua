@@ -43,6 +43,9 @@ function train_rnn(opt)
 
     offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
     offsets = transfer_data(offsets)  
+
+    -- print('inputs', '\n', inputs) 
+    -- print('targets', '\n', targets)
   
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
@@ -60,8 +63,7 @@ function train_rnn(opt)
     local  gradOutputs = cost:backward(outputs, targets)
     local gradInputs  = neunet:backward(inputs, gradOutputs) 
       
-
-      print('gradInputs'); print(gradInputs)
+    print('gradInputs'); print(gradInputs)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
@@ -87,36 +89,24 @@ function train_lstm(args)
   local iter = 1
   local target, input = {}, {}                               
   
-    for i=1,args.batchSize do
-       table.insert(offsets, math.ceil(math.random()*args.batchSize))
-    end
-    offsets = torch.LongTensor(offsets)
+  for t = 1, math.min(args.maxIter, height), args.batchSize do --1, train_input:size(1), args.batchSize do
+    offsets = torch.LongTensor(args.batchSize):random(1,height)    
 
-    print('offsets', offsets)
-    offsets = transfer_data(offsets)
-    
-    xlua.progress(epoch, height)
+    offsets = transfer_data(offsets) 
+
+
+    xlua.progress(t, height)
      print('\n')
-
      -- 1. create a sequence of rho time-steps
-
     local inputs, targets = {}, {}
-    for step = 1, args.rho do
-      inputs[step] = train_input:index(1, offsets) 
-      --increase offsets indices by 1      
-      offsets:add(1) -- increase indices by 1
-      offsets[offsets:gt(height)] = 1
-      offsets = transfer_data(offsets)  
 
-      targets[step] = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
-                        train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
-                        train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
-      offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
-    end
+    inputs = train_input:index(1, offsets)
+    targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+                      train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
+                      train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
 
-    print('inputs', '\n', inputs) 
-    print('targets', '\n', targets)
-
+    -- print('inputs', '\n', inputs) 
+    -- print('targets', '\n', targets)
     
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
@@ -124,7 +114,7 @@ function train_lstm(args)
     inputs_, outputs = {}, {}
     local loss = 0
     outputs = neunet:forward(inputs)
-    print('outputs', outputs)
+    --print('outputs', outputs)
     loss = cost:forward(outputs, targets)
 
     print(string.format("Step %d, Loss = %f ", iter, loss))
@@ -135,8 +125,7 @@ function train_lstm(args)
     local  gradOutputs = cost:backward(outputs, targets)
     local gradInputs  = neunet:backward(inputs, gradOutputs) 
       
-
-      print('gradInputs'); print(gradInputs)
+    print('gradInputs'); print(gradInputs)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
@@ -144,7 +133,7 @@ function train_lstm(args)
     iter = iter + 1 
 
     saveNet(epoch, time)
-  --end 
+  end 
 end
 
 function train_mlp(opt)

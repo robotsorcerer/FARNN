@@ -264,42 +264,32 @@ local function contruct_net()
     --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
-
+    require 'nngraph'
+    -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
+    nn.LSTM.usenngraph = true -- faster
     --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
-    cost = nn.SequencerCriterion(nn.MSECriterion())
-
+    local crit = nn.MSECriterion()
+    cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()
-    local inputSize = opt.hiddenSize
-    for i,hiddenSize in ipairs(opt.hiddenSize) do 
-      local rnn = nn.Sequencer(nn.LSTM(ninputs, hiddenSize, opt.rho)) 
+    local inputSize = opt.hiddenSize[1]
+    for i, inputSize in ipairs(opt.hiddenSize) do 
+      local rnn = nn.LSTM(ninputs, opt.hiddenSize[1], opt.rho)
       neunet:add(rnn) 
        
       if opt.dropout then
-        neunet:add(nn.Sequencer(nn.Dropout(opt.dropoutProb)))
-      end
-
-      -- input layer (i.e. word embedding space)
-      --neunet:insert(nn.SplitTable(1,2), 1) -- tensor to table of tensors
-
-      if opt.dropout then
         neunet:insert(nn.Dropout(opt.dropoutProb), 1)
       end
-       inputSize = hiddenSize
+       inputSize = opt.hiddenSize[1]
     end
 
-    -- lookup = nn.LookupTable(torch.Tensor(height), opt.hiddenSize[1])
-    -- lookup.maxOutNorm = -1 -- disable maxParamNorm on the lookup table
-    -- neunet:insert(lookup, 1)
-
     -- output layer
-    neunet:add(nn.Sequencer(nn.Linear(inputSize, 1)))
-    neunet:add(nn.Sequencer(nn.ReLU()))
+    neunet:add(nn.Linear(ninputs, 1))
+    neunet:add(nn.ReLU())
 
     -- will recurse a single continuous sequence
-    --neunet:remember(false)
+    neunet:remember('eval')
     --output layer 
     neunet = nn.Repeater(neunet, noutputs)
-
 --===========================================================================================
 --Convnet
   elseif opt.model == 'convnet' then
