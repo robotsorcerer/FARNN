@@ -80,7 +80,7 @@ cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
-cmd:option('-plot', true, 'true|false')
+cmd:option('-plot', false, 'true|false')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- RNN/LSTM Settings 
@@ -176,14 +176,12 @@ train_input = stats.inputnorm(train_input)   --normalize input data
 train_out   = stats.normalize(train_out)    -- most of the work is done here.
 
 --create testing data
-test_input      = transfer_data(input[{{off + 1, k}, {1}}])  
-test_out        = {
+test_input = transfer_data(input[{{off + 1, k}, {1}}])  
+test_out   = {
                transfer_data(out.xn[{{off+1, k}, {1}}]), transfer_data(out.yn[{{off+1, k}, {1}}]), 
                transfer_data((out.zn[{{off+1, k}, {1}}])/10), transfer_data(out.rolln[{{off+1, k}, {1}}]), 
                transfer_data(out.pitchn[{{off+1, k}, {1}}]), transfer_data(out.yawn[{{off+1, k}, {1}}]) 
-              }         
-
-
+              }     
 --geometry of input
 geometry    = {train_input:size(1), train_input:size(2)}
 

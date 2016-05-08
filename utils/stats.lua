@@ -1,4 +1,4 @@
--- Table to hold statistical functions
+-- Table to pre-process raw data against outliers, high frequencies etc
 stats={}
 
 -- Get the mean value of a table
@@ -22,10 +22,7 @@ end
 
 -- Get the standard deviation of a table
 function stats.standardDeviation( t )
-  -- local prod = {}
   local vm = {}
-  -- local sum = {}
-  -- local count = {}
   local t_stddev = {}
   local result = {}
 
@@ -34,26 +31,9 @@ function stats.standardDeviation( t )
 
   for i = 1, #t do
     t_stddev[i] = torch.std(vm[i]) 
-    --:csub(mean[i])
   end
 
-  print('stddev out', t_stddev)
-  --[[
-  --square mean shifted values of input and sum
-  for i = 1, #t do    
-    sum[i] = 0
-    count[i] = 0
-    for j = 1, kk do
-      vm[i][j]:cmul(vm[i][j])        -- do element wise mult
-      sum[i] = sum[i] + vm[i][j]    -- do sum of squares
-      count[i] = count[i] + 1
-    end
-    result[i] = sum[i]/count[i]
-    result[i] = torch.sqrt(result[i])
-  end
-
-  return result
-]]
+  if opt.print then print('stddev out', t_stddev) end
   return t_stddev
 end
 
@@ -74,35 +54,18 @@ end
 
 function stats.normalize (t)
 --  first find the mean and mean-centered data in one go
-  local submeans = {} 
-  local results = {}
-  -- local normed = {}
-  local divisor = {}
+  local submeans, divisor, results, stddev = {} , {}, {}, {}
 
   submeans = stats.submeans(t)   
-
-  --find each of the standard deviations
-  local stddev = {}
-  -- stddev = stats.standardDeviation( t ) 
   stddev = stats.standardDeviation(t)   -- returns the tables of standard deviations
   --normalize the data with the standard deviation to zero-normalize the data
-  --[[for k = 1, #submeans do
-    divisor[k] = stddev[k][1]
-    --int('div k', divisor[k])
-    for j = 1, kk do
-      submeans[k][j] = submeans[k][j]/divisor[k]
-    end
-    -- submeans[k]:cdiv(divisor)
-    --print('normed') print(submeans)
-  end
-  ]]
   for k = 1, #submeans do    
     divisor[k] = stddev[k]
     for j = 1, kk do
       submeans[k][j] = submeans[k][j]/divisor[k]
     end
   end
-  print('submeans', submeans)
+  if opt.print then print('submeans', submeans) end
 
 if opt.plot then
   local xaxis = torch.linspace(1, kk, kk)
@@ -123,7 +86,7 @@ function stats.inputnorm(t)
   local t_stddev = torch.std(t)           --find the input standard deviation
   local result = t/t_stddev         -- ratio of sum of squares to std
 
-  print('inputs', result)
+  if opt.print then print('inputs', result) end
 
   if(opt.plot) then
     local xaxis = torch.linspace(1, kk, kk)
