@@ -12,10 +12,12 @@ require 'nn'
 require 'nngraph'
 require 'optim'
 require 'order.order_det'   
-matio     = require 'matio'  
+matio     = require 'matio' 
+plt = require 'gnuplot' 
 require 'utils.utils'
 require 'utils.train'
 require 'xlua'
+require 'utils.stats'
 
 --[[modified native Torch Linear class to allow random weight initializations
  and avoid local minima issues ]]
@@ -78,7 +80,7 @@ cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
-cmd:option('-plot', false, 'plot while training')
+cmd:option('-plot', true, 'true|false')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- RNN/LSTM Settings 
@@ -167,6 +169,11 @@ train_out   = {
                transfer_data((out.zn[{{1, off}, {1}}])/10), transfer_data(out.rolln[{{1, off}, {1}}]), 
                transfer_data(out.pitchn[{{1, off}, {1}}]), transfer_data(out.yawn[{{1, off}, {1}}]) 
               }
+kk          = train_out[1]:size(1)
+
+print '==> Data Pre-processing'
+train_input = stats.inputnorm(train_input)   --normalize input data         
+train_out   = stats.normalize(train_out)    -- most of the work is done here.
 
 --create testing data
 test_input      = transfer_data(input[{{off + 1, k}, {1}}])  
@@ -176,10 +183,9 @@ test_out        = {
                transfer_data(out.pitchn[{{off+1, k}, {1}}]), transfer_data(out.yawn[{{off+1, k}, {1}}]) 
               }         
 
-kk          = train_input:size()[1]
 
 --geometry of input
-geometry    = {kk, train_input:size()[2]}
+geometry    = {train_input:size(1), train_input:size(2)}
 
 trainData     = {train_input, train_out}
 testData     = {test_input,  test_out}

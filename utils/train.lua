@@ -8,14 +8,6 @@ require 'optima.optim_'
 
 
 function train_rnn(opt)
-  --track the epochs
-  epoch = epoch or 1
-  --time we started training
-  local time = sys.clock()
-
-  --do one epoch
-  print('<trainer> on training set: ')
-  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
 
   offsets = {}
   --form mini batch    
@@ -28,7 +20,7 @@ function train_rnn(opt)
     offsets = transfer_data(offsets) 
 
 
-    xlua.progress(t, height)
+    xlua.progress(t, math.min(opt.maxIter, height))
      print('\n')
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
@@ -69,20 +61,10 @@ function train_rnn(opt)
     neunet:updateParameters(opt.rnnlearningRate)
 
     iter = iter + 1 
-
-    saveNet(epoch, time)
   end 
 end
 
 function train_lstm(args)
-  --track the epochs
-  epoch = epoch or 1
-  --time we started training
-  local time = sys.clock()
-
-  --do one epoch
-  print('<trainer> on training set: ')
-  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. args.batchSize .. ']\n')
 
   offsets = {}
   --form mini batch    
@@ -95,7 +77,7 @@ function train_lstm(args)
     offsets = transfer_data(offsets) 
 
 
-    xlua.progress(t, height)
+    xlua.progress(t, math.min(opt.maxIter, height))
      print('\n')
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
@@ -125,31 +107,20 @@ function train_lstm(args)
     local  gradOutputs = cost:backward(outputs, targets)
     local gradInputs  = neunet:backward(inputs, gradOutputs) 
       
-    print('gradInputs'); print(gradInputs)
+    -- print('gradInputs'); print(gradInputs)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
 
     iter = iter + 1 
-
-    saveNet(epoch, time)
   end 
 end
 
 function train_mlp(opt)
-  --track the epochs
-  epoch = epoch or 1
-  --time we started training
-  local time = sys.clock()
-
-  --do one epoch
-  print('<trainer> on training set: ')
-  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
 
   for t = 1, opt.maxIter, opt.batchSize do
-    --print('\n\n' ..'evaluating batch [' .. t .. ' through  ' .. t+opt.batchSize .. ']')
-    --disp progress
-    xlua.progress(t, height)
+
+    xlua.progress(t, math.min(opt.maxIter, height))
 
      -- create mini batch
     local inputs, targets, offsets = {}, {}, {}
@@ -207,10 +178,8 @@ function train_mlp(opt)
           gradParameters:div(#inputs)
         end
 
-          print(' err ')
-          print(err)
-          print('\ndf_do')
-          print(df_do)
+          print(' err ');       print(err)
+          print('\ndf_do');     print(df_do)
       end       
 
       -- normalize gradients and f(X)
@@ -224,21 +193,15 @@ function train_mlp(opt)
     -- optimization on current mini-batch
     if optimMethod == optim.sgd then
       optimMethod(feval, parameters, sgdState)
-
     elseif optimMethod == msetrain then
       for v = 1, #inputs do
         a, b, c, d = optimMethod(neunet, cost, inputs[v], 
          targets[v], opt)
        --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
       end
-
-    elseif optimMethod == optim.asgd then
-      _, _, average = optimMethod(feval, parameters, optimState)
-
     else  
       optimMethod(feval, parameters, optimState)
     end
 
-    saveNet(epoch, time)
   end
 end
