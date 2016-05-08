@@ -75,15 +75,14 @@ cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desire
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
 cmd:option('-netdir', 'network', 'directory to save the network')
-cmd:option('-visualize', true, 'visualize input data and weights during training')
-cmd:option('-optimizer', 'mse', 'mse|l-bfgs|asgd|sgd|cg')
+cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'plot while training')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- RNN/LSTM Settings 
-cmd:option('-rho', 6, 'length of sequence to go back in time')
+cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
@@ -370,23 +369,6 @@ end
 cost, neunet          = contruct_net()
 
 print('Network Table'); print(neunet)
---===================================================================================
--- Visualization is quite easy, using itorch.image().
---===================================================================================
-
-if opt.visualize then
-   if opt.model == 'convnet' then
-      if itorch then
-   print '==> visualizing ConvNet filters'
-   print('Layer 1 filters:')
-   itorch.image(neunet:get(1).weight)
-   print('Layer 2 filters:')
-   itorch.image(neunet:get(5).weight)
-      else
-   print '==> To visualize filters, start the script in itorch notebook'
-      end
-   end
-end
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
@@ -413,27 +395,6 @@ print '==> configuring optimizer\n'
    }
    optimMethod = optim.sgd
 
-elseif opt.optimizer == 'asgd' then
-   optimState = {
-      eta0 = opt.learningRate,
-      t0 = height * 1
-   }
-   optimMethod = optim.asgd
-
-elseif opt.optimization == 'cg' then
-   optimState = {
-      maxIter = opt.maxIter
-   }
-   optimMethod = optim.cg
-
-elseif opt.optimization == 'l-bfgs' then
-   optimState = {
-      learningRate = opt.learningRate,
-      maxIter = opt.maxIter,
-      nCorrection = 10
-   }
-   optimMethod = optim.lbfgs
-
  else  
    error(string.format('Unrecognized optimizer "%s"', opt.optimizer))  
  end
@@ -442,16 +403,34 @@ elseif opt.optimization == 'l-bfgs' then
 print '==> defining training procedure'
 
 local function train(data)  
+
+  --time we started training
+  local time = sys.clock()
+
+  --track the epochs
+  epoch = epoch or 1
+
+  --do one epoch
+  print('<trainer> on training set: ')
+  print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']\n')
+
   if opt.model == 'rnn' then 
-    train_rnn(opt)      
-
+    train_rnn(opt) 
   elseif opt.model == 'lstm' then
-    while true do train_lstm(opt) end
-
+    train_lstm(opt)
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
-
   end   
+
+  -- time taken for one epoch
+  time = sys.clock() - time
+  time = time / height
+  print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+  saveNet()
+
+  -- next epoch
+  epoch = epoch + 1
 end     
 
 
@@ -468,15 +447,16 @@ local function test(data)
 
    -- test over given dataset
    print('<trainer> on testing Set:')
-   for t = 1, math.min(opt.maxIter, height), opt.batchSize do
+   for t = 1, math.max(opt.maxIter, height), opt.batchSize do
       -- disp progress
-      xlua.progress(t, height)
+      xlua.progress(t, math.min(opt.maxIter, height))
 
     -- create mini batch
     local inputs = {}
     local targets = {}
     for i = t,math.min(t+opt.batchSize-1,height) do
       -- load new sample
+      if i > height or opt.maxIter then  i = 1  end
       local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
       input = sample[1]:clone()[i]
       target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
@@ -497,12 +477,7 @@ local function test(data)
     end
 end
 
-function saveNet(epoch, time)
-  -- time taken
-  time = sys.clock() - time
-  time = time / height
-  print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
+function saveNet()
   -- save/log current net
   if opt.model == 'rnn' then
     netname = 'rnn-net.t7'
@@ -518,10 +493,6 @@ function saveNet(epoch, time)
   os.execute('mkdir -p ' .. sys.dirname(filename))
   print('<trainer> saving network model to '..filename)
   torch.save(filename, neunet)
-
-  -- next epoch
-    --confusion:zero()
-  epoch = epoch + 1
 end
 
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
@@ -530,14 +501,6 @@ local function main()
   while true do
     train(trainData)
     test(testData)
-
-
-    -- update logger/plot
-    --trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-    if opt.plot then
-       trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-       trainLogger:plot()
-    end
   end
 end
 
