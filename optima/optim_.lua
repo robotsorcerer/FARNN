@@ -22,7 +22,6 @@ function msetrain(neunet, cost, x, y, opt)
 
   local fm = 0     local pred = {}     local errm = {}  local x_fwd = {}
   local gradcrit = {}   local error_acc = {}   local y_fwd = {}--torch.Tensor(1,6)
-
   for j_mse                 = 1, kk do
        pred                 = neunet:forward(x)
         --dirty hack to retrieve elements of target vectors

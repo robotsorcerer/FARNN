@@ -61,14 +61,14 @@ function stats.normalize (t)
   --normalize the data with the standard deviation to zero-normalize the data
   for k = 1, #submeans do    
     divisor[k] = stddev[k]
-    for j = 1, kk do
+    for j = 1, submeans[1]:size(1) do
       submeans[k][j] = submeans[k][j]/divisor[k]
     end
   end
   if opt.print then print('submeans', submeans) end
 
 if opt.plot then
-  local xaxis = torch.linspace(1, kk, kk)
+  local xaxis = torch.linspace(1, submeans[1]:size(1), submeans[1]:size(1))
   plotter = require 'gnuplot'
 
   plotter.title('Mean shifted output train set')

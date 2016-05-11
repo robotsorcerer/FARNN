@@ -88,7 +88,7 @@ cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
-cmd:option('-hiddenSize', {1}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
+cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
 
 -- LBFGS Settings
@@ -159,29 +159,46 @@ y           = {out.xn, out.yn,
                out.zn/10, out.rolln, 
                out.pitchn, out.yawn}
 
-k           = input:size()[1]
---Determine training data               
+k           = input:size()[1]           
 off         = torch.ceil( torch.abs(0.6*k))
 
-train_input = transfer_data(input[{{1, off}, {1}}])    
+print '==> Data Pre-processing'          
+--Determine training data    
+train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
 train_out   = {
-               transfer_data(out.xn[{{1, off}, {1}}]), transfer_data(out.yn[{{1, off}, {1}}]), 
-               transfer_data((out.zn[{{1, off}, {1}}])/10), transfer_data(out.rolln[{{1, off}, {1}}]), 
-               transfer_data(out.pitchn[{{1, off}, {1}}]), transfer_data(out.yawn[{{1, off}, {1}}]) 
-              }
-kk          = train_out[1]:size(1)
-
-print '==> Data Pre-processing'
-train_input = stats.inputnorm(train_input)   --normalize input data         
-train_out   = stats.normalize(train_out)    -- most of the work is done here.
+               out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}],            -- most of the work is done here.
+               (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
+               out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
+              } 
 
 --create testing data
-test_input = transfer_data(input[{{off + 1, k}, {1}}])  
+test_input = input[{{off + 1, k}, {1}}]
 test_out   = {
-               transfer_data(out.xn[{{off+1, k}, {1}}]), transfer_data(out.yn[{{off+1, k}, {1}}]), 
-               transfer_data((out.zn[{{off+1, k}, {1}}])/10), transfer_data(out.rolln[{{off+1, k}, {1}}]), 
-               transfer_data(out.pitchn[{{off+1, k}, {1}}]), transfer_data(out.yawn[{{off+1, k}, {1}}]) 
-              }     
+               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
+               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
+               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
+              }  
+
+--preprocess data
+test_input  = stats.inputnorm(test_input)
+test_out    = stats.normalize(test_out)
+train_input = stats.inputnorm(train_input)
+train_out   = stats.normalize(train_out)
+--===========================================================================================
+--ship train and test data to gpu
+train_input = transfer_data(train_input)
+test_input = transfer_data(test_input)
+
+for i = 1, #train_out do
+  train_out[i] = transfer_data(train_out[i])
+end
+
+for i=1,#test_out do
+   test_out[i] = transfer_data(test_out[i])
+end
+                              
+kk          = train_input:size(1)
+--===========================================================================================           
 --geometry of input
 geometry    = {train_input:size(1), train_input:size(2)}
 
@@ -206,8 +223,8 @@ print '==> Setting up neural network parameters'
 local nfeats      = 1   
 
 --dimension of training input
-local width       = trainData[1]:size()[2]
-height      = trainData[1]:size()[1]
+local width       = train_input:size(2)
+height      = train_input:size(1)
 local ninputs     = 1
 local noutputs    = 6
 local nhiddens_rnn = 6 
