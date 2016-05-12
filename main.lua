@@ -239,7 +239,9 @@ local function contruct_net()
           neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, noutputs)) 
+          neunet:add(nn.Linear(nhiddens, 36)) 
+
+          --neunet = nn.Repeater(neunet, 6)
 
   cost      = nn.MSECriterion() 
 
@@ -312,72 +314,6 @@ local function contruct_net()
     --output layer 
     neunet = nn.Repeater(neunet, noutputs)
 --===========================================================================================
---Convnet
-  elseif opt.model == 'convnet' then
-    --hidden units, filter kernel (for Temporal ConvNet)
-    local nstates     = {1, 1, 2}
-    local kW          = 5           --kernel width
-    local dW          = 1           --convolution step
-    local poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
-    local normkernel = image.gaussian1D(7)
-
-    if use_cuda then
-      --typical convnet (convolution + relu + pool)
-      neunet  = nn.Sequential()
-
-      --stage 1: filter bank -> squashing - L2 pooling - > normalization
-      --[[The first layer applies 10 filters to the input map choosing randomly
-      among its different layers ech being a 3x3 kernel. The receptive field of the 
-      first layer is 3x3 and the maps produced are therefore]]
-      --neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      neunet:add(nn.TemporalConvolution(ninputs, noutputs, kW, dW))
-      neunet:add(transfer)
-      neunet:add(nn.SpatialMaxPooling(poolsize, poolsize, poolsize, poolsize))
-
-      -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      neunet:add(transfer)
-      neunet:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
-
-      -- stage 3 : standard 2-layer neural network
-      neunet:add(nn.View(nstates[2]*filtsize*filtsize))
-      neunet:add(nn.Dropout(0.5))
-      neunet:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-      neunet:add(transfer)
-      neunet:add(nn.Linear(nstates[3], noutputs))
-
-
-  else
-      -- a typical convolutional network, with locally-normalized hidden
-      -- units, and L2-pooling
-
-      -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
-      -- work on this dataset (http://arxiv.org/abs/1204.3968). In particular
-      -- the use of LP-pooling (with P=2) has a very positive impact on
-      -- generalization. Normalization is not done exactly as proposed in
-      -- the paper, and low-level (first layer) features are not fed to
-      -- the classifier.  
-
-      neunet    = nn.Sequential()        
-
-      --stage 1: filter bank -> squashing -> L2 pooling -> normalization
-      neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.SpatialLPooling(nStates[1], 2, poolsize, poolsize, poolsize, poolsize))
-      neunet:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
-
-      -- stage 2: filter bank -> squashing -> L2 poolong - > normalization
-      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.SpatialLPooling(nstates[2], 2, poolsize, poolsize, poolsize, poolsize))
-      neunet:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
-
-      -- stage 3: standard 2-layer neural network
-      neunet:add(nn.Reshape(nstates[2] * filtsize * filtsize))
-      neunet:add(nn.Linear(nstates[2] * filtsize * filtsize, nstates[3]))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.Linear(nstates[3], noutputs))
-  end
     print('neunet biases Linear', neunet.bias)
     print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
   else    
@@ -389,7 +325,7 @@ end
 
 cost, neunet          = contruct_net()
 
-print('Network Table'); print(neunet)
+print('Network Table\n'); print(neunet)
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()

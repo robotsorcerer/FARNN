@@ -135,6 +135,10 @@ function train_mlp(opt)
       table.insert(targets, target) 
       table.insert(offsets, input)      
     end
+
+    -- print('inputs', inputs)
+    -- print('targets', targets)
+--[[
     --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     local feval = function(x)
       collectgarbage()
@@ -154,8 +158,12 @@ function train_mlp(opt)
       for i_f = 1,#inputs do
       -- estimate f
         local output, targets_ = neunet:forward(inputs[i_f]), {}
-        targets_ = torch.cat({targets[i_f][1], targets[i_f][2], targets[i_f][3],
-                              targets[i_f][4], targets[i_f][5], targets[i_f][6]})
+        if use_cuda then
+          targets_ = torch.cat({targets[i_f][1]:double(), targets[i_f][2]:double(), targets[i_f][3]:double(), 
+                             targets[i_f][4]:double(), targets[i_f][5]:double(), targets[i_f][6]:double()})     
+        else
+          targets_ = torch.cat{targets[i_f][1], targets[i_f][2], targets[i_f][3], targets[i_f][4], targets[i_f][5], targets[i_f][6]}
+        end
         local err = cost:forward(output, targets_)
         f = f + err
 
@@ -173,8 +181,7 @@ function train_mlp(opt)
            f = f + opt.coefL2 * norm(parameters,2)^2/2
 
            -- Gradients:
-            gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
-                          
+            gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )                          
         else
           -- normalize gradients and f(X)
           gradParameters:div(#inputs)
@@ -191,20 +198,31 @@ function train_mlp(opt)
       --retrun f and df/dx
       return f, gradParameters
     end --end feval
+]]
+    gradParameters:zero()
+          
+     local iter = 0;
 
-    -- optimization on current mini-batch
-    if optimMethod == optim.sgd then
-      optimMethod(feval, parameters, sgdState)
-    elseif optimMethod == msetrain then
-      for v = 1, #inputs do
-        a, b, c, d = optimMethod(neunet, cost, inputs[v], 
-         targets[v], opt)
-       --print('epoch', epoch, 'pred.errors: ', c, 'acc err', d)
-      end
-    else  
-      optimMethod(feval, parameters, optimState)
-    end
+      -- evaluate function for complete mini batch
+      local targets_ = {}
 
+      -- optimization on current mini-batch
+      if optimMethod == msetrain then
+        for i_f = 1,#inputs do        
+          gradParameters, fm, errm = optimMethod(inputs[i_f], targets[i_f])  
+
+          print(string.format("Step %d, Loss = %f, Normalized Loss = %f ", iter, errm, fm))      
+        end   
+
+      elseif optimMethod == optim.sgd then
+        optimMethod(feval, parameters, sgdState)
+
+      else  
+        optimMethod(feval, parameters, optimState)
+      end    
+
+      --print(string.format("Step %d, Loss = %f, Normalized Loss = %f ", iter, errm, fm))
+      iter = iter + 1
   end
 end
 
@@ -241,16 +259,20 @@ function train_rnns(opt)
       end
     end    
 
-    -- print('inputs', '\n', inputs) 
-    -- print('targets', '\n', targets)
+    --targets = nn.FlattenTable():forward(targets)
+    print('inputs', '\n', inputs) 
+    print('targets', '\n', targets)
   
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
-    neunet:forget()  --forget all past time steps
+    --neunet:forget()  --forget all past time steps
+
+    --cost = nn.CriterionTable(cost)
 
     inputs_, outputs = {}, {}
     local loss = 0
      outputs = neunet:forward(inputs)
+     print('outputs', outputs)
      loss    = loss + cost:forward(outputs, targets)
     print(string.format("Step %d, Loss = %f ", iter, loss))
 

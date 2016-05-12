@@ -13,7 +13,7 @@ end
 
 optim_ = {}
 --Training using the MSE criterion
-function msetrain(neunet, cost, x, y, opt)
+function msetrain(x, y)
  
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
 
@@ -21,7 +21,7 @@ function msetrain(neunet, cost, x, y, opt)
   gradParameters:zero()
 
   local fm = 0     local pred = {}     local errm = {}  local x_fwd = {}
-  local gradcrit = {}   local error_acc = {}   local y_fwd = {}--torch.Tensor(1,6)
+  local gradcrit = {}   local y_fwd = {}--torch.Tensor(1,6)
   for j_mse                 = 1, kk do
        pred                 = neunet:forward(x)
         --dirty hack to retrieve elements of target vectors
@@ -34,7 +34,6 @@ function msetrain(neunet, cost, x, y, opt)
         end
         errm                = cost:forward(pred, y_fwd)
         fm                  = errm + fm
-        table.insert(error_acc, errm)
         learningRate = opt.learningRate
 
         gradcrit         = cost:backward(pred, y_fwd)
@@ -49,7 +48,7 @@ function msetrain(neunet, cost, x, y, opt)
         fm = fm/(height)
   end
 
-  return gradParameters, fm, errm, error_acc
+  return gradParameters, fm, errm
 end
 
 collectgarbage()

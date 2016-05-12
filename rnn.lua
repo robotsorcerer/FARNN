@@ -88,7 +88,7 @@ cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
-cmd:option('-hiddenSize', {1}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
+cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
 
 -- LBFGS Settings
@@ -159,29 +159,46 @@ y           = {out.xn, out.yn,
                out.zn/10, out.rolln, 
                out.pitchn, out.yawn}
 
-k           = input:size()[1]
---Determine training data               
+k           = input:size()[1]           
 off         = torch.ceil( torch.abs(0.6*k))
 
-train_input = transfer_data(input[{{1, off}, {1}}])    
+print '==> Data Pre-processing'          
+--Determine training data    
+train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
 train_out   = {
-               transfer_data(out.xn[{{1, off}, {1}}]), transfer_data(out.yn[{{1, off}, {1}}]), 
-               transfer_data((out.zn[{{1, off}, {1}}])/10), transfer_data(out.rolln[{{1, off}, {1}}]), 
-               transfer_data(out.pitchn[{{1, off}, {1}}]), transfer_data(out.yawn[{{1, off}, {1}}]) 
-              }
-kk          = train_out[1]:size(1)
-
-print '==> Data Pre-processing'
-train_input = stats.inputnorm(train_input)   --normalize input data         
-train_out   = stats.normalize(train_out)    -- most of the work is done here.
+               out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}],            -- most of the work is done here.
+               (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
+               out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
+              } 
 
 --create testing data
-test_input = transfer_data(input[{{off + 1, k}, {1}}])  
+test_input = input[{{off + 1, k}, {1}}]
 test_out   = {
-               transfer_data(out.xn[{{off+1, k}, {1}}]), transfer_data(out.yn[{{off+1, k}, {1}}]), 
-               transfer_data((out.zn[{{off+1, k}, {1}}])/10), transfer_data(out.rolln[{{off+1, k}, {1}}]), 
-               transfer_data(out.pitchn[{{off+1, k}, {1}}]), transfer_data(out.yawn[{{off+1, k}, {1}}]) 
-              }     
+               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
+               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
+               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
+              }  
+
+--preprocess data
+test_input  = stats.inputnorm(test_input)
+test_out    = stats.normalize(test_out)
+train_input = stats.inputnorm(train_input)
+train_out   = stats.normalize(train_out)
+--===========================================================================================
+--ship train and test data to gpu
+train_input = transfer_data(train_input)
+test_input = transfer_data(test_input)
+
+for i = 1, #train_out do
+  train_out[i] = transfer_data(train_out[i])
+end
+
+for i=1,#test_out do
+   test_out[i] = transfer_data(test_out[i])
+end
+                              
+kk          = train_input:size(1)
+--===========================================================================================           
 --geometry of input
 geometry    = {train_input:size(1), train_input:size(2)}
 
@@ -220,9 +237,9 @@ local transfer    =  nn.ReLU()   --
 local function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.Linear(ninputs, nhiddens))
+          neunet:add(nn.Linear(ninputs, nhiddens_rnn))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, noutputs)) 
+          neunet:add(nn.Linear(nhiddens_rnn, noutputs)) 
 
   cost      = nn.MSECriterion() 
 
@@ -235,9 +252,9 @@ local function contruct_net()
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     local ffwd  =   nn.Sequential()
-                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.Linear(ninputs, nhiddens_rnn))
                   :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
-                  :add(nn.Linear(nhiddens, nhiddens_rnn))
+                  :add(nn.Linear(nhiddens_rnn, nhiddens_rnn))
 
 
     local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
@@ -254,12 +271,23 @@ local function contruct_net()
                      ) 
 
     --we then join the feedforward with the recurrent net
-    neunet     = nn.Sequential()
+    local mlp     = nn.Sequential()
                   :add(ffwd)
                   :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.Linear(start, 6))
-                --  :add(nn.Linear(1, noutputs))
+                  :add(nn.Linear(start, 1))
+                  :add(nn.ReLU())
+
+                  print('mlp', mlp)
+    neunet = nn.ConcatTable()
+    neunet:add(mlp)
+                  --outputr layers
+                  :add(nn.Linear(noutputs, 1))                  
+                  :add(nn.Linear(noutputs, 1))                  
+                  :add(nn.Linear(noutputs, 1))                  
+                  :add(nn.Linear(noutputs, 1))                  
+                  :add(nn.Linear(noutputs, 1))                  
+                  :add(nn.Linear(noutputs, 1))                  --:add(nn.Sigmoid())
 
     neunet    = nn.Sequencer(neunet)
    --neunet    = nn.Repeater(neunet, noutputs)
@@ -286,81 +314,15 @@ local function contruct_net()
     end
 
     -- output layer
-    neunet:add(nn.Linear(ninputs, 1))
+    neunet:add(nn.Linear(ninputs, noutputs))
     --neunet:add(nn.ReLU())
     neunet:add(nn.SoftSign())
 
     -- will recurse a single continuous sequence
     neunet:remember('eval')
     --output layer 
-    neunet = nn.Repeater(neunet, noutputs)
+    neunet = nn.Sequencer(neunet)
 --===========================================================================================
---Convnet
-  elseif opt.model == 'convnet' then
-    --hidden units, filter kernel (for Temporal ConvNet)
-    local nstates     = {1, 1, 2}
-    local kW          = 5           --kernel width
-    local dW          = 1           --convolution step
-    local poolsize    = 2                   --LP norm work best with P = 2 or P = inf. This results in a reduced-resolution output feature map which is robust to small variations in the location of features in the previous layer
-    local normkernel = image.gaussian1D(7)
-
-    if use_cuda then
-      --typical convnet (convolution + relu + pool)
-      neunet  = nn.Sequential()
-
-      --stage 1: filter bank -> squashing - L2 pooling - > normalization
-      --[[The first layer applies 10 filters to the input map choosing randomly
-      among its different layers ech being a 3x3 kernel. The receptive field of the 
-      first layer is 3x3 and the maps produced are therefore]]
-      --neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      neunet:add(nn.TemporalConvolution(ninputs, noutputs, kW, dW))
-      neunet:add(transfer)
-      neunet:add(nn.SpatialMaxPooling(poolsize, poolsize, poolsize, poolsize))
-
-      -- stage 2 : filter bank -> squashing -> L2 pooling -> normalization
-      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      neunet:add(transfer)
-      neunet:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
-
-      -- stage 3 : standard 2-layer neural network
-      neunet:add(nn.View(nstates[2]*filtsize*filtsize))
-      neunet:add(nn.Dropout(0.5))
-      neunet:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-      neunet:add(transfer)
-      neunet:add(nn.Linear(nstates[3], noutputs))
-
-
-  else
-      -- a typical convolutional network, with locally-normalized hidden
-      -- units, and L2-pooling
-
-      -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
-      -- work on this dataset (http://arxiv.org/abs/1204.3968). In particular
-      -- the use of LP-pooling (with P=2) has a very positive impact on
-      -- generalization. Normalization is not done exactly as proposed in
-      -- the paper, and low-level (first layer) features are not fed to
-      -- the classifier.  
-
-      neunet    = nn.Sequential()        
-
-      --stage 1: filter bank -> squashing -> L2 pooling -> normalization
-      neunet:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize, filtsize))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.SpatialLPooling(nStates[1], 2, poolsize, poolsize, poolsize, poolsize))
-      neunet:add(nn.SpatialSubtractiveNormalization(nstates[1], normkernel))
-
-      -- stage 2: filter bank -> squashing -> L2 poolong - > normalization
-      neunet:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize, filtsize))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.SpatialLPooling(nstates[2], 2, poolsize, poolsize, poolsize, poolsize))
-      neunet:add(nn.SpatialSubtractiveNormalization(nstates[2], normkernel))
-
-      -- stage 3: standard 2-layer neural network
-      neunet:add(nn.Reshape(nstates[2] * filtsize * filtsize))
-      neunet:add(nn.Linear(nstates[2] * filtsize * filtsize, nstates[3]))
-      neunet:add(nn.Tanh())
-      neunet:add(nn.Linear(nstates[3], noutputs))
-  end
     print('neunet biases Linear', neunet.bias)
     print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
   else    
@@ -421,7 +383,7 @@ local function train(data)
   if opt.model == 'rnn' then 
     train_rnns(opt) 
   elseif opt.model == 'lstm' then
-    train_lstm(opt)
+    train_lstms(opt)
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
   end   
