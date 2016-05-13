@@ -146,9 +146,10 @@ function train_mlp(opt)
       local loss, lossAcc
       for i_f = 1,#inputs do        
         loss, lossAcc = optimMethod(inputs[i_f], targets[i_f])    
-        print("Epoch: ", epoch)
-        print(string.format("Step %d, Loss = %f, Batch Normed Loss = %f ", iter, loss, lossAcc)) 
-      end                    
+      end               
+      
+      print("Epoch: ", epoch)
+      print(string.format("Step %d, Loss = %f, Batch Normed Loss = %f ", iter, loss, lossAcc))      
     iter = iter + 1  
 
     elseif optimMethod == optim.sgd then
@@ -161,8 +162,8 @@ function train_mlp(opt)
   end
 end
 
+--[[
 function train_rnns(opt)
-
   offsets = {}
   --form mini batch    
   local iter = 1
@@ -225,3 +226,4 @@ function train_rnns(opt)
     iter = iter + 1 
   end 
 end
+]]

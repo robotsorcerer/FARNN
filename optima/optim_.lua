@@ -1,15 +1,6 @@
 --[[ Run optimization: User has three options:
-We could train usin the general mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno or the
-Negative Log Likelihood Function ]]
+We could train usin the general mean squared error, Limited- Broyden-Fletcher-GoldFarb and Shanno ]]
 require 'torch'
-
-if use_cuda then
-  require 'cutorch'
-  require 'cunn'
-  if opt.backend == 'cudnn' then
-    require 'cudnn'
-  end
-end
 
 optim_ = {}
 --Training using the MSE criterion

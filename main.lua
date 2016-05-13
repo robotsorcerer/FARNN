@@ -469,10 +469,10 @@ function saveNet()
   
   local filename = paths.concat(opt.netdir, netname)
   if epoch == 0 then
-    os.execute('mkdir -p ' .. sys.dirname(filename))
     if paths.filep(filename) then
      os.execute('mv ' .. filename .. ' ' .. filename .. '.old')
-    end
+    end    
+    os.execute('mkdir -p ' .. sys.dirname(filename))
   else    
     print('<trainer> saving network model to '..filename)
     torch.save(filename, neunet)
