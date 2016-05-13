@@ -19,8 +19,7 @@ require 'utils.train'
 require 'xlua'
 require 'utils.stats'
 
---[[modified native Torch Linear class to allow random weight initializations
- and avoid local minima issues ]]
+--[[modified native Torch Linear class to allow random weight initializations]]
 do
     local Linear, parent = torch.class('nn.CustomLinear', 'nn.Linear')    
     -- override the constructor to have the additional range of initialization
@@ -34,8 +33,8 @@ do
             self.weight:normal(mean,stdv)
             self.bias:normal(mean,stdv)
         else
-            self.weight:normal(0,1)
-            self.bias:normal(0,1)
+            self.weight:normal(0.5,1)
+            self.bias:normal(0.5,1)
         end
     end
 end
@@ -237,9 +236,9 @@ local transfer    =  nn.ReLU()   --
 local function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.Linear(ninputs, nhiddens))
+          neunet:add(nn.CustomLinear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, 6)) 
+          neunet:add(nn.CustomLinear(nhiddens, 6)) 
 
   cost      = nn.MSECriterion() 
 
@@ -252,9 +251,9 @@ local function contruct_net()
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     local ffwd  =   nn.Sequential()
-                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.CustomLinear(ninputs, nhiddens))
                   :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
-                  :add(nn.Linear(nhiddens, nhiddens_rnn))
+                  :add(nn.CustomLinear(nhiddens, nhiddens_rnn))
 
 
     local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
@@ -275,7 +274,7 @@ local function contruct_net()
                   :add(ffwd)
                   :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.Linear(start, 1))
+                  :add(nn.CustomLinear(start, 1))
                 --  :add(nn.Linear(1, noutputs))
 
     --neunet    = nn.Sequencer(neunet)
@@ -303,7 +302,7 @@ local function contruct_net()
     end
 
     -- output layer
-    neunet:add(nn.Linear(ninputs, 1))
+    neunet:add(nn.CustomLinear(ninputs, 1))
     --neunet:add(nn.ReLU())
     neunet:add(nn.SoftSign())
 

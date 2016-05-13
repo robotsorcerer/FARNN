@@ -139,91 +139,25 @@ function train_mlp(opt)
 
     -- print('inputs', inputs)
     -- print('targets', targets)
---[[
-    --create closure to evaluate f(x): https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-    local feval = function(x)
-      collectgarbage()
-
-      --retrieve new params
-      if x~=parameters then
-        parameters:copy(x)
-      end
-
-      --reset grads
-      gradParameters:zero()
+    neunet:zeroGradParameters()
           
-      -- f is the average of all criterions
-      local f = 0
+    -- optimization on current mini-batch
+    if optimMethod == msetrain then
+      local loss, lossAcc
+      for i_f = 1,#inputs do        
+        loss, lossAcc = optimMethod(inputs[i_f], targets[i_f])    
+        print("Epoch: ", epoch)
+        print(string.format("Step %d, Loss = %f, Batch Normed Loss = %f ", iter, loss, lossAcc)) 
+      end                    
+    iter = iter + 1  
 
-      -- evaluate function for complete mini batch
-      for i_f = 1,#inputs do
-      -- estimate f
-        local output, targets_ = neunet:forward(inputs[i_f]), {}
-        if use_cuda then
-          targets_ = torch.cat({targets[i_f][1]:double(), targets[i_f][2]:double(), targets[i_f][3]:double(), 
-                             targets[i_f][4]:double(), targets[i_f][5]:double(), targets[i_f][6]:double()})     
-        else
-          targets_ = torch.cat{targets[i_f][1], targets[i_f][2], targets[i_f][3], targets[i_f][4], targets[i_f][5], targets[i_f][6]}
-        end
-        local err = cost:forward(output, targets_)
-        f = f + err
+    elseif optimMethod == optim.sgd then
+      optimMethod(feval, parameters, sgdState)
 
-        -- estimate df/dW
-        local df_do = cost:backward(output, targets_)
-        neunet:backward(inputs[i_f], df_do)
+    else  
+      optimMethod(feval, parameters, optimState)
 
-        -- penalties (L1 and L2):
-        if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
-           -- locals:
-           local norm,sign= torch.norm,torch.sign
-
-           -- Loss:
-           f = f + opt.coefL1 * norm(parameters,1)  
-           f = f + opt.coefL2 * norm(parameters,2)^2/2
-
-           -- Gradients:
-            gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )                          
-        else
-          -- normalize gradients and f(X)
-          gradParameters:div(#inputs)
-        end
-
-          print(' err ');       print(err)
-          print('\ndf_do');     print(df_do)
-      end       
-
-      -- normalize gradients and f(X)
-      gradParameters:div(#inputs)
-      f = f/#inputs
-
-      --retrun f and df/dx
-      return f, gradParameters
-    end --end feval
-]]
-    gradParameters:zero()
-          
-
-      -- evaluate function for complete mini batch
-      local targets_ = {}
-
-      -- optimization on current mini-batch
-      if optimMethod == msetrain then
-        for i_f = 1,#inputs do        
-         fm, errm = optimMethod(inputs[i_f], targets[i_f])    
-        end         
-
-      print(string.format("Epoch: %d, Step %d, Loss = %.40f, '\n', Normalized Loss = %.40f ", epoch,  iter, errm, fm))            
-      iter = iter + 1  
-
-      elseif optimMethod == optim.sgd then
-        optimMethod(feval, parameters, sgdState)
-
-      else  
-        optimMethod(feval, parameters, optimState)
-      end    
-
-      --print(string.format("Step %d, Loss = %f, Normalized Loss = %f ", iter, errm, fm))
-      -- iter = iter + 1
+    end    
   end
 end
 
