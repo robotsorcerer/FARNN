@@ -1,4 +1,5 @@
 -- Table to pre-process raw data against outliers, high frequencies etc
+-- The following are from cs231n.github.io --batch normalization from karpathy
 stats={}
 
 -- Get the mean value of a table

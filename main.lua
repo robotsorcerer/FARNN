@@ -178,11 +178,26 @@ test_out   = {
                out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
               }  
 
---preprocess data
+--preprocess data (remove means, normalize with std. dev)
+--[[
 test_input  = stats.inputnorm(test_input)
 test_out    = stats.normalize(test_out)
 train_input = stats.inputnorm(train_input)
 train_out   = stats.normalize(train_out)
+]]
+--apply batch normalization to training data 
+-- http://arxiv.org/pdf/1502.03167v3.pdf
+local eps = 1e-5
+local momentum = 1e-1
+local affine = true
+local BN = nn.BatchNormalization(1, eps, momentum, affine)
+train_input  = BN:forward(train_input)
+train_out    = {BN:forward(train_out[1]), BN:forward(train_out[2]),BN:forward(train_out[3]),
+                BN:forward(train_out[4]), BN:forward(train_out[5]), BN:forward(train_out[6])}
+
+test_input = BN:forward(test_input)
+test_out   = {BN:forward(train_out[1]), BN:forward(train_out[2]),BN:forward(train_out[3]),
+              BN:forward(train_out[4]), BN:forward(train_out[5]), BN:forward(train_out[6])}
 --===========================================================================================
 --ship train and test data to gpu
 train_input = transfer_data(train_input)
