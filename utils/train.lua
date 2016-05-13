@@ -44,7 +44,7 @@ function train_rnn(opt)
     local loss = 0
      outputs = neunet:forward(inputs)
      loss    = loss + cost:forward(outputs, targets)
-    print(string.format("Step %d, Loss = %f ", iter, loss))
+    print(string.format("Epoch %d, Step %d, Loss = %f ", epoch, iter, loss))
 
     if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
@@ -52,7 +52,7 @@ function train_rnn(opt)
     local  gradOutputs = cost:backward(outputs, targets)
     local gradInputs  = neunet:backward(inputs, gradOutputs) 
       
-    print('gradInputs'); print(gradInputs)
+    --print('gradInputs'); print(gradInputs)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
@@ -101,7 +101,7 @@ function train_lstm(args)
     --print('outputs', outputs)
     loss = cost:forward(outputs, targets)
 
-    print(string.format("Step %d, Loss = %f ", iter, loss))
+    print(string.format("Epoch: %d, Step %d, Loss = %f ", epoch, iter, loss))
 
     if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
@@ -117,7 +117,8 @@ function train_lstm(args)
     iter = iter + 1 
   end 
 end
-
+     
+local iter = 0;
 function train_mlp(opt)
 
   for t = 1, opt.maxIter, opt.batchSize do
@@ -201,7 +202,6 @@ function train_mlp(opt)
 ]]
     gradParameters:zero()
           
-     local iter = 0;
 
       -- evaluate function for complete mini batch
       local targets_ = {}
@@ -209,10 +209,11 @@ function train_mlp(opt)
       -- optimization on current mini-batch
       if optimMethod == msetrain then
         for i_f = 1,#inputs do        
-          gradParameters, fm, errm = optimMethod(inputs[i_f], targets[i_f])  
+         fm, errm = optimMethod(inputs[i_f], targets[i_f])    
+        end         
 
-          print(string.format("Step %d, Loss = %f, Normalized Loss = %f ", iter, errm, fm))      
-        end   
+      print(string.format("Epoch: %d, Step %d, Loss = %.40f, '\n', Normalized Loss = %.40f ", epoch,  iter, errm, fm))            
+      iter = iter + 1  
 
       elseif optimMethod == optim.sgd then
         optimMethod(feval, parameters, sgdState)
@@ -222,7 +223,7 @@ function train_mlp(opt)
       end    
 
       --print(string.format("Step %d, Loss = %f, Normalized Loss = %f ", iter, errm, fm))
-      iter = iter + 1
+      -- iter = iter + 1
   end
 end
 

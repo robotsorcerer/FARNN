@@ -43,7 +43,7 @@ end
 -------------------------------------------------------------------------------
 -- Input arguments and options
 -------------------------------------------------------------------------------
-cmd = torch.CmdLine()
+local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('===========================================================================')
 cmd:text('Learning Deep Neural Network Policies During H&N Motion Control in         ')
@@ -103,7 +103,7 @@ cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print ne
 opt = cmd:parse(arg)
 torch.manualSeed(opt.seed)
 
-torch.setnumthreads(4)
+torch.setnumthreads(8)
 
 -- create log file if user specifies true for rundir
 if(opt.rundir==1) then
@@ -145,8 +145,8 @@ end
 local function pprint(x)  print(tostring(x)); print(x); end
 
 -- Log results to files
-trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
-testLogger  = optim.Logger(paths.concat(opt.netdir, 'test.log'))
+-- trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
+-- testLogger  = optim.Logger(paths.concat(opt.netdir, 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -239,9 +239,7 @@ local function contruct_net()
           neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, 36)) 
-
-          --neunet = nn.Repeater(neunet, 6)
+          neunet:add(nn.Linear(nhiddens, 6)) 
 
   cost      = nn.MSECriterion() 
 
@@ -373,21 +371,45 @@ local function train(data)
 
   if opt.model == 'rnn' then 
     train_rnn(opt) 
+    -- time taken for one epoch
+    time = sys.clock() - time
+    time = time / height
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+    if epoch % 10 == 0 then
+      saveNet()
+    end
+    -- next epoch
+    epoch = epoch + 1
+
   elseif opt.model == 'lstm' then
     train_lstm(opt)
+    -- time taken for one epoch
+    time = sys.clock() - time
+    time = time / height
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+    saveNet()
+
+    if epoch % 10 == 0 then
+      saveNet()
+    end
+    -- next epoch
+    epoch = epoch + 1
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
+    -- time taken for one epoch
+    time = sys.clock() - time
+    time = time / height
+    print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+    if epoch % 10 == 0 then
+      saveNet()
+    end
+
+    -- next epoch
+    epoch = epoch + 1
   end   
 
-  -- time taken for one epoch
-  time = sys.clock() - time
-  time = time / height
-  print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-  saveNet()
-
-  -- next epoch
-  epoch = epoch + 1
 end     
 
 
@@ -447,9 +469,15 @@ function saveNet()
   end  
   
   local filename = paths.concat(opt.netdir, netname)
-  os.execute('mkdir -p ' .. sys.dirname(filename))
-  print('<trainer> saving network model to '..filename)
-  torch.save(filename, neunet)
+  if epoch == 0 then
+    os.execute('mkdir -p ' .. sys.dirname(filename))
+    if paths.filep(filename) then
+     os.execute('mv ' .. filename .. ' ' .. filename .. '.old')
+    end
+  else    
+    print('<trainer> saving network model to '..filename)
+    torch.save(filename, neunet)
+  end
 end
 
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end

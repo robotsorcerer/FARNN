@@ -13,6 +13,8 @@ end
 
 optim_ = {}
 --Training using the MSE criterion
+
+local fm = 0     local pred = {}     local errm = {}  local x_fwd = {}
 function msetrain(x, y)
  
   --https://github.com/torch/nn/blob/master/doc/containers.md#Parallel
@@ -20,7 +22,6 @@ function msetrain(x, y)
   --reset grads
   gradParameters:zero()
 
-  local fm = 0     local pred = {}     local errm = {}  local x_fwd = {}
   local gradcrit = {}   local y_fwd = {}--torch.Tensor(1,6)
   for j_mse                 = 1, kk do
        pred                 = neunet:forward(x)
@@ -32,6 +33,7 @@ function msetrain(x, y)
         else
           y_fwd = torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]}
         end
+        --print('pred', pred); print('y_fwd', y_fwd)
         errm                = cost:forward(pred, y_fwd)
         fm                  = errm + fm
         learningRate = opt.learningRate
@@ -48,7 +50,7 @@ function msetrain(x, y)
         fm = fm/(height)
   end
 
-  return gradParameters, fm, errm
+  return fm, errm
 end
 
 collectgarbage()
