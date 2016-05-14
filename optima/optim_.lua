@@ -6,13 +6,12 @@ optim_ = {}
 --Training using the MSE criterion
      
 function msetrain(x, y)
-  local lossAcc = 0,  
-  gradParameters:zero()
+  local lossAcc = 0
   local y_fwd = {}
     neunet:zeroGradParameters();
     --1. predict inputs
     local pred = neunet:forward(x)
-
+    --easiest way to do backprop avoid cluttered data
     if use_cuda then
       y_fwd = torch.cat({y[1]:double(), y[2]:double(), y[3]:double(), 
                            y[4]:double(), y[5]:double(), y[6]:double()})
@@ -33,9 +32,10 @@ function msetrain(x, y)
     lossAcc = lossAcc/math.min(opt.batchSize, height)
 
   return loss, lossAcc
+  
+  collectgarbage()
 end
 
-collectgarbage()
 
 --Train using the L-BFGS Algorithm
 function lbfgs(neunet, x, y, learningRate) 

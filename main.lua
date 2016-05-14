@@ -143,9 +143,6 @@ end
 
 local function pprint(x)  print(tostring(x)); print(x); end
 
--- Log results to files
--- trainLogger = optim.Logger(paths.concat(opt.netdir, 'train.log'))
--- testLogger  = optim.Logger(paths.concat(opt.netdir, 'test.log'))
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -185,21 +182,9 @@ test_out    = stats.normalize(test_out)
 train_input = stats.inputnorm(train_input)
 train_out   = stats.normalize(train_out)
 ]]
---apply batch normalization to training data 
--- http://arxiv.org/pdf/1502.03167v3.pdf
-local eps = 1e-5
-local momentum = 1e-1
-local affine = true
-local BN = nn.BatchNormalization(1, eps, momentum, affine)
-train_input  = BN:forward(train_input)
-train_out    = {BN:forward(train_out[1]), BN:forward(train_out[2]),BN:forward(train_out[3]),
-                BN:forward(train_out[4]), BN:forward(train_out[5]), BN:forward(train_out[6])}
-
-test_input = BN:forward(test_input)
-test_out   = {BN:forward(train_out[1]), BN:forward(train_out[2]),BN:forward(train_out[3]),
-              BN:forward(train_out[4]), BN:forward(train_out[5]), BN:forward(train_out[6])}
 --===========================================================================================
 --ship train and test data to gpu
+--[[
 train_input = transfer_data(train_input)
 test_input = transfer_data(test_input)
 
@@ -210,7 +195,7 @@ end
 for i=1,#test_out do
    test_out[i] = transfer_data(test_out[i])
 end
-                              
+                ]]              
 kk          = train_input:size(1)
 --===========================================================================================           
 --geometry of input
@@ -224,11 +209,11 @@ testData     = {test_input,  test_out}
 print '==> Determining input-output model order parameters'    
 
 --find optimal # of input variables from data
-qn  = computeqn(train_input, train_out[3])
+--qn  = computeqn(train_input, train_out[3])
 
 --compute actual system order
 --utils = require 'order.utils'
-inorder, outorder, q =  computeq(train_input, (train_out[3])/10, opt)
+--inorder, outorder, q =  computeq(train_input, (train_out[3])/10, opt)
 
 --------------------utils--------------------------------------------------------------------------
 print '==> Setting up neural network parameters'
