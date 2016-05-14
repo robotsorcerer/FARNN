@@ -22,7 +22,8 @@ function batchNorm(x)
       x[i] = BN:forward(x[i])
       x[i] = transfer_data(x[i])
     end
-  end
+  end  
+  collectgarbage()    
   return x
 end
 
@@ -72,13 +73,13 @@ function train_rnn(opt)
     neunet:updateParameters(opt.rnnlearningRate)
     iter = iter + 1 
   end 
+  collectgarbage()    
 end
 
 function train_lstm(args)
-
   local offsets = {}
   --form mini batch    
-  local iter = 1                              
+  local iter = 1                             
   
   for t = 1, math.min(args.maxIter, height), args.batchSize do 
     offsets = torch.LongTensor(args.batchSize):random(1,height)  
@@ -121,12 +122,12 @@ function train_lstm(args)
     neunet:updateParameters(opt.rnnlearningRate)
     iter = iter + 1 
   end 
+  collectgarbage()    
 end
      
-function train_mlp(opt)
-       
+function train_mlp(opt)       
   local iter = 0;
-  for t = 1, opt.maxIter, opt.batchSize do
+  for t = 1, math.min(opt.maxIter, height), opt.batchSize do
 
     xlua.progress(t, math.min(opt.maxIter, height))
     print('\n')
@@ -165,8 +166,8 @@ function train_mlp(opt)
     end 
 
     end
-
   end
+  collectgarbage()    
 end
 
 --[[

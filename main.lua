@@ -45,8 +45,8 @@ end
 local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('===========================================================================')
-cmd:text('Learning Deep Neural Network Policies During H&N Motion Control in         ')
-cmd:text('                      Clinical Cancer Radiotherapy                         ')
+cmd:text('         Identification and Control of Nonlinear Systems Using Deep        ')
+cmd:text('                      Neural Networks                                      ')
 cmd:text(                                                                             )
 cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
 cmd:text(                                                                             )
@@ -55,7 +55,7 @@ cmd:text('======================================================================
 cmd:text(                                                                             )
 cmd:text(                                                                             )
 cmd:text('Options')
-cmd:option('-seed', 123, 'initial random seed to use')
+cmd:option('-seed', 123, 'initial seed for random number generator')
 cmd:option('-rundir', 0, 'false|true: 0 for false, 1 for true')
 
 -- Model Order Determination Parameters
@@ -174,28 +174,7 @@ test_out   = {
                (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
                out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
               }  
-
---preprocess data (remove means, normalize with std. dev)
---[[
-test_input  = stats.inputnorm(test_input)
-test_out    = stats.normalize(test_out)
-train_input = stats.inputnorm(train_input)
-train_out   = stats.normalize(train_out)
-]]
---===========================================================================================
---ship train and test data to gpu
---[[
-train_input = transfer_data(train_input)
-test_input = transfer_data(test_input)
-
-for i = 1, #train_out do
-  train_out[i] = transfer_data(train_out[i])
-end
-
-for i=1,#test_out do
-   test_out[i] = transfer_data(test_out[i])
-end
-                ]]              
+          
 kk          = train_input:size(1)
 --===========================================================================================           
 --geometry of input
@@ -416,42 +395,46 @@ end
 local function test(data)
    -- local vars
    local time = sys.clock()
-
+   local testHeight = test_input:size(1)
    -- averaged param use?
    if average then
       cachedparams = parameters:clone()
       parameters:copy(average)
    end
-
    -- test over given dataset
    print('<trainer> on testing Set:')
-   for t = 1, math.max(opt.maxIter, height), opt.batchSize do
+   for t = 1, testHeight, opt.batchSize do
       -- disp progress
-      xlua.progress(t, math.min(opt.maxIter, height))
-
-    -- create mini batch
-    local inputs = {}
-    local targets = {}
-    for i = t,math.min(t+opt.batchSize-1,height) do
+      xlua.progress(t, testHeight)
+    -- create mini batch    
+    local inputs, targets, offsets = {}, {}, {}
       -- load new sample
-      if i > height or opt.maxIter then  i = 1  end
-      local sample = {data[1], data[2][1], data[2][2], data[2][3], data[2][4], data[2][5], data[2][6]}       --use pitch 1st; we are dividing pitch values by 10 because it was incorrectly loaded from vicon
-      input = sample[1]:clone()[i]
-      target = {sample[2]:clone()[i], sample[3]:clone()[i], sample[4]:clone()[i], sample[5]:clone()[i], sample[6]:clone()[i], sample[7]:clone()[i]}
-      table.insert(inputs, input)
-      table.insert(targets, target) 
-    end    
+      offsets = torch.LongTensor(opt.batchSize):random(1, testHeight) 
+      inputs = test_input:index(1, offsets)
+      --batch of targets
+      targets = {
+      test_out[1]:index(1, offsets), test_out[2]:index(1, offsets), 
+                  test_out[3]:index(1, offsets), test_out[4]:index(1, offsets), 
+                  test_out[5]:index(1, offsets), test_out[6]:index(1, offsets)
+                }  
+
+      --pre-whiten the inputs and outputs in the mini-batch
+      inputs = batchNorm(inputs)
+      targets = batchNorm(targets)  
     
-    -- test samples
-    for j = 1, #inputs do
-      local preds = neunet:forward(inputs[j])
-    end
+      -- test samples
+      local preds = neunet:forward(inputs)
+      local predF, normedPreds = {}, {}
+      for i=1,#preds do
+        predF[i] = preds[i]:float()        
+        normedPreds[i] = torch.norm(predF[i])
+      end
 
-    -- timing
-    time = sys.clock() - time
-    time = time / height
-    print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
-
+      -- timing
+      time = sys.clock() - time
+      time = time / height
+      print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
+      print("<prediction> errors on test data", normedPreds)
     end
 end
 

@@ -30,19 +30,8 @@ function msetrain(x, y)
       -- normalize gradients and f(X)
     gradParameters:div(opt.batchSize)
     lossAcc = lossAcc/math.min(opt.batchSize, height)
-
+    
+    collectgarbage()
   return loss, lossAcc
-  
-  collectgarbage()
 end
-
-
---Train using the L-BFGS Algorithm
-function lbfgs(neunet, x, y, learningRate) 
-   local trainer        = nn.StochasticGradient(neunet2, cost)
-   trainer.learningRate = learningRate
-   trainer:train({x, y})
-   return neunet2
-end
-
-collectgarbage()                           --yeah, sure. come in and argue :)
+                       --yeah, sure. come in and argue :)
