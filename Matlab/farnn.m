@@ -1,24 +1,21 @@
-p = [-1 -1 2 2 ;
-      0  5 0 5];
+%% Load Torch Trained Network
+clear all; clc; close all
+cd('/home/lex/Documents/FARNN/network');
+% load lstm trainer
+lstmID = fopen('lstm-net.t7');
+lstm = fread(lstmID);
+fclose(lstmID);
+whos lstm
 
-t = [-1 -1 1 1];
 
-net = feedforwardnet(3, 'traingd');
-net.divideFcn = '';
+%load simple rnn
+rnnID = fopen('rnn-net.t7');
+rnn = fread(rnnID);
+fclose(rnnID);
+whos rnn
 
-%modify some of the default training parameters
-net.trainParam.show = 50;
-net.trainParam.lr = 0.05;
-net.trainParam.epochs = 300;
-net.trainParam.goal = 1e-5;
-
-%now train the network
-[net, tr] = train(net, p, t);
-
-disp( tr);
-
-%% Create, configure, and initialize multilayer neural networks
-house = load('house_dataset')
-
-net = feedforwardnet;
-net = configure(net, houseInputs, houseTagets);
+% load mlp trainer
+mlpID = fopen('rnn-net.t7');
+rnn = fread(mlpID);
+fclose(mlpID);
+whos rnnn
