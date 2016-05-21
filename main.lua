@@ -74,7 +74,7 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
+cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn|bnlstm')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0, 'L1 penalty on the weights')
@@ -285,13 +285,41 @@ local function contruct_net()
     --neunet:add(nn.ReLU())
     neunet:add(nn.SoftSign())
 
+    --neunet:remember('eval') --used by Sequencer modules only
+    --output layer 
+    neunet = nn.Repeater(neunet, noutputs)
+--===========================================================================================
+    --Nested BN_LSTM Recurrence
+  elseif opt.model == 'bnlstm' then   
+    require 'rnn'
+    require 'utils.BNFastLSTM'
+    -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
+    nn.FastLSTM.usenngraph = true -- faster
+    nn.FastLSTM.bn = false
+    local crit = nn.MSECriterion()
+    cost = nn.SequencerCriterion(crit)
+    neunet = nn.Sequential()
+    local inputSize = opt.hiddenSize[1]
+    for i, inputSize in ipairs(opt.hiddenSize) do 
+      local rnn = nn.BNFastLSTM(ninputs, opt.hiddenSize[1], opt.rho)
+      neunet:add(rnn) 
+       
+      if opt.dropout then
+        neunet:insert(nn.Dropout(opt.dropoutProb), 1)
+      end
+       inputSize = opt.hiddenSize[1]
+    end
+
+    -- output layer
+    neunet:add(nn.CustomLinear(ninputs, 1))
+    --neunet:add(nn.ReLU())
+    neunet:add(nn.SoftSign())
+
     -- will recurse a single continuous sequence
     neunet:remember('eval')
     --output layer 
     neunet = nn.Repeater(neunet, noutputs)
 --===========================================================================================
-    print('neunet biases Linear', neunet.bias)
-    print('\nneunet biases\n', neunet:get(1).bias, '\tneunet weights: ', neunet:get(1).weights)
   else    
       error('you have specified an incorrect model. model must be <lstm> or <mlp> or <rnn>')    
   end
@@ -360,7 +388,7 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-  elseif opt.model == 'lstm' then
+  elseif opt.model == 'lstm' or 'bnlstm' then
     train_lstm(opt)
     -- time taken for one epoch
     time = sys.clock() - time

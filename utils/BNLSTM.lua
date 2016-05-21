@@ -3,15 +3,19 @@
 -- Long Short Term Memory architecture.
 -- Ref. A.: http://arxiv.org/pdf/1603.09025v4.pdf (blueprint for this module)
 -- Code by Olalekan Ogunmolu <lakehanne.github.io>
--- The first input in sequence uses zero value for cell and hidden state
 ------------------------------------------------------------------------
-assert(not nn.LSTM, "update nnx package : luarocks install nnx")
-local LSTM, parent = torch.class('nn.BNLSTM', 'nn.AbstractRecurrent')
+-- assert(not nn.LSTM, "update nnx package : luarocks install nnx")
 
-function BNLSTM:__init(inputSize, outputSize, rho, cell2gate)
+local BNLSTM, parent = torch.class('nn.BNLSTM', 'nn.AbstractRecurrent')
+
+function BNLSTM:__init(inputSize, outputSize, rho, cell2gate, eps, momentum, affine)
    parent.__init(self, rho or 9999)
    self.inputSize = inputSize
    self.outputSize = outputSize or inputSize
+   --  initialize batch norm variance with 0.1
+   self.eps = self.eps or 0.1
+   self.momentum = self.momentum or 0.1 --gamma
+   self.affine = affine or true
    -- build the model
    self.cell2gate = (cell2gate == nil) and true or cell2gate
    self.recurrentModule = self:buildModel()
@@ -56,16 +60,19 @@ function BNLSTM:buildForgetGate()
    return self.forgetGate
 end
 
+--apply batch normalization to training data 
+-- http://arxiv.org/pdf/1502.03167v3.pdf
 function BNLSTM:buildHidden()
-   local hidden = nn.Sequential()   
-   --  initialize batch norm variance with 0.1
-   self.gamma = 0.1
-   self.betaX = 0
-   self.betaH = 0
+   local hidden = nn.Sequential()
+
+   --normalize recurrent terms W_h*h_{t-1} and W_x*x_t separately     
+   local bn_wx = nn.BatchNormalization(self.inputSize, self.eps, self.momentum, self.affine)
+   local bn_wh = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
+
    -- input is {input, output(t-1), cell(t-1)}, but we only need {input, output(t-1)}
    hidden:add(nn.NarrowTable(1,2))
-   local input2hidden = nn.Linear(self.inputSize, self.outputSize)
-   local output2hidden = nn.LinearNoBias(self.outputSize, self.outputSize)
+   local input2hidden = bn_wx:forward(nn.Linear(self.inputSize, self.outputSize))
+   local output2hidden = bn_wh(nn.LinearNoBias(self.outputSize, self.outputSize)():annotate {name='output2hidden'}):annotate {name = 'bn_wh'}
    local para = nn.ParallelTable()
    para:add(input2hidden):add(output2hidden)
    hidden:add(para)
@@ -73,10 +80,6 @@ function BNLSTM:buildHidden()
    hidden:add(nn.Tanh())
 
    self.hiddenLayer = hidden
-   
-   -- calculate sample mean of current mini-batch
-   self.hiddenLayerExpectedMean = torch.mean(self.hiddenLayer)   
-   self.hiddenLayerExpectedVar = torch.std(self.hiddenLayer)
    return hidden
 end
 

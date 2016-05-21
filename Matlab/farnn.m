@@ -16,6 +16,6 @@ whos rnn
 
 % load mlp trainer
 mlpID = fopen('rnn-net.t7');
-rnn = fread(mlpID);
+mlp = fread(mlpID);
 fclose(mlpID);
-whos rnnn
+whos mlp
