@@ -1,44 +1,46 @@
-local FastLSTM, parent = torch.class("nn.BNFastLSTM", "nn.LSTM")
+local BNFastLSTM, parent = torch.class("nn.BNFastLSTM", "nn.FastLSTM")
 
 -- set this to true to have it use nngraph instead of nn
--- setting this to true can make your next FastLSTM significantly faster
-FastLSTM.usenngraph = false
-FastLSTM.bn = false
+-- setting this to true can make your next BNFastLSTM significantly faster
+BNFastLSTM.usenngraph = true
+BNFastLSTM.bn = true
 
-function FastLSTM:__init(inputSize, outputSize, rho, cell2gate, eps, momentum, affine) 
+function BNFastLSTM:__init(inputSize, outputSize, rho, cell2gate, eps, momentum, affine) 
    --  initialize batch norm variance with 0.1
    self.eps = self.eps or 0.1
    self.momentum = self.momentum or 0.1 --gamma
    self.affine = self.affine or true
+   self.bn = self.bn or true
 
    parent.__init(self, inputSize, outputSize, rho, false, self.eps, self.momentum, self.affine)  
 end
 
-function FastLSTM:buildModel()
+function BNFastLSTM:buildModel()
    -- input : {input, prevOutput, prevCell}
    -- output : {output, cell}
    
    --apply recurrent batch normalization 
    -- http://arxiv.org/pdf/1502.03167v3.pdf
    --normalize recurrent terms W_h*h_{t-1} and W_x*x_t separately 
+
+   -- Calculate all four gates in one go : input, hidden, forget, output
+   self.i2g = nn.Linear(self.inputSize, 4*self.outputSize)
+   self.o2g = nn.LinearNoBias(self.outputSize, 4*self.outputSize)
+
    local bn_wx, bn_wh, bn_c  
    if self.bn then  
-      bn_wx = nn.BatchNormalization(self.inputSize, self.eps, self.momentum, self.affine)
-      bn_wh = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
-      bn_c  = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
+      bn_wx = nn.BatchNormalization(1, self.eps, self.momentum, self.affine)
+      bn_wh = nn.BatchNormalization(1, self.eps, self.momentum, self.affine)
+      bn_c  = nn.BatchNormalization(1, self.eps, self.momentum, self.affine)
    else
       bn_wx = nn.Identity()
       bn_wh = nn.Identity()
       bn_c  = nn.Identity()
    end
 
-   -- Calculate all four gates in one go : input, hidden, forget, output
-   self.i2g = bn_wx:forward(nn.Linear(self.inputSize, 4*self.outputSize))
-   self.o2g = bn_wh:forward(nn.LinearNoBias(self.outputSize, 4*self.outputSize))
-   
    if self.usenngraph then
       require 'nngraph'
-      return self:nngraphModel()
+      return self:nngraphModel(bn_wx, bn_wh, bn_c)
    end
 
    local para = nn.ParallelTable():add(self.i2g):add(self.o2g)
@@ -101,7 +103,7 @@ function FastLSTM:buildModel()
    return seq
 end
 
-function FastLSTM:nngraphModel()
+function BNFastLSTM:nngraphModel(bn_wx, bn_wh, bn_c)
    assert(nngraph, "Missing nngraph package")
    
    local inputs = {}
@@ -110,22 +112,16 @@ function FastLSTM:nngraphModel()
    table.insert(inputs, nn.Identity()()) -- prev_c[L]
    
    local x, prev_h, prev_c = unpack(inputs)
-
-   --apply recurrent batch normalization 
-   -- http://arxiv.org/pdf/1502.03167v3.pdf
-   --normalize recurrent terms W_h*h_{t-1} and W_x*x_t separately 
-   local bn_wx, bn_wh, bn_c  
-   if self.bn then  
-      bn_wx = nn.BatchNormalization(self.inputSize, self.eps, self.momentum, self.affine)
-      bn_wh = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
-      bn_c  = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
-   else
-      bn_wx = nn.Identity()
-      bn_wh = nn.Identity()
-      bn_c  = nn.Identity()
-   end
-   
+  
    -- evaluate the input sums at once for efficiency
+
+   -- if type(x) == 'table' then
+   --   for i = 1, #x do
+   --     x[i] = BN:forward(x[i])
+   --     x[i] = transfer_data(x[i])
+   --   end
+   -- end  
+
    local i2h = bn_wx(self.i2g(x):annotate{name='i2h'}):annotate {name='bn_wx'}
    local h2h = bn_wh(self.o2g(prev_h):annotate{name='h2h'}):annotate {name = 'bn_wh'}
    local all_input_sums = nn.CAddTable()({i2h, h2h})
@@ -153,26 +149,26 @@ function FastLSTM:nngraphModel()
    return nn.gModule(inputs, outputs)
 end
 
-function FastLSTM:buildGate()
+function BNFastLSTM:buildGate()
    error"Not Implemented"
 end
 
-function FastLSTM:buildInputGate()
+function BNFastLSTM:buildInputGate()
    error"Not Implemented"
 end
 
-function FastLSTM:buildForgetGate()
+function BNFastLSTM:buildForgetGate()
    error"Not Implemented"
 end
 
-function FastLSTM:buildHidden()
+function BNFastLSTM:buildHidden()
    error"Not Implemented"
 end
 
-function FastLSTM:buildCell()
+function BNFastLSTM:buildCell()
    error"Not Implemented"
 end   
    
-function FastLSTM:buildOutputGate()
+function BNFastLSTM:buildOutputGate()
    error"Not Implemented"
 end

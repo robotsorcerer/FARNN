@@ -294,8 +294,8 @@ local function contruct_net()
     require 'rnn'
     require 'utils.BNFastLSTM'
     -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
-    nn.FastLSTM.usenngraph = true -- faster
-    nn.FastLSTM.bn = false
+    nn.BNFastLSTM.usenngraph = true -- faster
+    nn.BNFastLSTM.bn = true
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()
