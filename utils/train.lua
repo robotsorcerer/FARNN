@@ -15,11 +15,11 @@ function batchNorm(x)
   local BN = nn.BatchNormalization(1, eps, momentum, affine)
 
   if type(x) == 'userdata' then       --inputs
-    x  = BN:forward(x)
+   x  = BN:forward(x)
     x  = transfer_data(x) --forward doubleTensor as CudaTensor
   elseif type(x) == 'table' then
     for i = 1, #x do
-      x[i] = BN:forward(x[i])
+     x[i] = BN:forward(x[i])
       x[i] = transfer_data(x[i])
     end
   end  
