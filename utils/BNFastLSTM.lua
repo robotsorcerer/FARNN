@@ -31,7 +31,7 @@ function BNFastLSTM:buildModel()
    if self.bn then  
       bn_wx = nn.BatchNormalization(self.inputSize, self.eps, self.momentum, self.affine)
       bn_wh = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
-      bn_c  = nn.BatchNormalization(self.OutputSize, self.eps, self.momentum, self.affine)
+      bn_c  = nn.BatchNormalization(self.outputSize, self.eps, self.momentum, self.affine)
    else
       bn_wx = nn.Identity()
       bn_wh = nn.Identity()
