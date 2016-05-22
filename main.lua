@@ -56,7 +56,7 @@ cmd:text(                                                                       
 cmd:text(                                                                             )
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial seed for random number generator')
-cmd:option('-rundir', 0, 'false|true: 0 for false, 1 for true')
+cmd:option('-silent', false, 'false|true: 0 for false, 1 for true')
 
 -- Model Order Determination Parameters
 cmd:option('-pose','data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)')
@@ -99,25 +99,22 @@ cmd:option('-batchSize', 6, 'Batch Size for mini-batch training, \
 cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
 
 -- misc
-opt = cmd:parse(arg)
+opt = cmd:parse(arg or {})
 torch.manualSeed(opt.seed)
 
 torch.setnumthreads(8)
 
--- create log file if user specifies true for rundir
-if(opt.rundir==1) then
-  opt.rundir = cmd:string('experiment', opt, {dir=false})
-  paths.mkdir(opt.rundir)
-  cmd:log(opt.rundir .. '/log', opt)
-end
-
 cmd:addTime('Deep Head Motion Control', '%F %T')
 cmd:text()
 
+if not opt.silent then
+   print(opt)
+end
 -------------------------------------------------------------------------------
 -- Fundamental initializations
 -------------------------------------------------------------------------------
 --torch.setdefaulttensortype('torch.FloatTensor')            -- for CPU
+print("")
 print('==> fundamental initializations')
 
 data        = opt.pose 
@@ -129,7 +126,7 @@ if opt.gpu >= 0 then
   cutorch.manualSeed(opt.seed)
   cutorch.setDevice(opt.gpu + 1)                         -- +1 because lua is 1-indexed
   idx       = cutorch.getDevice()
-  print('System has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
+  print('\nSystem has', cutorch.getDeviceCount(), 'gpu(s).', 'Code is running on GPU:', idx)
   use_cuda = true  
 end
 
