@@ -215,8 +215,7 @@ local function contruct_net()
           neunet:add(nn.CustomLinear(ninputs, nhiddens))
           neunet:add(transfer)                         
           neunet:add(nn.CustomLinear(nhiddens, 6)) 
-
-  cost      = nn.MSECriterion() 
+    cost      = nn.MSECriterion() 
 
   elseif opt.model == 'rnn' then    
 -------------------------------------------------------
@@ -398,6 +397,7 @@ local function train(data)
     end
     -- next epoch
     epoch = epoch + 1
+
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
     -- time taken for one epoch
@@ -408,9 +408,10 @@ local function train(data)
     if epoch % 10 == 0 then
       saveNet()
     end
-
     -- next epoch
     epoch = epoch + 1
+  else
+    print("Incorrect model entered")
   end   
 
 end     
@@ -428,11 +429,13 @@ local function test(data)
    end
    -- test over given dataset
    print('<trainer> on testing Set:')
-   for t = 1, testHeight, opt.batchSize do
+   local avg = 0; local predF, normedPreds = {}, {}
+   local iter = 1;
+   for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
-      xlua.progress(t, testHeight)
-    -- create mini batch    
-    local inputs, targets, offsets = {}, {}, {}
+      xlua.progress(t, math.min(opt.maxIter, testHeight))
+      -- create mini batch        
+      local inputs, targets, offsets = {}, {}, {}
       -- load new sample
       offsets = torch.LongTensor(opt.batchSize):random(1, testHeight) 
       inputs = test_input:index(1, offsets)
@@ -449,18 +452,23 @@ local function test(data)
     
       -- test samples
       local preds = neunet:forward(inputs)
-      local predF, normedPreds = {}, {}
       for i=1,#preds do
         predF[i] = preds[i]:float()        
         normedPreds[i] = torch.norm(predF[i])
+        avg = normedPreds[i] + avg
       end
 
       -- timing
       time = sys.clock() - time
       time = time / height
-      print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
-      print("<prediction> errors on test data", normedPreds)
-    end
+
+      if  (iter*opt.batchSize >= math.min(opt.maxIter, height))  then 
+        print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')  
+        print("avg. prediction errors on test data", avg/#normedPreds)
+      end 
+      iter = iter + 1
+    end    
+
 end
 
 function saveNet()

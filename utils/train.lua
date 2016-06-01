@@ -33,11 +33,10 @@ function train_rnn(opt)
   local iter = 1                              
   local offsets = {}
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
-
+    
+    xlua.progress(t, math.min(opt.maxIter, height))
     offsets = torch.LongTensor(opt.batchSize):random(1,height) 
 
-    xlua.progress(t, math.min(opt.maxIter, height))
-     print('\n')
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs = train_input:index(1, offsets)    
@@ -59,9 +58,8 @@ function train_rnn(opt)
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
 
-    local outputs = neunet:forward(inputs)
+    local outputs = neunet:forward(inputs)    
     local loss    = cost:forward(outputs, targets)
-    print(string.format("Epoch %d, Step %d, Loss = %f ", epoch, iter, loss))
 
     if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
@@ -71,9 +69,12 @@ function train_rnn(opt)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
+    if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then 
+      print(string.format("Epoch %d, Loss = %f ", epoch, loss))
+    end    
     iter = iter + 1 
   end 
-  collectgarbage()    
+    collectgarbage() 
 end
 
 function train_lstm(args)
@@ -85,7 +86,6 @@ function train_lstm(args)
     offsets = torch.LongTensor(args.batchSize):random(1,height)  
 
     xlua.progress(t, math.min(opt.maxIter, height))
-     print('\n')
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs = train_input:index(1, offsets)
@@ -110,7 +110,7 @@ function train_lstm(args)
     local outputs = neunet:forward(inputs)
     local loss = cost:forward(outputs, targets)
 
-    print(string.format("Epoch: %d, Step %d, Loss = %f ", epoch, iter, loss))
+    -- print(string.format("Epoch: %d, Step %d, Loss = %f ", epoch, iter, loss))
 
     if iter % 10 == 0 then collectgarbage() end -- good idea to do this once in a while, i think
           
@@ -120,6 +120,9 @@ function train_lstm(args)
 
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
+    if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then 
+      print(string.format("Epoch %d, Loss = %f ", epoch, loss))
+    end    
     iter = iter + 1 
   end 
   collectgarbage()    
@@ -130,7 +133,6 @@ function train_mlp(opt)
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do
 
     xlua.progress(t, math.min(opt.maxIter, height))
-    print('\n')
      -- create mini batch
     local inputs, targets = {}, {}
     for i = t,math.min(t+opt.batchSize-1, height) do
@@ -154,9 +156,13 @@ function train_mlp(opt)
       local loss, lossAcc       
         loss, lossAcc = optimMethod(inputs, targets) 
       
-      print("Epoch: ", epoch)
-      print(string.format("Step %d, Loss = %f, Batch Normed Loss = %f ", iter, loss, lossAcc))      
-    iter = iter + 1  
+    --   print("Epoch: ", epoch)
+    --   print(string.format("Step %d, Loss = %f, Batch Normed Loss = %f ", iter, loss, lossAcc))      
+    -- iter = iter + 1  
+      if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then 
+        print(string.format("Epoch %d, Loss = %f ", epoch, Loss))
+      end    
+      iter = iter + 1 
 
     elseif optimMethod == optim.sgd then
       optimMethod(feval, parameters, sgdState)

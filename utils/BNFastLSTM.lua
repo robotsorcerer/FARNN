@@ -3,9 +3,9 @@ local BNFastLSTM, parent = torch.class("nn.BNFastLSTM", "nn.FastLSTM")
 -- set this to true to have it use nngraph instead of nn
 -- setting this to true can make your next BNFastLSTM significantly faster
 BNFastLSTM.usenngraph = true
-BNFastLSTM.bn = true
+BNFastLSTM.bn = false
 
-function BNFastLSTM:__init(inputSize, outputSize, rho, cell2gate, eps, momentum, affine) 
+function BNFastLSTM:__init(inputSize, outputSize, rho, eps, momentum, affine) 
    --  initialize batch norm variance with 0.1
    self.eps = self.eps or 0.1
    self.momentum = self.momentum or 0.1 --gamma
@@ -114,13 +114,6 @@ function BNFastLSTM:nngraphModel(bn_wx, bn_wh, bn_c)
    local x, prev_h, prev_c = unpack(inputs)
   
    -- evaluate the input sums at once for efficiency
-
-   -- if type(x) == 'table' then
-   --   for i = 1, #x do
-   --     x[i] = BN:forward(x[i])
-   --     x[i] = transfer_data(x[i])
-   --   end
-   -- end  
 
    local i2h = bn_wx(self.i2g(x):annotate{name='i2h'}):annotate {name='bn_wx'}
    local h2h = bn_wh(self.o2g(prev_h):annotate{name='h2h'}):annotate {name = 'bn_wh'}
