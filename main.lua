@@ -59,7 +59,7 @@ cmd:option('-seed', 123, 'initial seed for random number generator')
 cmd:option('-silent', false, 'false|true: 0 for false, 1 for true')
 
 -- Model Order Determination Parameters
-cmd:option('-pose','data/posemat5.mat','path to preprocessed data(save in Matlab -v7.3 format)')
+cmd:option('-data','data/soft_robot.mat','path to preprocessed data(save in Matlab -v7.3 format)')
 cmd:option('-tau', 1, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
@@ -117,7 +117,7 @@ end
 print("")
 print('==> fundamental initializations')
 
-data        = opt.pose 
+data        = opt.data
 use_cuda = false
 if opt.gpu >= 0 then
   require 'cutorch'
@@ -145,33 +145,39 @@ local function pprint(x)  print(tostring(x)); print(x); end
 ----------------------------------------------------------------------------------------
 print '==> Parsing raw data'
 
-input       = matio.load(data, 'in')            --SIMO System
-out         = matio.load(data, {'xn', 'yn', 'zn', 'rolln', 'pitchn',  'yawn' })
+if(string.find(data, 'soft_robot.mat')) then
+  data = matio.load(data)
+  data = data.pose
+  input       = data[{{}, {1}}]     --SIMO System
+  -- print(input)
+  out         = { 
+                  data[{{}, {2}}],       --x
+                  data[{{}, {3}}],       --y
+                  0.1* data[{{}, {4}}],  --z
+                  data[{{}, {5}}],       --roll
+                  data[{{}, {6}}],       --pitch
+                  data[{{}, {7}}]       --yaw
+                }
+  k           = input:size(1)    
+  off         = torch.ceil( torch.abs(0.6*k))
 
-y           = {out.xn, out.yn, 
-               out.zn/10, out.rolln, 
-               out.pitchn, out.yawn}
+  train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
+  train_out   = {
+                 out[1][{{1, off}, {1}}], out[2][{{1, off}, {1}}],            -- most of the work is done here              (out[{{1, off}, {1}}])/10, outlln[{{1, off}, {1}}], 
+                 out[3][{{1, off}, {1}}], out[4][{{1, off}, {1}}],
+                 out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}],
+                } 
+  --create testing data
+  test_input = input[{{off + 1, k}, {1}}]
+  test_out   = {
+                 out[1][{{off+1, k}, {1}}], out[2][{{off+1, k}, {1}}], 
+                 out[3][{{off+1, k}, {1}}], out[4][{{off+1, k}, {1}}], 
+                 out[5][{{off+1, k}, {1}}], out[6][{{off+1, k}, {1}}] 
+                }  
+  print(test_out)
+end
 
-k           = input:size()[1]           
-off         = torch.ceil( torch.abs(0.6*k))
-
-print '==> Data Pre-processing'          
---Determine training data    
-train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
-train_out   = {
-               out.xn[{{1, off}, {1}}], out.yn[{{1, off}, {1}}],            -- most of the work is done here.
-               (out.zn[{{1, off}, {1}}])/10, out.rolln[{{1, off}, {1}}], 
-               out.pitchn[{{1, off}, {1}}], out.yawn[{{1, off}, {1}}] 
-              } 
-
---create testing data
-test_input = input[{{off + 1, k}, {1}}]
-test_out   = {
-               out.xn[{{off+1, k}, {1}}], out.yn[{{off+1, k}, {1}}], 
-               (out.zn[{{off+1, k}, {1}}])/10, out.rolln[{{off+1, k}, {1}}], 
-               out.pitchn[{{off+1, k}, {1}}], out.yawn[{{off+1, k}, {1}}] 
-              }  
-          
+print '==> Data Pre-processing'              
 kk          = train_input:size(1)
 --===========================================================================================           
 --geometry of input
