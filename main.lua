@@ -388,7 +388,7 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-  elseif opt.model == 'lstm' or 'bnlstm' then
+  elseif opt.model == 'lstm' or 'fastlstm' then
     train_lstm(opt)
     -- time taken for one epoch
     time = sys.clock() - time
