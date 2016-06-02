@@ -71,7 +71,7 @@ cmd:option('-gpu', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
-cmd:option('-learningRate',1e-2, 'learning rate for the neural network')
+cmd:option('-learningRate',1e-1, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0, 'momentum for sgd algorithm')
 cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn|bnlstm')
@@ -84,7 +84,7 @@ cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of 
 
 -- RNN/LSTM Settings 
 cmd:option('-rho', 5, 'length of sequence to go back in time')
-cmd:option('--dropout', false, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
+cmd:option('--dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
@@ -174,7 +174,6 @@ if(string.find(data, 'soft_robot.mat')) then
                  out[3][{{off+1, k}, {1}}], out[4][{{off+1, k}, {1}}], 
                  out[5][{{off+1, k}, {1}}], out[6][{{off+1, k}, {1}}] 
                 }  
-  print(test_out)
 end
 
 print '==> Data Pre-processing'              
@@ -218,9 +217,9 @@ local transfer    =  nn.ReLU()   --
 local function contruct_net()
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.CustomLinear(ninputs, nhiddens))
+          neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.CustomLinear(nhiddens, 6)) 
+          neunet:add(nn.Linear(nhiddens, 6)) 
     cost      = nn.MSECriterion() 
 
   elseif opt.model == 'rnn' then    
@@ -232,9 +231,9 @@ local function contruct_net()
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     local ffwd  =   nn.Sequential()
-                  :add(nn.CustomLinear(ninputs, nhiddens))
+                  :add(nn.Linear(ninputs, nhiddens))
                   :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
-                  :add(nn.CustomLinear(nhiddens, nhiddens_rnn))
+                  :add(nn.Linear(nhiddens, nhiddens_rnn))
 
 
     local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
@@ -255,7 +254,7 @@ local function contruct_net()
                   :add(ffwd)
                   :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.CustomLinear(start, 1))
+                  :add(nn.Linear(start, 1))
                 --  :add(nn.Linear(1, noutputs))
 
     --neunet    = nn.Sequencer(neunet)
@@ -283,7 +282,7 @@ local function contruct_net()
     end
 
     -- output layer
-    neunet:add(nn.CustomLinear(ninputs, 1))
+    neunet:add(nn.Linear(ninputs, 1))
     --neunet:add(nn.ReLU())
     neunet:add(nn.SoftSign())
 
@@ -292,18 +291,17 @@ local function contruct_net()
     neunet = nn.Repeater(neunet, noutputs)
 --===========================================================================================
     --Nested BN_LSTM Recurrence
-  elseif opt.model == 'bnlstm' then   
+  elseif opt.model == 'fastlstm' then   
     require 'rnn'
-    require 'utils.BNFastLSTM'
     -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
-    nn.BNFastLSTM.usenngraph = true -- faster
-    nn.BNFastLSTM.bn = true
+    nn.FastLSTM.usenngraph = true -- faster
+    nn.FastLSTM.bn = true
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()
     local inputSize = opt.hiddenSize[1]
     for i, inputSize in ipairs(opt.hiddenSize) do 
-      local rnn = nn.BNFastLSTM(ninputs, opt.hiddenSize[1], opt.rho)
+      local rnn = nn.FastLSTM(ninputs, opt.hiddenSize[1], opt.rho)
       neunet:add(rnn) 
        
       if opt.dropout then
@@ -313,7 +311,7 @@ local function contruct_net()
     end
 
     -- output layer
-    neunet:add(nn.CustomLinear(ninputs, 1))
+    neunet:add(nn.Linear(ninputs, 1))
     --neunet:add(nn.ReLU())
     neunet:add(nn.SoftSign())
 
@@ -485,6 +483,8 @@ function saveNet()
     netname = 'mlp-net.t7'
   elseif opt.model == 'lstm' then
     netname = 'lstm-net.t7'
+  elseif opt.model == 'fastlstm' then
+    netname = 'fastlstm-net.t7'
   else
     netname = 'neunet.t7'
   end  
