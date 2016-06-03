@@ -104,6 +104,11 @@ torch.manualSeed(opt.seed)
 
 torch.setnumthreads(8)
 
+opt.rundir = cmd:string('experiment', opt, {dir=true})
+paths.mkdir(opt.rundir)
+
+-- create log file
+cmd:log(opt.rundir .. '/log', opt)
 cmd:addTime('Deep Head Motion Control', '%F %T')
 cmd:text()
 
