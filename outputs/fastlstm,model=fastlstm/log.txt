@@ -1,0 +1,41 @@
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  [program started on Tue Jun  7 12:58:44 2016] 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  [command line arguments] 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  coefL2 0 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  trainStop 0.5 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  tau 1 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  rundir outputs/fastlstm,model=fastlstm 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  learningRate 0.1 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  batchSize 6 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  data data/soft_robot.mat 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  optimizer mse 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  m_eps 0.01 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  model fastlstm 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  seed 123 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  maxIter 10000 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  silent false 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  rnnlearningRate 0.1 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  hiddenSize table: 0x40c0ac30 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  dir outputs 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  sigma 0.01 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  netdir network 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  coefL1 0 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  plot false 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  l_eps 0.05 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  momentum 0 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  gpu 0 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  Correction 60 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  print false 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  rho 5 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  dropout true 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  backend cudnn 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  learningRateDecay 1e-06 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  dropoutProb 0.5 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  [----------------------] 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:   
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  ==> fundamental initializations 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  
+System has 1 gpu(s). Code is running on GPU: 1 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  ==> Parsing raw data 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  ==> Data Pre-processing 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  ==> Determining input-output model order parameters 
+2016-06-07 12:58:44[outputs/fastlstm,model=fastlstm Deep Head Motion Control]:  ==> Setting up neural network parameters 

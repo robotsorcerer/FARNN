@@ -57,6 +57,7 @@ cmd:text(                                                                       
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial seed for random number generator')
 cmd:option('-silent', false, 'false|true: 0 for false, 1 for true')
+cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
 cmd:option('-data','data/soft_robot.mat','path to preprocessed data(save in Matlab -v7.3 format)')
@@ -104,17 +105,34 @@ torch.manualSeed(opt.seed)
 
 torch.setnumthreads(8)
 
-opt.rundir = cmd:string('experiment', opt, {dir=true})
-paths.mkdir(opt.rundir)
-
--- create log file
-cmd:log(opt.rundir .. '/log', opt)
-cmd:addTime('Deep Head Motion Control', '%F %T')
-cmd:text()
-
 if not opt.silent then
    print(opt)
 end
+
+if (opt.model == 'rnn') then  
+  rundir = cmd:string('rnn', opt, {dir=true})
+elseif (opt.model == 'lstm') then
+  rundir = cmd:string('lstm', opt, {dir=true})
+elseif (opt.model == 'fastlstm') then
+  rundir = cmd:string('fastlstm', opt, {dir=true})
+elseif (opt.model == 'mlp') then
+  rundir = cmd:string('mlp', opt, {dir=true})
+else
+  assert("you have entered an invalid model") 
+end
+
+print('rundir', rundir)
+
+--log to file
+opt.rundir = opt.dir .. '/' .. rundir
+print('opt.rundir', opt.rundir)
+if paths.dirp(opt.rundir) then
+  os.execute('rm -r ' .. opt.rundir)
+end
+os.execute('mkdir -p ' .. opt.rundir)
+cmd:addTime(tostring(opt.rundir) .. ' Deep Head Motion Control', '%F %T')
+cmd:text()
+cmd:log(opt.rundir .. '/log.txt', opt)
 -------------------------------------------------------------------------------
 -- Fundamental initializations
 -------------------------------------------------------------------------------
