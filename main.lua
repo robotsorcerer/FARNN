@@ -56,7 +56,7 @@ cmd:text(                                                                       
 cmd:text(                                                                             )
 cmd:text('Options')
 cmd:option('-seed', 123, 'initial seed for random number generator')
-cmd:option('-silent', false, 'false|true: 0 for false, 1 for true')
+cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
@@ -74,19 +74,19 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 -- Neural Network settings
 cmd:option('-learningRate',1e-1, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
-cmd:option('-momentum', 0, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn|bnlstm')
+cmd:option('-momentum', 0.9, 'momentum for sgd algorithm')
+cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn|fastlstm')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
-cmd:option('-coefL1',   0, 'L1 penalty on the weights')
-cmd:option('-coefL2',  0, 'L2 penalty on the weights')
+cmd:option('-coefL1',   0.1, 'L1 penalty on the weights')
+cmd:option('-coefL2',  0.2, 'L2 penalty on the weights')
 cmd:option('-plot', false, 'true|false')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- RNN/LSTM Settings 
 cmd:option('-rho', 5, 'length of sequence to go back in time')
-cmd:option('--dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
-cmd:option('--dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
+cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
+cmd:option('-dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
@@ -161,8 +161,6 @@ function transfer_data(x)
   end
 end
 
-local function pprint(x)  print(tostring(x)); print(x); end
-
 ----------------------------------------------------------------------------------------
 -- Parsing Raw Data
 ----------------------------------------------------------------------------------------
@@ -172,7 +170,6 @@ if(string.find(data, 'soft_robot.mat')) then
   data = matio.load(data)
   data = data.pose
   input       = data[{{}, {1}}]     --SIMO System
-  -- print(input)
   out         = { 
                   data[{{}, {2}}],       --x
                   data[{{}, {3}}],       --y
@@ -306,8 +303,8 @@ local function contruct_net()
 
     -- output layer
     neunet:add(nn.Linear(ninputs, 1))
-    --neunet:add(nn.ReLU())
-    neunet:add(nn.SoftSign())
+    --Last layer is linear
+    --neunet:add(nn.SoftSign())
 
     --neunet:remember('eval') --used by Sequencer modules only
     --output layer 
@@ -336,7 +333,7 @@ local function contruct_net()
     -- output layer
     neunet:add(nn.Linear(ninputs, 1))
     --neunet:add(nn.ReLU())
-    neunet:add(nn.SoftSign())
+    -- neunet:add(nn.SoftSign())
 
     -- will recurse a single continuous sequence
     neunet:remember('eval')
@@ -386,13 +383,13 @@ print '==> configuring optimizer\n'
 
 print '==> defining training procedure'
 
-local function train(data)  
-
+local function train(data)    
   --time we started training
   local time = sys.clock()
 
   --track the epochs
   epoch = epoch or 1
+  iter = iter or 0
 
   --do one epoch
   print('<trainer> on training set: ')
@@ -411,7 +408,7 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-  elseif opt.model == 'lstm' or 'fastlstm' then
+  elseif ((opt.model == 'lstm') or (opt.model == 'fastlstm')) then
     train_lstm(opt)
     -- time taken for one epoch
     time = sys.clock() - time
@@ -479,7 +476,15 @@ local function test(data)
     
       -- test samples
       local preds = neunet:forward(inputs)
-      for i=1,#preds do
+
+      local for_limit
+      if opt.model =='mlp' then
+        for_limit = preds:size(1)
+      else
+        for_limit = #preds
+      end
+
+      for i=1, for_limit do
         predF[i] = preds[i]:float()        
         normedPreds[i] = torch.norm(predF[i])
         avg = normedPreds[i] + avg
