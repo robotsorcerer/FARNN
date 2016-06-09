@@ -60,7 +60,7 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','soft_robot.mat','path to preprocessed data(save in Matlab -v7.3 format)')
+cmd:option('-data','soft_robot.mat','path to -v7.3 Matlab data e.g. robotArm.mat | glassfurnace.mat | ballbeam.mat | soft_robot.mat')
 cmd:option('-tau', 1, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
@@ -238,17 +238,35 @@ elseif (string.find(data, 'glassfurnace.mat')) then
   k = input[1]:size(1)
   off = torch.ceil(torch.abs(0.6*k))
 
+  -- allocate storage for tensors
   train_input = torch.DoubleTensor(3, off, data:size(2))
+  train_out   = torch.DoubleTensor(6, off, data:size(2))
+  test_input  = torch.DoubleTensor(3, k-off, data:size(2))
+  test_out    = torch.DoubleTensor(6, k-off, data:size(2))
 
-  for i=1, input:size(1) do
+  --create actual training datasets
+  for i=1, train_input:size(1) do
     train_input[i] = input[i]:sub(1, off) 
   end
-  print('train_input', train_input[1])
-  train_out = {out[{{1, off}, {}}]}
+  
+  for i=1, train_out:size(1) do
+    train_out[i] = out[i]:sub(1, off)
+  end
+  -- print(train_out[1][{{749}, {1}}])
+  -- print('test_input:size(1)', test_input:size(), off, k, data:size(2))
 
-  --create testing data
-  test_input = input[{{off + 1, k}, {1}}]
-  test_out   = {  out[{{off+1, k}, {1}}] }  
+  --create validation/testing data
+  for i = 1, test_input:size(1) do
+    test_input[i] = input[i]:sub(off + 1, k)
+  end
+
+  for i=1,test_out:size(1) do
+    test_out[i] = out[i]:sub(off + 1, k)
+  end
+
+  -- print('test_input:size(), test_out:size()')
+  -- print(test_input:size(), test_out:size())
+
 end
 
 print(sys.COLORS.red .. '==> Data Pre-processing')

@@ -2732,3 +2732,103 @@ System has 1 gpu(s). Code is running on GPU: 1
 2016-06-09 14:29:32[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 377 [batchSize = 6]
  
 2016-06-09 14:29:32[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 377, iter = 1667, Loss = 0.887602  
+2016-06-09 14:32:13[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.944276073838ms 
+2016-06-09 14:32:13[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:32:13[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:33:27[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:33:27[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 378 [batchSize = 6]
+ 
+2016-06-09 14:33:27[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 378, iter = 1667, Loss = 1.229824  
+2016-06-09 14:36:06[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.786185307204ms 
+2016-06-09 14:36:06[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:36:06[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:37:21[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:37:21[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 379 [batchSize = 6]
+ 
+2016-06-09 14:37:21[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 379, iter = 1667, Loss = 3.079403  
+2016-06-09 14:40:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 16.280790071383ms 
+2016-06-09 14:40:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:40:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:41:20[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:41:20[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 380 [batchSize = 6]
+ 
+2016-06-09 14:41:20[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 380, iter = 1667, Loss = 0.000748  
+2016-06-09 14:44:00[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.879758183272ms 
+2016-06-09 14:44:00[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:44:00[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:44:01[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:45:14[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:45:14[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 381 [batchSize = 6]
+ 
+2016-06-09 14:45:15[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 381, iter = 1667, Loss = 1.026191  
+2016-06-09 14:47:52[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.696457102377ms 
+2016-06-09 14:47:52[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:47:53[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:49:07[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:49:07[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 382 [batchSize = 6]
+ 
+2016-06-09 14:49:07[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 382, iter = 1667, Loss = 0.252138  
+2016-06-09 14:51:45[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.677495627796ms 
+2016-06-09 14:51:45[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:51:45[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:52:59[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:52:59[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 383 [batchSize = 6]
+ 
+2016-06-09 14:52:59[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 383, iter = 1667, Loss = 1.648281  
+2016-06-09 14:55:39[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.888151937824ms 
+2016-06-09 14:55:39[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:55:39[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:56:53[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:56:53[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 384 [batchSize = 6]
+ 
+2016-06-09 14:56:53[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 384, iter = 1667, Loss = 3.560270  
+2016-06-09 14:59:32[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.809185502546ms 
+2016-06-09 14:59:32[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 14:59:32[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:00:46[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:00:46[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 385 [batchSize = 6]
+ 
+2016-06-09 15:00:46[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 385, iter = 1667, Loss = 0.090544  
+2016-06-09 15:03:25[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.784483112195ms 
+2016-06-09 15:03:25[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:03:25[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:04:39[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:04:39[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 386 [batchSize = 6]
+ 
+2016-06-09 15:04:40[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 386, iter = 1667, Loss = 3.272016  
+2016-06-09 15:07:19[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.816635147936ms 
+2016-06-09 15:07:19[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:07:19[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:08:33[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:08:33[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 387 [batchSize = 6]
+ 
+2016-06-09 15:08:33[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 387, iter = 1667, Loss = 2.037942  
+2016-06-09 15:11:12[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.844070023553ms 
+2016-06-09 15:11:12[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:11:12[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:12:26[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:12:26[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 388 [batchSize = 6]
+ 
+2016-06-09 15:12:26[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 388, iter = 1667, Loss = 2.447195  
+2016-06-09 15:15:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.78219237607ms 
+2016-06-09 15:15:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:15:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:16:19[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:16:19[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 389 [batchSize = 6]
+ 
+2016-06-09 15:16:19[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 389, iter = 1667, Loss = 5.615561  
+2016-06-09 15:18:58[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.778319056718ms 
+2016-06-09 15:18:58[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:18:58[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:20:12[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:20:12[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 390 [batchSize = 6]
+ 
+2016-06-09 15:20:12[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 390, iter = 1667, Loss = 3.182092  
+2016-06-09 15:22:51[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> time to learn 1 sample = 15.855940214572ms 
+2016-06-09 15:22:51[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:22:51[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/lstm-net.t7 
+2016-06-09 15:22:52[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 15:24:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 15:24:05[outputs/lstm,model=lstm Deep Head Motion Control]:  <trainer> online epoch # 391 [batchSize = 6]
+ 
+2016-06-09 15:24:05[outputs/lstm,model=lstm Deep Head Motion Control]:  Epoch 391, iter = 1667, Loss = 0.280481  
