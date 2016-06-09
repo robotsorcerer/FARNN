@@ -60,7 +60,7 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','data/soft_robot.mat','path to preprocessed data(save in Matlab -v7.3 format)')
+cmd:option('-data','soft_robot.mat','path to preprocessed data(save in Matlab -v7.3 format)')
 cmd:option('-tau', 1, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
@@ -140,7 +140,7 @@ cmd:log(opt.rundir .. '/log.txt', opt)
 print("")
 print('==> fundamental initializations')
 
-data        = opt.data
+data        = 'data/' .. opt.data
 use_cuda = false
 if opt.gpu >= 0 then
   require 'cutorch'
@@ -161,15 +161,42 @@ function transfer_data(x)
   end
 end
 
-----------------------------------------------------------------------------------------
--- Parsing Raw Data
-----------------------------------------------------------------------------------------
-print '==> Parsing raw data'
+local function data_path_printer(x)  
+  print(sys.COLORS.green .. string.format("you have specified the data path %s", x))
+end
 
-if(string.find(data, 'soft_robot.mat')) then
+local function get_filename(x)
+  -- print('x:match', x:match("^.+$"), x:match("(%a+)"))
+  return x:match("(%a+)")
+end
+
+local filename = get_filename(opt.data)  -- we strip the filename extention from the data
+
+print(sys.COLORS.red .. '==> Parsing raw data')
+
+--ballbeam and robotarm are siso systems from the DaiSy dataset
+if (string.find(data, 'robotArm.mat')) or (string.find(data, 'ballbeam.mat')) then  
+  data_path_printer(data)
+
   data = matio.load(data)
-  data = data.pose
-  input       = data[{{}, {1}}]     --SIMO System
+  data = data.filename;
+  input = data[{{}, {1}}]     
+  out = data[{{}, {2}}]
+
+  k = input:size(1)
+  off = torch.ceil(torch.abs(0.6*k))
+
+  train_input = input[{{1, off}, {1}}]
+  train_out = {out[{{1, off}, {}}]}
+
+  --create testing data
+  test_input = input[{{off + 1, k}, {1}}]
+  test_out   = {  out[{{off+1, k}, {1}}] }  
+
+--SIMO System from my soft_robot system
+elseif(string.find(data, 'soft_robot.mat')) then  
+  data_path_printer(data);   data = matio.load(data);   data = data.pose
+  input       = data[{{}, {1}}]     
   out         = { 
                   data[{{}, {2}}],       --x
                   data[{{}, {3}}],       --y
@@ -178,15 +205,18 @@ if(string.find(data, 'soft_robot.mat')) then
                   data[{{}, {6}}],       --pitch
                   data[{{}, {7}}]       --yaw
                 }
+                print('out', out)
+
   k           = input:size(1)    
   off         = torch.ceil( torch.abs(0.6*k))
 
   train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
-  train_out   = {
+  train_out   = { 
                  out[1][{{1, off}, {1}}], out[2][{{1, off}, {1}}],            -- most of the work is done here              (out[{{1, off}, {1}}])/10, outlln[{{1, off}, {1}}], 
                  out[3][{{1, off}, {1}}], out[4][{{1, off}, {1}}],
                  out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}],
                 } 
+                print('train_out', train_out)
   --create testing data
   test_input = input[{{off + 1, k}, {1}}]
   test_out   = {
@@ -194,9 +224,34 @@ if(string.find(data, 'soft_robot.mat')) then
                  out[3][{{off+1, k}, {1}}], out[4][{{off+1, k}, {1}}], 
                  out[5][{{off+1, k}, {1}}], out[6][{{off+1, k}, {1}}] 
                 }  
+
+-- MIMO dataset from the Daisy  glassfurnace dataset (3 inputs, 6 outputs)
+elseif (string.find(data, 'glassfurnace.mat')) then
+  data_path_printer(data);  data = matio.load(data)  ;   data = data[filename];
+  -- three inputs i.e. heating input, cooling input, & heating input
+  input =   data[{{}, {2, 4}}]:resize(3, data:size(1), data:size(2))   
+  -- six outputs from temperatures sensors in a cross sectiobn of the furnace          
+  out =   data[{{}, {5,10}}]:resize(6, data:size(1), data:size(2))
+  print('input', input:size())
+  print('out', out:size())
+
+  k = input[1]:size(1)
+  off = torch.ceil(torch.abs(0.6*k))
+
+  train_input = torch.DoubleTensor(3, off, data:size(2))
+
+  for i=1, input:size(1) do
+    train_input[i] = input[i]:sub(1, off) 
+  end
+  print('train_input', train_input[1])
+  train_out = {out[{{1, off}, {}}]}
+
+  --create testing data
+  test_input = input[{{off + 1, k}, {1}}]
+  test_out   = {  out[{{off+1, k}, {1}}] }  
 end
 
-print '==> Data Pre-processing'              
+print(sys.COLORS.red .. '==> Data Pre-processing')
 kk          = train_input:size(1)
 --===========================================================================================           
 --geometry of input
@@ -207,7 +262,7 @@ testData     = {test_input,  test_out}
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
-print '==> Determining input-output model order parameters'    
+print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 
 --find optimal # of input variables from data
 --qn  = computeqn(train_input, train_out[3])
@@ -217,7 +272,7 @@ print '==> Determining input-output model order parameters'
 --inorder, outorder, q =  computeq(train_input, (train_out[3])/10, opt)
 
 --------------------utils--------------------------------------------------------------------------
-print '==> Setting up neural network parameters'
+print(sys.COLORS.red .. '==> Setting up neural network parameters')
 ----------------------------------------------------------------------------------------------
 -- dimension of my feature bank (each input is a 1D array)
 local nfeats      = 1   
@@ -284,7 +339,6 @@ local function contruct_net()
   elseif opt.model == 'lstm' then   
     require 'rnn'
     require 'nngraph'
-    -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
     nn.LSTM.usenngraph = true -- faster
     --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
     local crit = nn.MSECriterion()
@@ -303,8 +357,6 @@ local function contruct_net()
 
     -- output layer
     neunet:add(nn.Linear(ninputs, 1))
-    --Last layer is linear
-    --neunet:add(nn.SoftSign())
 
     --neunet:remember('eval') --used by Sequencer modules only
     --output layer 
@@ -313,9 +365,10 @@ local function contruct_net()
     --Nested BN_LSTM Recurrence
   elseif opt.model == 'fastlstm' then   
     require 'rnn'
-    -- require 'utils.BNLSTM'
     nn.FastLSTM.usenngraph = true -- faster
-    nn.FastLSTM.bn = true
+    nn.FastLSTM.bn = true         --RBN
+    nn.FastLSTM.affine = true
+    print(sys.COLORS.magenta .. 'affine state', nn.FastLSTM.affine)
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()

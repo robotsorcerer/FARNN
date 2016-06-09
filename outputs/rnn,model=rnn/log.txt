@@ -3189,3 +3189,617 @@ System has 1 gpu(s). Code is running on GPU: 1
 2016-06-09 10:29:56[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 511, iter = 1667, Loss = 1.445294  
 2016-06-09 10:31:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7571402173767ms 
 2016-06-09 10:31:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:32:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:32:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 512 [batchSize = 6]
+ 
+2016-06-09 10:32:21[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 512, iter = 1667, Loss = 3.081588  
+2016-06-09 10:33:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4396112995091ms 
+2016-06-09 10:33:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:34:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:34:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 513 [batchSize = 6]
+ 
+2016-06-09 10:34:39[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 513, iter = 1667, Loss = 4.677785  
+2016-06-09 10:36:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7773027817803ms 
+2016-06-09 10:36:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:37:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:37:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 514 [batchSize = 6]
+ 
+2016-06-09 10:37:00[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 514, iter = 1667, Loss = 1.315118  
+2016-06-09 10:38:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4707404082676ms 
+2016-06-09 10:38:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:39:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:39:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 515 [batchSize = 6]
+ 
+2016-06-09 10:39:23[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 515, iter = 1667, Loss = 1.387780  
+2016-06-09 10:40:50[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6693175617964ms 
+2016-06-09 10:40:50[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:41:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:41:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 516 [batchSize = 6]
+ 
+2016-06-09 10:41:46[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 516, iter = 1667, Loss = 0.964710  
+2016-06-09 10:43:15[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9076157714783ms 
+2016-06-09 10:43:15[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:44:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:44:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 517 [batchSize = 6]
+ 
+2016-06-09 10:44:11[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 517, iter = 1667, Loss = 2.975815  
+2016-06-09 10:45:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7076053600444ms 
+2016-06-09 10:45:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:46:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:46:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 518 [batchSize = 6]
+ 
+2016-06-09 10:46:35[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 518, iter = 1667, Loss = 0.205383  
+2016-06-09 10:48:04[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.930434441969ms 
+2016-06-09 10:48:04[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:48:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:48:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 519 [batchSize = 6]
+ 
+2016-06-09 10:48:59[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 519, iter = 1667, Loss = 0.071397  
+2016-06-09 10:50:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7055758662825ms 
+2016-06-09 10:50:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:51:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:51:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 520 [batchSize = 6]
+ 
+2016-06-09 10:51:24[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 520, iter = 1667, Loss = 0.571769  
+2016-06-09 10:52:52[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6707732883442ms 
+2016-06-09 10:52:52[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 10:52:52[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:53:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:53:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 521 [batchSize = 6]
+ 
+2016-06-09 10:53:45[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 521, iter = 1667, Loss = 0.346116  
+2016-06-09 10:55:15[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9452270007773ms 
+2016-06-09 10:55:15[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:56:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:56:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 522 [batchSize = 6]
+ 
+2016-06-09 10:56:11[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 522, iter = 1667, Loss = 2.761708  
+2016-06-09 10:57:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7183543208102ms 
+2016-06-09 10:57:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 10:58:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 10:58:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 523 [batchSize = 6]
+ 
+2016-06-09 10:58:35[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 523, iter = 1667, Loss = 0.089707  
+2016-06-09 11:00:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9834871926634ms 
+2016-06-09 11:00:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:01:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:01:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 524 [batchSize = 6]
+ 
+2016-06-09 11:01:00[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 524, iter = 1667, Loss = 0.374104  
+2016-06-09 11:02:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7011462763736ms 
+2016-06-09 11:02:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:03:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:03:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 525 [batchSize = 6]
+ 
+2016-06-09 11:03:24[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 525, iter = 1667, Loss = 1.651957  
+2016-06-09 11:04:50[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5158700147475ms 
+2016-06-09 11:04:50[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:05:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:05:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 526 [batchSize = 6]
+ 
+2016-06-09 11:05:44[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 526, iter = 1667, Loss = 1.508573  
+2016-06-09 11:07:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8228853835605ms 
+2016-06-09 11:07:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:08:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:08:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 527 [batchSize = 6]
+ 
+2016-06-09 11:08:07[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 527, iter = 1667, Loss = 5.249073  
+2016-06-09 11:09:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5629985964642ms 
+2016-06-09 11:09:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:10:31[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:10:31[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 528 [batchSize = 6]
+ 
+2016-06-09 11:10:31[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 528, iter = 1667, Loss = 0.975237  
+2016-06-09 11:11:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7138507430106ms 
+2016-06-09 11:11:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:12:52[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:12:52[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 529 [batchSize = 6]
+ 
+2016-06-09 11:12:52[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 529, iter = 1667, Loss = 0.379416  
+2016-06-09 11:14:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8144407253398ms 
+2016-06-09 11:14:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:15:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:15:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 530 [batchSize = 6]
+ 
+2016-06-09 11:15:17[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 530, iter = 1667, Loss = 3.122516  
+2016-06-09 11:16:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5460232409844ms 
+2016-06-09 11:16:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 11:16:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:17:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:17:39[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 531 [batchSize = 6]
+ 
+2016-06-09 11:17:39[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 531, iter = 1667, Loss = 1.861603  
+2016-06-09 11:19:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7238130881983ms 
+2016-06-09 11:19:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:19:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:19:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 532 [batchSize = 6]
+ 
+2016-06-09 11:19:59[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 532, iter = 1667, Loss = 1.536045  
+2016-06-09 11:21:25[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5122720013782ms 
+2016-06-09 11:21:25[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:22:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:22:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 533 [batchSize = 6]
+ 
+2016-06-09 11:22:22[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 533, iter = 1667, Loss = 1.062884  
+2016-06-09 11:23:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4150126342622ms 
+2016-06-09 11:23:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:24:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:24:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 534 [batchSize = 6]
+ 
+2016-06-09 11:24:40[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 534, iter = 1667, Loss = 0.257008  
+2016-06-09 11:26:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7339544248912ms 
+2016-06-09 11:26:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:27:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:27:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 535 [batchSize = 6]
+ 
+2016-06-09 11:27:02[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 535, iter = 1667, Loss = 2.057692  
+2016-06-09 11:28:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4283803165137ms 
+2016-06-09 11:28:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 536 [batchSize = 6]
+ 
+2016-06-09 11:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 536, iter = 1667, Loss = 0.069013  
+2016-06-09 11:30:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5873328704228ms 
+2016-06-09 11:30:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:31:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:31:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 537 [batchSize = 6]
+ 
+2016-06-09 11:31:43[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 537, iter = 1667, Loss = 1.841106  
+2016-06-09 11:33:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9657295069841ms 
+2016-06-09 11:33:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:34:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:34:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 538 [batchSize = 6]
+ 
+2016-06-09 11:34:10[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 538, iter = 1667, Loss = 1.033028  
+2016-06-09 11:35:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6851342550693ms 
+2016-06-09 11:35:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 539 [batchSize = 6]
+ 
+2016-06-09 11:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 539, iter = 1667, Loss = 1.073632  
+2016-06-09 11:38:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7680142827872ms 
+2016-06-09 11:38:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:38:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:38:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 540 [batchSize = 6]
+ 
+2016-06-09 11:38:54[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 540, iter = 1667, Loss = 0.208556  
+2016-06-09 11:40:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.2119859015456ms 
+2016-06-09 11:40:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 11:40:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:41:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:41:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 541 [batchSize = 6]
+ 
+2016-06-09 11:41:25[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 541, iter = 1667, Loss = 0.017951  
+2016-06-09 11:42:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9207492495009ms 
+2016-06-09 11:42:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:43:48[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:43:48[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 542 [batchSize = 6]
+ 
+2016-06-09 11:43:48[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 542, iter = 1667, Loss = 0.042482  
+2016-06-09 11:45:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8056600792287ms 
+2016-06-09 11:45:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:46:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:46:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 543 [batchSize = 6]
+ 
+2016-06-09 11:46:12[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 543, iter = 1667, Loss = 1.117861  
+2016-06-09 11:47:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4408166983869ms 
+2016-06-09 11:47:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:48:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:48:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 544 [batchSize = 6]
+ 
+2016-06-09 11:48:32[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 544, iter = 1667, Loss = 1.545489  
+2016-06-09 11:50:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8843073366652ms 
+2016-06-09 11:50:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:50:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:50:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 545 [batchSize = 6]
+ 
+2016-06-09 11:50:55[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 545, iter = 1667, Loss = 4.585285  
+2016-06-09 11:52:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5264300873879ms 
+2016-06-09 11:52:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:53:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:53:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 546 [batchSize = 6]
+ 
+2016-06-09 11:53:19[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 546, iter = 1667, Loss = 3.676707  
+2016-06-09 11:54:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7597251293557ms 
+2016-06-09 11:54:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:55:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:55:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 547 [batchSize = 6]
+ 
+2016-06-09 11:55:42[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 547, iter = 1667, Loss = 0.021201  
+2016-06-09 11:57:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8914731763444ms 
+2016-06-09 11:57:11[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 11:58:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 11:58:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 548 [batchSize = 6]
+ 
+2016-06-09 11:58:06[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 548, iter = 1667, Loss = 3.239637  
+2016-06-09 11:59:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6070804397068ms 
+2016-06-09 11:59:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:00:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:00:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 549 [batchSize = 6]
+ 
+2016-06-09 12:00:29[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 549, iter = 1667, Loss = 0.362025  
+2016-06-09 12:02:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.0094304960794ms 
+2016-06-09 12:02:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:02:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:02:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 550 [batchSize = 6]
+ 
+2016-06-09 12:02:54[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 550, iter = 1667, Loss = 4.521950  
+2016-06-09 12:04:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7877973189065ms 
+2016-06-09 12:04:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 12:04:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:05:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:05:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 551 [batchSize = 6]
+ 
+2016-06-09 12:05:19[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 551, iter = 1667, Loss = 0.035415  
+2016-06-09 12:06:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6891183786856ms 
+2016-06-09 12:06:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:07:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:07:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 552 [batchSize = 6]
+ 
+2016-06-09 12:07:42[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 552, iter = 1667, Loss = 4.946791  
+2016-06-09 12:09:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.0171781528552ms 
+2016-06-09 12:09:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:10:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:10:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 553 [batchSize = 6]
+ 
+2016-06-09 12:10:07[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 553, iter = 1667, Loss = 1.512942  
+2016-06-09 12:11:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6749357405343ms 
+2016-06-09 12:11:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:12:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:12:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 554 [batchSize = 6]
+ 
+2016-06-09 12:12:32[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 554, iter = 1667, Loss = 0.073157  
+2016-06-09 12:14:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9201170732864ms 
+2016-06-09 12:14:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:14:57[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:14:57[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 555 [batchSize = 6]
+ 
+2016-06-09 12:14:57[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 555, iter = 1667, Loss = 5.825532  
+2016-06-09 12:16:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8266639510593ms 
+2016-06-09 12:16:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:17:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:17:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 556 [batchSize = 6]
+ 
+2016-06-09 12:17:22[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 556, iter = 1667, Loss = 0.116878  
+2016-06-09 12:18:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6167959139387ms 
+2016-06-09 12:18:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:19:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:19:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 557 [batchSize = 6]
+ 
+2016-06-09 12:19:44[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 557, iter = 1667, Loss = 0.999746  
+2016-06-09 12:21:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.0687016863098ms 
+2016-06-09 12:21:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:22:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:22:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 558 [batchSize = 6]
+ 
+2016-06-09 12:22:10[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 558, iter = 1667, Loss = 0.005994  
+2016-06-09 12:23:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.566185994797ms 
+2016-06-09 12:23:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:24:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:24:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 559 [batchSize = 6]
+ 
+2016-06-09 12:24:34[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 559, iter = 1667, Loss = 0.071266  
+2016-06-09 12:26:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6982453828298ms 
+2016-06-09 12:26:02[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:26:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:26:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 560 [batchSize = 6]
+ 
+2016-06-09 12:26:56[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 560, iter = 1667, Loss = 1.411328  
+2016-06-09 12:28:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9520805286911ms 
+2016-06-09 12:28:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 12:28:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 561 [batchSize = 6]
+ 
+2016-06-09 12:29:22[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 561, iter = 1667, Loss = 0.244834  
+2016-06-09 12:30:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6171656403073ms 
+2016-06-09 12:30:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:31:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:31:44[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 562 [batchSize = 6]
+ 
+2016-06-09 12:31:44[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 562, iter = 1667, Loss = 3.854117  
+2016-06-09 12:33:14[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9112716966495ms 
+2016-06-09 12:33:14[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:34:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:34:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 563 [batchSize = 6]
+ 
+2016-06-09 12:34:08[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 563, iter = 1667, Loss = 1.306629  
+2016-06-09 12:35:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6455570076996ms 
+2016-06-09 12:35:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 564 [batchSize = 6]
+ 
+2016-06-09 12:36:33[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 564, iter = 1667, Loss = 0.162441  
+2016-06-09 12:38:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6051132141538ms 
+2016-06-09 12:38:00[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:38:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:38:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 565 [batchSize = 6]
+ 
+2016-06-09 12:38:55[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 565, iter = 1667, Loss = 1.013471  
+2016-06-09 12:40:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.054628195095ms 
+2016-06-09 12:40:27[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:41:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:41:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 566 [batchSize = 6]
+ 
+2016-06-09 12:41:22[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 566, iter = 1667, Loss = 0.666037  
+2016-06-09 12:42:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6463606700878ms 
+2016-06-09 12:42:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:43:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:43:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 567 [batchSize = 6]
+ 
+2016-06-09 12:43:47[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 567, iter = 1667, Loss = 5.375073  
+2016-06-09 12:45:14[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6801210486782ms 
+2016-06-09 12:45:14[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:46:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:46:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 568 [batchSize = 6]
+ 
+2016-06-09 12:46:08[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 568, iter = 1667, Loss = 1.677993  
+2016-06-09 12:47:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6740521238719ms 
+2016-06-09 12:47:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:48:31[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:48:31[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 569 [batchSize = 6]
+ 
+2016-06-09 12:48:31[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 569, iter = 1667, Loss = 0.803112  
+2016-06-09 12:49:57[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5524123143534ms 
+2016-06-09 12:49:57[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:50:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:50:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 570 [batchSize = 6]
+ 
+2016-06-09 12:50:51[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 570, iter = 1667, Loss = 0.933950  
+2016-06-09 12:52:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9756674420869ms 
+2016-06-09 12:52:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 12:52:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:53:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:53:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 571 [batchSize = 6]
+ 
+2016-06-09 12:53:16[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 571, iter = 1667, Loss = 5.420297  
+2016-06-09 12:54:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5764175612024ms 
+2016-06-09 12:54:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:55:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:55:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 572 [batchSize = 6]
+ 
+2016-06-09 12:55:40[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 572, iter = 1667, Loss = 0.555876  
+2016-06-09 12:57:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7062373298637ms 
+2016-06-09 12:57:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 12:58:04[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 12:58:04[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 573 [batchSize = 6]
+ 
+2016-06-09 12:58:04[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 573, iter = 1667, Loss = 0.242447  
+2016-06-09 12:59:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8157649546891ms 
+2016-06-09 12:59:33[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:00:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:00:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 574 [batchSize = 6]
+ 
+2016-06-09 13:00:28[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 574, iter = 1667, Loss = 1.415378  
+2016-06-09 13:01:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.521472780328ms 
+2016-06-09 13:01:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:02:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:02:49[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 575 [batchSize = 6]
+ 
+2016-06-09 13:02:49[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 575, iter = 1667, Loss = 5.122411  
+2016-06-09 13:04:18[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8738755649464ms 
+2016-06-09 13:04:18[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:05:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:05:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 576 [batchSize = 6]
+ 
+2016-06-09 13:05:13[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 576, iter = 1667, Loss = 0.003857  
+2016-06-09 13:06:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7542895882464ms 
+2016-06-09 13:06:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:07:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:07:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 577 [batchSize = 6]
+ 
+2016-06-09 13:07:39[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 577, iter = 1667, Loss = 2.698335  
+2016-06-09 13:09:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6227739934533ms 
+2016-06-09 13:09:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:09:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:09:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 578 [batchSize = 6]
+ 
+2016-06-09 13:09:59[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 578, iter = 1667, Loss = 1.411524  
+2016-06-09 13:11:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9501843078371ms 
+2016-06-09 13:11:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:12:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:12:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 579 [batchSize = 6]
+ 
+2016-06-09 13:12:24[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 579, iter = 1667, Loss = 2.789682  
+2016-06-09 13:13:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6314210588669ms 
+2016-06-09 13:13:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:14:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:14:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 580 [batchSize = 6]
+ 
+2016-06-09 13:14:47[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 580, iter = 1667, Loss = 2.005005  
+2016-06-09 13:16:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8455926342067ms 
+2016-06-09 13:16:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 13:16:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:17:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:17:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 581 [batchSize = 6]
+ 
+2016-06-09 13:17:11[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 581, iter = 1667, Loss = 2.058199  
+2016-06-09 13:18:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6461450752933ms 
+2016-06-09 13:18:38[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:19:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:19:35[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 582 [batchSize = 6]
+ 
+2016-06-09 13:19:35[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 582, iter = 1667, Loss = 2.004925  
+2016-06-09 13:21:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5829198774775ms 
+2016-06-09 13:21:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:21:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:21:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 583 [batchSize = 6]
+ 
+2016-06-09 13:21:56[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 583, iter = 1667, Loss = 4.409562  
+2016-06-09 13:23:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.963382421681ms 
+2016-06-09 13:23:26[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:24:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:24:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 584 [batchSize = 6]
+ 
+2016-06-09 13:24:21[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 584, iter = 1667, Loss = 4.435515  
+2016-06-09 13:25:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5364370383951ms 
+2016-06-09 13:25:47[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:26:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:26:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 585 [batchSize = 6]
+ 
+2016-06-09 13:26:45[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 585, iter = 1667, Loss = 2.440311  
+2016-06-09 13:28:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7858358466519ms 
+2016-06-09 13:28:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:29:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:29:08[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 586 [batchSize = 6]
+ 
+2016-06-09 13:29:08[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 586, iter = 1667, Loss = 0.187867  
+2016-06-09 13:30:36[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7091465574035ms 
+2016-06-09 13:30:36[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:31:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:31:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 587 [batchSize = 6]
+ 
+2016-06-09 13:31:32[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 587, iter = 1667, Loss = 0.420069  
+2016-06-09 13:32:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6037242306025ms 
+2016-06-09 13:32:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:33:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:33:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 588 [batchSize = 6]
+ 
+2016-06-09 13:33:54[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 588, iter = 1667, Loss = 1.099195  
+2016-06-09 13:35:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.0169638602476ms 
+2016-06-09 13:35:24[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:36:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:36:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 589 [batchSize = 6]
+ 
+2016-06-09 13:36:19[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 589, iter = 1667, Loss = 4.820758  
+2016-06-09 13:37:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5758167795297ms 
+2016-06-09 13:37:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:38:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:38:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 590 [batchSize = 6]
+ 
+2016-06-09 13:38:43[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 590, iter = 1667, Loss = 1.199667  
+2016-06-09 13:40:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8621232336777ms 
+2016-06-09 13:40:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 13:40:12[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:41:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:41:07[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 591 [batchSize = 6]
+ 
+2016-06-09 13:41:07[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 591, iter = 1667, Loss = 5.070939  
+2016-06-09 13:42:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9558904670556ms 
+2016-06-09 13:42:37[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:43:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:43:32[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 592 [batchSize = 6]
+ 
+2016-06-09 13:43:32[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 592, iter = 1667, Loss = 1.335039  
+2016-06-09 13:44:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7096147764522ms 
+2016-06-09 13:44:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:45:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:45:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 593 [batchSize = 6]
+ 
+2016-06-09 13:45:56[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 593, iter = 1667, Loss = 5.613652  
+2016-06-09 13:47:25[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8484219311484ms 
+2016-06-09 13:47:25[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:48:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:48:19[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 594 [batchSize = 6]
+ 
+2016-06-09 13:48:19[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 594, iter = 1667, Loss = 0.634001  
+2016-06-09 13:49:48[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8163847956425ms 
+2016-06-09 13:49:48[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:50:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:50:45[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 595 [batchSize = 6]
+ 
+2016-06-09 13:50:45[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 595, iter = 1667, Loss = 5.462893  
+2016-06-09 13:52:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4262143772432ms 
+2016-06-09 13:52:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:53:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:53:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 596 [batchSize = 6]
+ 
+2016-06-09 13:53:05[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 596, iter = 1667, Loss = 5.002079  
+2016-06-09 13:54:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8731200361204ms 
+2016-06-09 13:54:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:55:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:55:29[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 597 [batchSize = 6]
+ 
+2016-06-09 13:55:29[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 597, iter = 1667, Loss = 3.416234  
+2016-06-09 13:56:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6689176720446ms 
+2016-06-09 13:56:56[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 13:57:53[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 13:57:53[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 598 [batchSize = 6]
+ 
+2016-06-09 13:57:53[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 598, iter = 1667, Loss = 2.224336  
+2016-06-09 13:59:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8875360261601ms 
+2016-06-09 13:59:22[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:00:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:00:16[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 599 [batchSize = 6]
+ 
+2016-06-09 14:00:16[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 599, iter = 1667, Loss = 2.676031  
+2016-06-09 14:01:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.9159282932452ms 
+2016-06-09 14:01:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:02:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:02:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 600 [batchSize = 6]
+ 
+2016-06-09 14:02:43[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 600, iter = 1667, Loss = 3.191470  
+2016-06-09 14:04:09[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5696085444037ms 
+2016-06-09 14:04:09[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 14:04:09[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:05:03[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:05:03[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 601 [batchSize = 6]
+ 
+2016-06-09 14:05:03[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 601, iter = 1667, Loss = 5.032891  
+2016-06-09 14:06:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 9.0533574974643ms 
+2016-06-09 14:06:34[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:07:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:07:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 602 [batchSize = 6]
+ 
+2016-06-09 14:07:28[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 602, iter = 1667, Loss = 0.024693  
+2016-06-09 14:08:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4967397293955ms 
+2016-06-09 14:08:54[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:09:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:09:51[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 603 [batchSize = 6]
+ 
+2016-06-09 14:09:51[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 603, iter = 1667, Loss = 0.310860  
+2016-06-09 14:11:18[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.6557720008176ms 
+2016-06-09 14:11:18[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:12:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:12:13[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 604 [batchSize = 6]
+ 
+2016-06-09 14:12:13[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 604, iter = 1667, Loss = 1.386124  
+2016-06-09 14:13:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7256724926779ms 
+2016-06-09 14:13:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:14:36[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:14:36[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 605 [batchSize = 6]
+ 
+2016-06-09 14:14:36[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 605, iter = 1667, Loss = 0.372172  
+2016-06-09 14:16:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4682931492795ms 
+2016-06-09 14:16:01[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:16:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:16:55[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 606 [batchSize = 6]
+ 
+2016-06-09 14:16:55[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 606, iter = 1667, Loss = 0.352848  
+2016-06-09 14:18:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7394191586628ms 
+2016-06-09 14:18:23[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:19:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:19:17[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 607 [batchSize = 6]
+ 
+2016-06-09 14:19:17[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 607, iter = 1667, Loss = 0.012286  
+2016-06-09 14:20:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5461756678773ms 
+2016-06-09 14:20:43[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:21:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:21:40[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 608 [batchSize = 6]
+ 
+2016-06-09 14:21:40[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 608, iter = 1667, Loss = 4.395863  
+2016-06-09 14:23:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.5085171810328ms 
+2016-06-09 14:23:06[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:23:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:23:59[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 609 [batchSize = 6]
+ 
+2016-06-09 14:23:59[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 609, iter = 1667, Loss = 1.099689  
+2016-06-09 14:25:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.7883059531006ms 
+2016-06-09 14:25:28[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:26:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:26:21[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 610 [batchSize = 6]
+ 
+2016-06-09 14:26:21[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 610, iter = 1667, Loss = 0.015885  
+2016-06-09 14:27:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.4193823235748ms 
+2016-06-09 14:27:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> saving network model to /home/local/ANT/ogunmolu/Documents/NNs/FARNN/network/rnn-net.t7 
+2016-06-09 14:27:46[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:28:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:28:41[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 611 [batchSize = 6]
+ 
+2016-06-09 14:28:41[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 611, iter = 1667, Loss = 0.324579  
+2016-06-09 14:30:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> time to learn 1 sample = 8.8299544115644ms 
+2016-06-09 14:30:10[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on testing Set: 
+2016-06-09 14:31:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> on training set:  
+2016-06-09 14:31:05[outputs/rnn,model=rnn Deep Head Motion Control]:  <trainer> online epoch # 612 [batchSize = 6]
+ 
+2016-06-09 14:31:05[outputs/rnn,model=rnn Deep Head Motion Control]:  Epoch 612, iter = 1667, Loss = 3.850015  
