@@ -313,7 +313,7 @@ local function contruct_net()
     --Nested BN_LSTM Recurrence
   elseif opt.model == 'fastlstm' then   
     require 'rnn'
-    -- opt.hiddenSize = loadstring(" return "..opt.hiddenSize)()
+    -- require 'utils.BNLSTM'
     nn.FastLSTM.usenngraph = true -- faster
     nn.FastLSTM.bn = true
     local crit = nn.MSECriterion()
@@ -332,8 +332,6 @@ local function contruct_net()
 
     -- output layer
     neunet:add(nn.Linear(ninputs, 1))
-    --neunet:add(nn.ReLU())
-    -- neunet:add(nn.SoftSign())
 
     -- will recurse a single continuous sequence
     neunet:remember('eval')

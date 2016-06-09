@@ -98,7 +98,7 @@ function train_lstm(args)
                       train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
     
     --pre-whiten the inputs and outputs
-    -- if((opt.model=='mlp') or (opt.model=='rnn') or (opt.model == 'lstm') ) then
+    -- if((args.model=='mlp') or (args.model=='rnn') or (args.model == 'lstm') ) then
       inputs = batchNorm(inputs)
       targets = batchNorm(targets)
     -- else
@@ -108,7 +108,8 @@ function train_lstm(args)
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
-    -- print('inputs', inputs)
+    -- if(args.model=='fastlstm') then inputs:double() end
+    print('inputs', inputs)
     local outputs = neunet:forward(inputs)
     local loss = cost:forward(outputs, targets)
           
