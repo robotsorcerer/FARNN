@@ -15,11 +15,11 @@ function batchNorm(x)
   local BN = nn.BatchNormalization(1, eps, momentum, affine)
 
   if type(x) == 'userdata' then       --inputs
-   x  = BN:forward(x)
+   if opt.batchNorm then x  = BN:forward(x) end
     x  = transfer_data(x) --forward doubleTensor as CudaTensor
   elseif type(x) == 'table' then
     for i = 1, #x do
-     x[i] = BN:forward(x[i])
+      if opt.batchNorm then  x[i] = BN:forward(x[i]) end
       x[i] = transfer_data(x[i])
     end
   end  
@@ -47,7 +47,7 @@ function train_rnn(opt)
                       train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                       train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
 
-    --pre-whiten the inputs and outputs
+    --pre-whiten the inputs and outputs in the mini-batch
     inputs = batchNorm(inputs)
     targets = batchNorm(targets)
   
@@ -67,8 +67,8 @@ function train_rnn(opt)
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-      print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))
-
+      print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))      
+      logger:add{['RNN training error'] = loss}
       --reset counters
       loss = 0; iter = 0 ;
     end    
@@ -77,13 +77,82 @@ function train_rnn(opt)
     collectgarbage() 
 end
 
+function train_lstms(args)
+  local offsets = {}                         
+  
+  for t = 1, math.min(args.maxIter, height), args.batchSize do 
+    offsets = torch.LongTensor(args.batchSize):random(1,height)  
+
+    xlua.progress(t, math.min(args.maxIter, height))
+    --1. create a sequence of rho time-steps
+    local inputs, targets = {}, {}   
+    inputs =  nn.JoinTable(1):forward{train_input[{{t, t+args.batchSize-1}, {}}], train_out[1][{{t, t+args.batchSize-1}, {}}],
+               train_out[2][{{t, t+args.batchSize-1}, {}}], train_out[3][{{t, t+args.batchSize-1}, {}}],
+              train_out[4][{{t, t+args.batchSize-1}, {}}], train_out[5][{{t, t+args.batchSize-1}, {}}],
+              train_out[6][{{t, t+args.batchSize-1}, {}}]}
+    inputs = batchNorm(inputs)
+    -- print('inputs', inputs)
+
+    --increase indices by 1   
+
+    targets =  nn.JoinTable(1):forward{train_input[{{t+2, t+2+args.batchSize-1}, {}}], train_out[1][{{t+2, t+2+args.batchSize-1}, {}}],
+               train_out[2][{{t+2, t+2+args.batchSize-1}, {}}], train_out[3][{{t+2, t+2+args.batchSize-1}, {}}],
+              train_out[4][{{t+2, t+2+args.batchSize-1}, {}}], train_out[5][{{t+2, t+2+args.batchSize-1}, {}}],
+              train_out[6][{{t+2, t+2+args.batchSize-1}, {}}]}
+
+    targets = batchNorm(targets)  
+     --[[ 1. create a sequence of rho time-steps
+    local inputs, targets = {}, {}    
+    offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+    inputs = nn.JoinTable(1):forward{train_input:index(1, offsets), 
+                                              train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+                                              train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
+                                              train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
+    inputs = batchNorm(inputs)
+    -- print('inputs', inputs:size())
+
+    --increase offsets indices by 1      
+    offsets:add(1) -- increase indices by 1
+    offsets[offsets:gt(height)] = 1 
+
+    targets =  nn.JoinTable(1):forward{train_input:index(1, offsets), train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
+                  train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
+                  train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
+    targets = batchNorm(targets)             
+    -- print('targets', targets:size())]]
+
+    --2. Forward sequence through rnn
+    neunet:zeroGradParameters()
+    neunet:forget()  --forget all past time steps
+    local outputs = neunet:forward(inputs)
+    -- print('outputs--^', outputs:size())
+    local loss = cost:forward(outputs, targets)
+          
+    --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
+    local  gradOutputs = cost:backward(outputs, targets)
+    local gradInputs  = neunet:backward(inputs, gradOutputs) 
+
+    --4. update lr
+    neunet:updateParameters(opt.rnnlearningRate)
+    if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
+      print(string.format("Epoch %d, Loss = %f ", epoch,  loss))
+      if opt.model=='lstm' then logger:add{['LSTM training error'] = loss}
+        elseif opt.model=='fastlstm' then logger:add{['FastLSTM training error'] = loss} end
+      --reset counters
+      loss = 0; iter = 0 ;
+      collectgarbage()
+    end    
+    iter = iter +1 
+  end  
+end
+
 function train_lstm(args)
   local offsets = {}                         
   
   for t = 1, math.min(args.maxIter, height), args.batchSize do 
     offsets = torch.LongTensor(args.batchSize):random(1,height)  
 
-    xlua.progress(t, math.min(opt.maxIter, height))
+    xlua.progress(t, math.min(args.maxIter, height))
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs = train_input:index(1, offsets)
@@ -97,20 +166,15 @@ function train_lstm(args)
                       train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
                       train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)}
     
-    --pre-whiten the inputs and outputs
-    -- if((args.model=='mlp') or (args.model=='rnn') or (args.model == 'lstm') ) then
-      inputs = batchNorm(inputs)
-      targets = batchNorm(targets)
-    -- else
-      -- inputs = transfer_data(inputs)
-    -- end
+    --pre-whiten the inputs and outputs in the mini-batch
+    inputs = batchNorm(inputs)
+    targets = batchNorm(targets)
 
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
-    -- if(args.model=='fastlstm') then inputs:double() end
-    print('inputs', inputs)
     local outputs = neunet:forward(inputs)
+
     local loss = cost:forward(outputs, targets)
           
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
@@ -120,8 +184,9 @@ function train_lstm(args)
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-      print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))
-
+      print(string.format("Epoch %d,  Loss = %f ", epoch,  loss))
+      if opt.model=='lstm' then logger:add{['LSTM training error'] = loss}
+        elseif opt.model=='fastlstm' then logger:add{['FastLSTM training error'] = loss} end
       --reset counters
       loss = 0; iter = 0 ;
       collectgarbage()
@@ -149,6 +214,7 @@ function train_mlp(opt)
     inputs = batchNorm(inputs)
     targets = batchNorm(targets)
 
+
     neunet:zeroGradParameters()
           
     -- optimization on current mini-batch
@@ -156,8 +222,8 @@ function train_mlp(opt)
       local loss, lossAcc       
       loss, lossAcc = optimMethod(inputs, targets) 
       if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-        print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))
-
+        print(string.format("Epoch %d, Loss = %f ", epoch, loss))
+        logger:add{['mlp training error'] = loss}
         --reset counters
         loss = 0; iter = 0 ;
       end    

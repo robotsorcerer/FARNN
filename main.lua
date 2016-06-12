@@ -75,7 +75,9 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-1, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0.9, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn|fastlstm')
+cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
+cmd:option('-gru', false, 'use Gated Recurrent Units (nn.GRU instead of nn.Recurrent)')
+cmd:option('-fastlstm', false, 'use LSTMS without peephole connections?')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0.1, 'L1 penalty on the weights')
@@ -86,14 +88,15 @@ cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of 
 -- RNN/LSTM Settings 
 cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
-cmd:option('-dropoutProb', 0.5, 'probability of zeroing a neuron (dropout probability)')
+cmd:option('-dropoutProb', 0.35, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
+cmd:option('-batchNorm', true, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
 
 -- LBFGS Settings
 cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
-cmd:option('-batchSize', 6, 'Batch Size for mini-batch training, \
+cmd:option('-batchSize', 100, 'Batch Size for mini-batch training, \
                             preferrably in multiples of six')
 
 -- Print options
@@ -111,12 +114,16 @@ end
 
 if (opt.model == 'rnn') then  
   rundir = cmd:string('rnn', opt, {dir=true})
-elseif (opt.model == 'lstm') then
-  rundir = cmd:string('lstm', opt, {dir=true})
-elseif (opt.model == 'fastlstm') then
-  rundir = cmd:string('fastlstm', opt, {dir=true})
 elseif (opt.model == 'mlp') then
   rundir = cmd:string('mlp', opt, {dir=true})
+elseif (opt.model == 'lstm')  then 
+  if (opt.fastlstm) then
+    rundir = cmd:string('fastlstm', opt, {dir=true})  
+  elseif (opt.gru) then
+    rundir = cmd:string('gru', opt, {dir=true})
+  else
+    rundir = cmd:string('lstm', opt, {dir=true})
+  end
 else
   assert("you have entered an invalid model") 
 end
@@ -133,6 +140,9 @@ os.execute('mkdir -p ' .. opt.rundir)
 cmd:addTime(tostring(opt.rundir) .. ' Deep Head Motion Control', '%F %T')
 cmd:text()
 cmd:log(opt.rundir .. '/log.txt', opt)
+
+logger = optim.Logger(paths.concat(opt.rundir .. '/log.txt'))
+testlogger = optim.Logger(paths.concat(opt.rundir .. '/testlog.txt'))
 -------------------------------------------------------------------------------
 -- Fundamental initializations
 -------------------------------------------------------------------------------
@@ -205,7 +215,6 @@ elseif(string.find(data, 'soft_robot.mat')) then
                   data[{{}, {6}}],       --pitch
                   data[{{}, {7}}]       --yaw
                 }
-                print('out', out)
 
   k           = input:size(1)    
   off         = torch.ceil( torch.abs(0.6*k))
@@ -216,7 +225,6 @@ elseif(string.find(data, 'soft_robot.mat')) then
                  out[3][{{1, off}, {1}}], out[4][{{1, off}, {1}}],
                  out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}],
                 } 
-                print('train_out', train_out)
   --create testing data
   test_input = input[{{off + 1, k}, {1}}]
   test_out   = {
@@ -353,7 +361,7 @@ local function contruct_net()
     --neunet    = nn.Sequencer(neunet)
     neunet    = nn.Repeater(neunet, noutputs)
     --======================================================================================
-    --Nested LSTM Recurrence
+    --[[Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
     require 'nngraph'
@@ -378,32 +386,40 @@ local function contruct_net()
 
     --neunet:remember('eval') --used by Sequencer modules only
     --output layer 
-    neunet = nn.Repeater(neunet, noutputs)
---===========================================================================================
-    --Nested BN_LSTM Recurrence
-  elseif opt.model == 'fastlstm' then   
+    neunet = nn.Sequencer(neunet)]]
+    --Nested LSTM Recurrence
+  elseif opt.model == 'lstm' then   
     require 'rnn'
-    nn.FastLSTM.usenngraph = true -- faster
-    nn.FastLSTM.bn = true         --RBN
-    nn.FastLSTM.affine = true
-    print(sys.COLORS.magenta .. 'affine state', nn.FastLSTM.affine)
+    require 'nngraph'
+    nn.LSTM.usenngraph = true -- faster
+    --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()
     local inputSize = opt.hiddenSize[1]
-    for i, inputSize in ipairs(opt.hiddenSize) do 
-      local rnn = nn.FastLSTM(ninputs, opt.hiddenSize[1], opt.rho)
+    for i, hiddenSize in ipairs(opt.hiddenSize) do 
+      local rnn
+      if opt.gru then -- Gated Recurrent Units
+         rnn = nn.GRU(inputSize, hiddenSize, nil, opt.dropoutProb)
+      elseif opt.fastlstm then        
+        nn.FastLSTM.usenngraph = true -- faster
+        nn.FastLSTM.bn = true         --RBN
+        nn.FastLSTM.affine = true         
+        print(sys.COLORS.magenta .. 'affine state', nn.FastLSTM.affine)
+        rnn = nn.FastLSTM(inputSize, hiddenSize, opt.rho)
+      else
+        rnn = nn.LSTM(inputSize, hiddenSize, opt.rho)
+      end
       neunet:add(rnn) 
        
       if opt.dropout then
         neunet:insert(nn.Dropout(opt.dropoutProb), 1)
       end
-       inputSize = opt.hiddenSize[1]
+       inputSize = hiddenSize
     end
 
     -- output layer
-    neunet:add(nn.Linear(ninputs, 1))
-
+    neunet:add(nn.Linear(inputSize, 1))
     -- will recurse a single continuous sequence
     neunet:remember('eval')
     --output layer 
@@ -477,7 +493,11 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-  elseif ((opt.model == 'lstm') or (opt.model == 'fastlstm')) then
+    logger:style{['RNN training error'] = '-'}
+    logger:plot()
+
+  elseif (opt.model == 'lstm') then
+    -- train_lstm(opt)
     train_lstm(opt)
     -- time taken for one epoch
     time = sys.clock() - time
@@ -490,6 +510,16 @@ local function train(data)
     end
     -- next epoch
     epoch = epoch + 1
+    if (opt.fastlstm)  then
+      logger:style{['FastLSTM training error'] = '-'}
+      logger:plot()   
+    elseif (opt.gru)  then
+      logger:style{['GRU training error'] = '-'}
+      logger:plot()  
+    else  --plain lstm
+      logger:style{['LSTM training error'] = '-'}
+      logger:plot()   
+    end 
 
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
@@ -497,16 +527,18 @@ local function train(data)
     time = sys.clock() - time
     time = time / height
     print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-
-    if epoch % 10 == 0 then
+    
+    if epoch % 10 == 0 then      
       saveNet()
     end
     -- next epoch
     epoch = epoch + 1
+    logger:style{['mlp training error'] = '-'}
+    logger:plot()    
   else
     print("Incorrect model entered")
-  end   
-
+  end 
+           
 end     
 
 
@@ -579,9 +611,13 @@ function saveNet()
   elseif opt.model == 'mlp' then
     netname = 'mlp-net.t7'
   elseif opt.model == 'lstm' then
-    netname = 'lstm-net.t7'
-  elseif opt.model == 'fastlstm' then
-    netname = 'fastlstm-net.t7'
+    if opt.gru then
+      netname = 'gru-net.t7'
+    elseif opt.fastlstm then
+      netname = 'fastlstm.t7'
+    else
+      netname = 'lstm-net.t7'
+    end
   else
     netname = 'neunet.t7'
   end  
