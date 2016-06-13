@@ -105,7 +105,6 @@ cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print ne
 -- misc
 opt = cmd:parse(arg or {})
 torch.manualSeed(opt.seed)
-
 torch.setnumthreads(8)
 
 if not opt.silent then
@@ -260,8 +259,6 @@ elseif (string.find(data, 'glassfurnace.mat')) then
   for i=1, train_out:size(1) do
     train_out[i] = out[i]:sub(1, off)
   end
-  -- print(train_out[1][{{749}, {1}}])
-  -- print('test_input:size(1)', test_input:size(), off, k, data:size(2))
 
   --create validation/testing data
   for i = 1, test_input:size(1) do
@@ -300,19 +297,24 @@ print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 --------------------utils--------------------------------------------------------------------------
 print(sys.COLORS.red .. '==> Setting up neural network parameters')
 ----------------------------------------------------------------------------------------------
--- dimension of my feature bank (each input is a 1D array)
-local nfeats      = 1   
+if opt.data=='soft_robot.mat' then
+  width       = train_input:size(2)
+  height      = train_input:size(1)
+  ninputs     = 1
+  noutputs    = 6
+  nhiddens_rnn = 6 
 
---dimension of training input
-local width       = train_input:size(2)
-height      = train_input:size(1)
-local ninputs     = 1
-local noutputs    = 6
-local nhiddens_rnn = 6 
+elseif opt.data=='glassfurnace.mat' then  
+  width       = train_input:size(2)
+  height      = train_input:size(2)
+  ninputs     = 3
+  noutputs    = 6
+  nhiddens_rnn = 6 
+end
 
 --number of hidden layers (for mlp network)
-local nhiddens    = 1
-local transfer    =  nn.ReLU()   --
+nhiddens    = 1
+transfer    =  nn.ReLU()  
 
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
@@ -320,7 +322,7 @@ local function contruct_net()
           neunet          = nn.Sequential()
           neunet:add(nn.Linear(ninputs, nhiddens))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, 6)) 
+          neunet:add(nn.Linear(nhiddens, noutputs)) 
     cost      = nn.MSECriterion() 
 
   elseif opt.model == 'rnn' then    
@@ -338,7 +340,7 @@ local function contruct_net()
 
 
     local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
-    local start       = 6                       -- the size of the output (excluding the batch dimension)        
+    local start       = noutputs                       -- the size of the output (excluding the batch dimension)        
     local rnnInput    = nn.Linear(start, nhiddens_rnn)     --the size of the output
     local feedback    = nn.Linear(nhiddens_rnn, start)           --module that feeds back prev/output to transfer module
 
@@ -356,54 +358,30 @@ local function contruct_net()
                   :add(nn.Sigmoid())
                   :add(r)
                   :add(nn.Linear(start, 1))
-                --  :add(nn.Linear(1, noutputs))
 
-    --neunet    = nn.Sequencer(neunet)
     neunet    = nn.Repeater(neunet, noutputs)
-    --======================================================================================
-    --[[Nested LSTM Recurrence
+--======================================================================================
+--Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
     require 'rnn'
     require 'nngraph'
     nn.LSTM.usenngraph = true -- faster
-    --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
     neunet = nn.Sequential()
-    local inputSize = opt.hiddenSize[1]
-    for i, inputSize in ipairs(opt.hiddenSize) do 
-      local rnn = nn.LSTM(ninputs, opt.hiddenSize[1], opt.rho)
-      neunet:add(rnn) 
-       
-      if opt.dropout then
-        neunet:insert(nn.Dropout(opt.dropoutProb), 1)
-      end
-       inputSize = opt.hiddenSize[1]
-    end
-
-    -- output layer
-    neunet:add(nn.Linear(ninputs, 1))
-
-    --neunet:remember('eval') --used by Sequencer modules only
-    --output layer 
-    neunet = nn.Sequencer(neunet)]]
-    --Nested LSTM Recurrence
-  elseif opt.model == 'lstm' then   
-    require 'rnn'
-    require 'nngraph'
-    nn.LSTM.usenngraph = true -- faster
-    --cost = nn.SequencerCriterion(nn.DistKLDivCriterion())
-    local crit = nn.MSECriterion()
-    cost = nn.SequencerCriterion(crit)
-    neunet = nn.Sequential()
+    -- if opt.data == 'glassfurnace.mat' then
+    --   opt.hiddenSize = {3, 10, 100}
+    -- end
     local inputSize = opt.hiddenSize[1]
     for i, hiddenSize in ipairs(opt.hiddenSize) do 
       local rnn
       if opt.gru then -- Gated Recurrent Units
-         rnn = nn.GRU(inputSize, hiddenSize, nil, opt.dropoutProb)
+         rnn = nn.GRU(inputSize, hiddenSize, opt.rho, opt.dropoutProb)
       elseif opt.fastlstm then        
         nn.FastLSTM.usenngraph = true -- faster
-        nn.FastLSTM.bn = true         --RBN
+        if(opt.batchNorm) then
+          nn.FastLSTM.bn = true         --apply weights normalization
+        end
         nn.FastLSTM.affine = true         
         print(sys.COLORS.magenta .. 'affine state', nn.FastLSTM.affine)
         rnn = nn.FastLSTM(inputSize, hiddenSize, opt.rho)
@@ -413,7 +391,7 @@ local function contruct_net()
       neunet:add(rnn) 
        
       if opt.dropout then
-        neunet:insert(nn.Dropout(opt.dropoutProb), 1)
+        neunet:add(nn.Dropout(opt.dropoutProb))
       end
        inputSize = hiddenSize
     end
