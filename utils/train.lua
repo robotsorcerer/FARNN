@@ -152,8 +152,8 @@ function train_mlp(opt)
                   train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)
                 }    
     --pre-whiten the inputs and outputs in the mini-batch
-    inputs = batchNorm(inputs)
-    targets = batchNorm(targets)
+    inputs = batchNorm(inputs, 1)
+    targets = batchNorm(targets, 1)
 
 
     neunet:zeroGradParameters()

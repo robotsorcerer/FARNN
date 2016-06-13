@@ -170,125 +170,20 @@ function transfer_data(x)
   end
 end
 
-local function data_path_printer(x)  
-  print(sys.COLORS.green .. string.format("you have specified the data path %s", x))
-end
-
-local function get_filename(x)
-  -- print('x:match', x:match("^.+$"), x:match("(%a+)"))
-  return x:match("(%a+)")
-end
-
-local filename = get_filename(opt.data)  -- we strip the filename extention from the data
 
 print(sys.COLORS.red .. '==> Parsing raw data')
+split_data(opt)
 
---ballbeam and robotarm are siso systems from the DaiSy dataset
-if (string.find(data, 'robotArm.mat')) or (string.find(data, 'ballbeam.mat')) then  
-  data_path_printer(data)
-
-  data = matio.load(data)
-  data = data.filename;
-  input = data[{{}, {1}}]     
-  out = data[{{}, {2}}]
-
-  k = input:size(1)
-  off = torch.ceil(torch.abs(0.6*k))
-
-  train_input = input[{{1, off}, {1}}]
-  train_out = {out[{{1, off}, {}}]}
-
-  --create testing data
-  test_input = input[{{off + 1, k}, {1}}]
-  test_out   = {  out[{{off+1, k}, {1}}] }  
-
---SIMO System from my soft_robot system
-elseif(string.find(data, 'soft_robot.mat')) then  
-  data_path_printer(data);   data = matio.load(data);   data = data.pose
-  input       = data[{{}, {1}}]     
-  out         = { 
-                  data[{{}, {2}}],       --x
-                  data[{{}, {3}}],       --y
-                  0.1* data[{{}, {4}}],  --z
-                  data[{{}, {5}}],       --roll
-                  data[{{}, {6}}],       --pitch
-                  data[{{}, {7}}]       --yaw
-                }
-
-  k           = input:size(1)    
-  off         = torch.ceil( torch.abs(0.6*k))
-
-  train_input = input[{{1, off}, {1}}]   -- order must be preserved. cuda tensor does not support csub yet
-  train_out   = { 
-                 out[1][{{1, off}, {1}}], out[2][{{1, off}, {1}}],            -- most of the work is done here              (out[{{1, off}, {1}}])/10, outlln[{{1, off}, {1}}], 
-                 out[3][{{1, off}, {1}}], out[4][{{1, off}, {1}}],
-                 out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}],
-                } 
-  --create testing data
-  test_input = input[{{off + 1, k}, {1}}]
-  test_out   = {
-                 out[1][{{off+1, k}, {1}}], out[2][{{off+1, k}, {1}}], 
-                 out[3][{{off+1, k}, {1}}], out[4][{{off+1, k}, {1}}], 
-                 out[5][{{off+1, k}, {1}}], out[6][{{off+1, k}, {1}}] 
-                }  
-
--- MIMO dataset from the Daisy  glassfurnace dataset (3 inputs, 6 outputs)
-elseif (string.find(data, 'glassfurnace.mat')) then
-  data_path_printer(data);  data = matio.load(data)  ;   data = data[filename];
-  -- three inputs i.e. heating input, cooling input, & heating input
-  input =   data[{{}, {2, 4}}]:resize(3, data:size(1), data:size(2))   
-  -- six outputs from temperatures sensors in a cross sectiobn of the furnace          
-  out =   data[{{}, {5,10}}]:resize(6, data:size(1), data:size(2))
-  print('input', input:size())
-  print('out', out:size())
-
-  k = input[1]:size(1)
-  off = torch.ceil(torch.abs(0.6*k))
-
-  -- allocate storage for tensors
-  train_input = torch.DoubleTensor(3, off, data:size(2))
-  train_out   = torch.DoubleTensor(6, off, data:size(2))
-  test_input  = torch.DoubleTensor(3, k-off, data:size(2))
-  test_out    = torch.DoubleTensor(6, k-off, data:size(2))
-
-  --create actual training datasets
-  for i=1, train_input:size(1) do
-    train_input[i] = input[i]:sub(1, off) 
-  end
-  
-  for i=1, train_out:size(1) do
-    train_out[i] = out[i]:sub(1, off)
-  end
-
-  --create validation/testing data
-  for i = 1, test_input:size(1) do
-    test_input[i] = input[i]:sub(off + 1, k)
-  end
-
-  for i=1,test_out:size(1) do
-    test_out[i] = out[i]:sub(off + 1, k)
-  end
-
-  -- print('test_input:size(), test_out:size()')
-  -- print(test_input:size(), test_out:size())
-
-end
 
 print(sys.COLORS.red .. '==> Data Pre-processing')
 kk          = train_input:size(1)
---===========================================================================================           
---geometry of input
-geometry    = {train_input:size(1), train_input:size(2)}
-
-trainData     = {train_input, train_out}
-testData     = {test_input,  test_out}
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative
     See Code order_det.lua in folder "order"]]
 print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 
 --find optimal # of input variables from data
---qn  = computeqn(train_input, train_out[3])
+--qn  = computeqn(train_  input, train_out[3])
 
 --compute actual system order
 --utils = require 'order.utils'
@@ -297,32 +192,18 @@ print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 --------------------utils--------------------------------------------------------------------------
 print(sys.COLORS.red .. '==> Setting up neural network parameters')
 ----------------------------------------------------------------------------------------------
-if opt.data=='soft_robot.mat' then
-  width       = train_input:size(2)
-  height      = train_input:size(1)
-  ninputs     = 1
-  noutputs    = 6
-  nhiddens_rnn = 6 
-
-elseif opt.data=='glassfurnace.mat' then  
-  width       = train_input:size(2)
-  height      = train_input:size(2)
-  ninputs     = 3
-  noutputs    = 6
-  nhiddens_rnn = 6 
-end
-
 --number of hidden layers (for mlp network)
 nhiddens    = 1
 transfer    =  nn.ReLU()  
 
 --[[Set up the network, add layers in place as we add more abstraction]]
 local function contruct_net()
+  local bias = true
   if opt.model  == 'mlp' then
           neunet          = nn.Sequential()
-          neunet:add(nn.Linear(ninputs, nhiddens))
+          neunet:add(nn.Linear(ninputs, nhiddens, bias))
           neunet:add(transfer)                         
-          neunet:add(nn.Linear(nhiddens, noutputs)) 
+          neunet:add(nn.Linear(nhiddens, noutputs, bias)) 
     cost      = nn.MSECriterion() 
 
   elseif opt.model == 'rnn' then    
@@ -334,15 +215,15 @@ local function contruct_net()
   --[[m1 = batchSize X hiddenSize; m2 = inputSize X start]]
     --we first model the inputs to states
     local ffwd  =   nn.Sequential()
-                  :add(nn.Linear(ninputs, nhiddens))
+                  :add(nn.Linear(ninputs, nhiddens, bias))
                   :add(nn.ReLU())      --very critical; changing this to tanh() or ReLU() leads to explosive gradients
-                  :add(nn.Linear(nhiddens, nhiddens_rnn))
+                  :add(nn.Linear(nhiddens, nhiddens_rnn, bias))
 
 
     local rho         = opt.rho                   -- the max amount of bacprop steos to take back in time
     local start       = noutputs                       -- the size of the output (excluding the batch dimension)        
-    local rnnInput    = nn.Linear(start, nhiddens_rnn)     --the size of the output
-    local feedback    = nn.Linear(nhiddens_rnn, start)           --module that feeds back prev/output to transfer module
+    local rnnInput    = nn.Linear(start, nhiddens_rnn, bias)     --the size of the output
+    local feedback    = nn.Linear(nhiddens_rnn, start, bias)           --module that feeds back prev/output to transfer module
 
     --then do a self-adaptive feedback of neurons 
    r = nn.Recurrent(start, 
@@ -357,7 +238,7 @@ local function contruct_net()
                   :add(ffwd)
                   :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.Linear(start, 1))
+                  :add(nn.Linear(start, 1, bias))
 
     neunet    = nn.Repeater(neunet, noutputs)
 --======================================================================================
@@ -390,16 +271,16 @@ local function contruct_net()
       end
       neunet:add(rnn) 
        
-      if opt.dropout then
+      if opt.dropout and not opt.gru then   --gru comes with dropOut probs
         neunet:add(nn.Dropout(opt.dropoutProb))
       end
        inputSize = hiddenSize
     end
 
     -- output layer
-    neunet:add(nn.Linear(inputSize, 1))
+    neunet:add(nn.Linear(inputSize, 1, bias))
     -- will recurse a single continuous sequence
-    neunet:remember('eval')
+    neunet:remember((opt.lstm or opt.mlp or opt.fastlstm or opt.gru) or 'eval')
     --output layer 
     neunet = nn.Repeater(neunet, noutputs)
 --===========================================================================================
@@ -416,6 +297,13 @@ print('Network Table\n'); print(neunet)
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
+print('Neunet Parameters', '\n', parameters:size())
+print('Neunet gradParameters', '\n', gradParameters:size())
+
+--init weights with 0.1
+-- neunet.weight = 0.1
+-- neunet.bias = 0
+print('Neunet Weights', '\n', neunet.bias, '\n', neunet.weight)
 --=====================================================================================================
 neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
 cost = transfer_data(cost)
@@ -550,8 +438,8 @@ local function test(data)
                 }  
 
       --pre-whiten the inputs and outputs in the mini-batch
-      inputs = batchNorm(inputs)
-      targets = batchNorm(targets)  
+      inputs = batchNorm(inputs, 1)
+      targets = batchNorm(targets, 1)  
     
       -- test samples
       local preds = neunet:forward(inputs)
