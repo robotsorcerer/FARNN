@@ -178,8 +178,7 @@ split_data(opt)
 print(sys.COLORS.red .. '==> Data Pre-processing')
 kk          = train_input:size(1)
 --===========================================================================================
---[[Determine input-output order using He and Asada's prerogative
-    See Code order_det.lua in folder "order"]]
+--[[Determine input-output order using He and Asada's prerogative]]
 print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 
 --find optimal # of input variables from data

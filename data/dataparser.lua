@@ -23,7 +23,7 @@ end
 
 function get_datapair(args)	
 	local inputs, targets = {}, {}
-	if (args.data=='soft_robot.mat') then 
+	if (args.data=='soft_robot.mat') then  --SIMO dataset
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  
 		 -- 1. create a sequence of rho time-steps
 		inputs = train_input:index(1, offsets)
@@ -42,7 +42,7 @@ function get_datapair(args)
 		local N = 1
 		inputs = batchNorm(inputs, N)
 		targets = batchNorm(targets, N)
-	elseif (args.data == 'glassfurnace.mat') then 
+	elseif (args.data == 'glassfurnace.mat') then   --MIMO Dataset
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  
 
 		--recurse inputs and targets into one long sequence
@@ -63,6 +63,27 @@ function get_datapair(args)
 
 		print('inputs', inputs)
 		print('outputs', targets)
+
+	--ballbeam and robotarm are siso systems from the DaiSy dataset
+	elseif (string.find(data, 'robotArm.mat')) or (string.find(data, 'ballbeam.mat')) t$
+	  data_path_printer(data)
+
+	  data = matio.load(data)
+	  data = data.filename;
+	  input = data[{{}, {1}}]
+	  out = data[{{}, {2}}]
+
+	  k = input:size(1)
+	  off = torch.ceil(torch.abs(0.6*k))
+
+	  train_input = input[{{1, off}, {1}}]
+	  train_out = {out[{{1, off}, {}}]}
+
+	  --create testing data
+	  test_input = input[{{off + 1, k}, {1}}]
+	  test_out   = {  out[{{off+1, k}, {1}}] }
+
+
 	end
 return inputs, targets
 end
