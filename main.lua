@@ -60,8 +60,8 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','soft_robot.mat','path to -v7.3 Matlab data e.g. robotArm.mat | glassfurnace.mat | ballbeam.mat | soft_robot.mat')
-cmd:option('-tau', 1, 'what is the delay in the data?')
+cmd:option('-data','softRobot','path to -v7.3 Matlab data e.g. robotArm.mat | glassfurnace.mat | ballbeam.mat | soft_robot.mat')
+cmd:option('-tau', 5, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
 cmd:option('-trainStop', 0.5, 'stopping criterion for neural net training')
@@ -75,14 +75,14 @@ cmd:option('-backend', 'cudnn', 'nn|cudnn')
 cmd:option('-learningRate',1e-1, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0.9, 'momentum for sgd algorithm')
-cmd:option('-model', 'mlp', 'mlp|lstm|linear|rnn')
+cmd:option('-model', 'lstm', 'mlp|lstm|linear|rnn')
 cmd:option('-gru', false, 'use Gated Recurrent Units (nn.GRU instead of nn.Recurrent)')
 cmd:option('-fastlstm', false, 'use LSTMS without peephole connections?')
 cmd:option('-netdir', 'network', 'directory to save the network')
 cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0.1, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0.2, 'L2 penalty on the weights')
-cmd:option('-plot', false, 'true|false')
+cmd:option('-plot', true, 'true|false')
 cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of batchSize')
 
 -- RNN/LSTM Settings 
@@ -248,12 +248,13 @@ local function contruct_net()
     nn.LSTM.usenngraph = true -- faster
     local crit = nn.MSECriterion()
     cost = nn.SequencerCriterion(crit)
-    neunet = nn.Sequential()
-    -- if opt.data == 'glassfurnace.mat' then
-    --   opt.hiddenSize = {3, 10, 100}
-    -- end
-    local inputSize = opt.hiddenSize[1]
-    for i, hiddenSize in ipairs(opt.hiddenSize) do 
+    neunet = nn.Sequential()    
+    local hidden = opt.hiddenSize
+    if opt.data == 'glassfurnace' then
+      hidden = {3, 10, 100}
+    end
+    local inputSize = hidden[1]
+    for i, hiddenSize in ipairs(hidden) do 
       local rnn
       if opt.gru then -- Gated Recurrent Units
          rnn = nn.GRU(inputSize, hiddenSize, opt.rho, opt.dropoutProb)
@@ -277,11 +278,18 @@ local function contruct_net()
     end
 
     -- output layer
-    neunet:add(nn.Linear(inputSize, 1, bias))
-    -- will recurse a single continuous sequence
-    neunet:remember((opt.lstm or opt.mlp or opt.fastlstm or opt.gru) or 'eval')
-    --output layer 
-    neunet = nn.Repeater(neunet, noutputs)
+    if opt.data=='glassfurnace' then         
+      neunet:add(nn.Linear(inputSize, 6, bias))      
+      -- will recurse a single continuous sequence
+      neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
+      neunet = nn.Sequencer(neunet)
+    else
+      neunet:add(nn.Linear(inputSize, 1, bias))
+      -- will recurse a single continuous sequence
+      neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
+      --output layer 
+      neunet = nn.Repeater(neunet, noutputs)
+    end
 --===========================================================================================
   else    
       error('you have specified an incorrect model. model must be <lstm> or <mlp> or <rnn>')    
@@ -377,13 +385,13 @@ local function train(data)
     epoch = epoch + 1
     if (opt.fastlstm)  then
       logger:style{['FastLSTM training error'] = '-'}
-      logger:plot()   
+      if opt.plot then logger:plot()  end
     elseif (opt.gru)  then
       logger:style{['GRU training error'] = '-'}
-      logger:plot()  
+      if opt.plot then logger:plot()  end
     else  --plain lstm
       logger:style{['LSTM training error'] = '-'}
-      logger:plot()   
+      if opt.plot then logger:plot()   end
     end 
 
   elseif  opt.model == 'mlp'  then
@@ -399,7 +407,7 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
     logger:style{['mlp training error'] = '-'}
-    logger:plot()    
+    if opt.plot then logger:plot()    end
   else
     print("Incorrect model entered")
   end 
