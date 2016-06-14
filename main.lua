@@ -172,11 +172,12 @@ end
 
 
 print(sys.COLORS.red .. '==> Parsing raw data')
-split_data(opt)
+local splitData = {}
+splitData = split_data(opt)
 
 
 print(sys.COLORS.red .. '==> Data Pre-processing')
-kk          = train_input:size(1)
+kk          = splitData.train_input:size(1)
 --===========================================================================================
 --[[Determine input-output order using He and Asada's prerogative]]
 print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
@@ -418,8 +419,10 @@ end
 --test function
 local function test(data)
    -- local vars
+   local splitData = {}; 
+   splitData = split_data(opt)
    local time = sys.clock()
-   local testHeight = test_input:size(1)
+   local testHeight = splitData.test_input:size(1)
    -- averaged param use?
    if average then
       cachedparams = parameters:clone()
@@ -436,23 +439,18 @@ local function test(data)
       local inputs, targets, offsets = {}, {}, {}
       -- load new sample
       offsets = torch.LongTensor(opt.batchSize):random(1, testHeight) 
-      inputs = test_input:index(1, offsets)
+      inputs = splitData.test_input:index(1, offsets)
       --batch of targets
-      targets = {
-      test_out[1]:index(1, offsets), test_out[2]:index(1, offsets), 
-                  test_out[3]:index(1, offsets), test_out[4]:index(1, offsets), 
-                  test_out[5]:index(1, offsets), test_out[6]:index(1, offsets)
-                }  
-
+      targets = { splitData.test_out:index(1, offsets)        }
       --pre-whiten the inputs and outputs in the mini-batch
-      inputs = batchNorm(inputs, 1)
-      targets = batchNorm(targets, 1)  
+      inputs = batchNorm(inputs, splitData.test_input:size(2))
+      targets = batchNorm(targets, splitData.test_out:size(2))  
     
       -- test samples
       local preds = neunet:forward(inputs)
 
       local for_limit
-      if opt.model =='mlp' then
+      if (opt.model =='mlp') or (opt.data =='glassfurnace') then
         for_limit = preds:size(1)
       else
         for_limit = #preds
