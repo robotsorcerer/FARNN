@@ -23,7 +23,7 @@ function split_data(opt)
 	  data = matio.load(filenamefull)
 	  data = data[filename];
 	  input = data[{{}, {1}}]     
-	  print(input)
+
 	  out = data[{{}, {2}}]
 
 	  k = input:size(1)
@@ -36,6 +36,11 @@ function split_data(opt)
 	  splitData.test_input = input[{{off + 1, k}, {1}}]
 	  splitData.test_out   = {  out[{{off+1, k}, {1}}] }  
 
+	  width       = splitData.train_input:size(2)
+	  height      = splitData.train_input:size(1)
+	  ninputs     = 1
+	  noutputs    = 1
+	  nhiddens_rnn = 6 
 	--SIMO System from my soft_robot system
 	elseif(string.find(filename, 'softRobot')) then 
 	  data = matio.load(filenamefull);  
@@ -121,62 +126,86 @@ end
 
 function get_datapair(args)	
 	local inputs, targets = {}, {}
+	local test_inputs, test_targets = {}, {}
+
 	local splitData = {}
-	splitData = split_data(args)
+	splitData = split_data(args)	
+	local testHeight = splitData.test_input:size(1)
 	if (args.data=='softRobot') then  --SIMO dataset
 
-		offsets = torch.LongTensor(args.batchSize):random(1,height)  
+		offsets 	= torch.LongTensor(args.batchSize):random(1,height)  
+		test_offsets = torch.LongTensor(args.batchSize):random(1,testHeight) 
 		 -- 1. create a sequence of rho time-steps
-		inputs = splitData.train_input:index(1, offsets)
-		offsets = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)
+		inputs 		= splitData.train_input:index(1, offsets)
+		test_inputs = splitData.test_input:index(1, test_offsets)
+
+		offsets 	 = torch.LongTensor():resize(offsets:size()[1]):copy(offsets)		
+		test_offsets = torch.LongTensor():resize(test_offsets:size()[1]):copy(test_offsets)
 
 		--batch of targets
-		targets = {splitData.train_out[1]:index(1, offsets), splitData.train_out[2]:index(1, offsets), 
+		targets 	 = {splitData.train_out[1]:index(1, offsets), splitData.train_out[2]:index(1, offsets), 
 		                  splitData.train_out[3]:index(1, offsets), splitData.train_out[4]:index(1, offsets), 
-		                  splitData.train_out[5]:index(1, offsets), splitData.train_out[6]:index(1, offsets)}
-		
+		                  splitData.train_out[5]:index(1, offsets), splitData.train_out[6]:index(1, offsets)}		
+		test_targets = {splitData.test_out[1]:index(1, test_offsets), splitData.test_out[2]:index(1, test_offsets), 
+		                 splitData.test_out[3]:index(1, test_offsets), splitData.test_out[4]:index(1, test_offsets), 
+		                 splitData.test_out[5]:index(1, test_offsets), splitData.test_out[6]:index(1, test_offsets)}
+
 		--increase offsets indices by 1      
 		offsets:add(1) -- increase indices by 1
+		test_offsets:add(1)
 		offsets[offsets:gt(height)] = 1  
+		test_offsets[test_offsets:gt(testHeight)] = 1
 
 		--pre-whiten the inputs and outputs in the mini-batch
 		local N = 1
 		inputs = batchNorm(inputs, N)
 		targets = batchNorm(targets, N)
 
+		test_inputs = batchNorm(test_inputs, N)
+		test_targets = batchNorm(test_targets, N)
+
 	elseif (args.data == 'glassfurnace') then   --MIMO Dataset
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  
-
+		test_offsets = torch.LongTensor(args.batchSize):random(1,testHeight) 
+		
+		print('train_inputs', splitData.train_input)
 		--recurse inputs and targets into one long sequence
 		inputs = {	splitData.train_input:index(1, offsets)		}
+		test_inputs = { splitData.test_input:index(1, test_offsets) }
 
 		--batch of targets
 		targets = {	splitData.train_out:index(1, offsets)        }
+		test_targets = {   splitData.test_out:index(1, test_offsets)  }
 		                  
 		--pre-whiten the inputs and outputs in the mini-batch
 		inputs = batchNorm(inputs, 3)
 		targets = batchNorm(targets, 6)
+
+		test_inputs = batchNorm(test_inputs, 3)		
+		test_targets = batchNorm(test_targets, 6)
 		
 	--ballbeam and robotarm are siso systems from the DaiSy dataset
-	elseif (string.find(args.data, 'robotArm')) or (string.find(dargs.ata, 'ballbeam')) then
-	  data_path_printer(data)
+	elseif (string.find(args.data, 'robotArm')) or (string.find(args.data, 'ballbeam')) then
+	  -- data_path_printer(data)
+	  local testHeight = splitData.test_input:size(1)
+	  offsets = torch.LongTensor(args.batchSize):random(1,height)  
+	  test_offsets = torch.LongTensor(args.batchSize):random(1,testHeight) 
 
-	  data = matio.load(data)
-	  data = data.filename;
-	  input = data[{{}, {1}}]
-	  out = data[{{}, {2}}]
+	  --recurse inputs and targets into one long sequence
+	  inputs = {	splitData.train_input:index(1, offsets)		}
+	  test_inputs = { splitData.test_input:index(1, test_offsets) }
 
-	  k = input:size(1)
-	  off = torch.ceil(torch.abs(0.6*k))
+	  --batch of targets
+	  targets = {	splitData.train_out[1]:index(1, offsets)        }
+	  test_targets = {   splitData.test_out[1]:index(1, test_offsets)  }
 
-	  train_input = input[{{1, off}, {1}}]
-	  train_out = {out[{{1, off}, {}}]}
+	  --pre-whiten the inputs and outputs in the mini-batch
+	  inputs = batchNorm(inputs, 1)
+	  targets = batchNorm(targets, 1)
 
-	  --create testing data
-	  test_input = input[{{off + 1, k}, {1}}]
-	  test_out   = {  out[{{off+1, k}, {1}}] }
-
+	  test_inputs = batchNorm(test_inputs, 1)		
+	  test_targets = batchNorm(test_targets, 1)
 
 	end
-return inputs, targets
+return inputs, targets, test_inputs, test_targets
 end

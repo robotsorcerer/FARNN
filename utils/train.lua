@@ -104,7 +104,6 @@ function train_lstm(args)
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs, targets = get_datapair(args)
-
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
@@ -142,6 +141,8 @@ function train_mlp(opt)
     xlua.progress(t, math.min(opt.maxIter, height))
      -- create mini batch
     local inputs, targets = {}, {}
+    inputs, targets = get_datapair(opt)
+    --[[
       -- load new sample
       local offsets = {}
       offsets = torch.LongTensor(opt.batchSize):random(1,height) 
@@ -154,7 +155,7 @@ function train_mlp(opt)
     --pre-whiten the inputs and outputs in the mini-batch
     inputs = batchNorm(inputs, 1)
     targets = batchNorm(targets, 1)
-
+]]
 
     neunet:zeroGradParameters()
           

@@ -200,11 +200,15 @@ transfer    =  nn.ReLU()
 local function contruct_net()
   local bias = true
   if opt.model  == 'mlp' then
-          neunet          = nn.Sequential()
+          neunet          = nn.Sequential()     
+        if opt.data=='glassfurnace' then    
+          neunet:add(nn.Linear(3, nhiddens, bias))
+        else          
           neunet:add(nn.Linear(ninputs, nhiddens, bias))
+        end
           neunet:add(transfer)                         
           neunet:add(nn.Linear(nhiddens, noutputs, bias)) 
-    cost      = nn.MSECriterion() 
+    cost      = nn.MSECriterion()      
 
   elseif opt.model == 'rnn' then    
 -------------------------------------------------------
@@ -281,6 +285,11 @@ local function contruct_net()
     -- output layer
     if opt.data=='glassfurnace' then         
       neunet:add(nn.Linear(inputSize, 6, bias))      
+      -- will recurse a single continuous sequence
+      neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
+      neunet = nn.Sequencer(neunet)
+    elseif (opt.data =='ballbeam') or (opt.data=='robotArm') then
+      neunet:add(nn.Linear(inputSize, 1, bias))    
       -- will recurse a single continuous sequence
       neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
       neunet = nn.Sequencer(neunet)
@@ -367,7 +376,7 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-    logger:style{['RNN training error'] = '-'}
+    logger:style{['RNN training error vs. epoch'] = '-'}
     logger:plot()
 
   elseif (opt.model == 'lstm') then
@@ -388,10 +397,10 @@ local function train(data)
       logger:style{['FastLSTM training error'] = '-'}
       if opt.plot then logger:plot()  end
     elseif (opt.gru)  then
-      logger:style{['GRU training error'] = '-'}
+      logger:style{['GRU training error vs. epoch'] = '-'}
       if opt.plot then logger:plot()  end
     else  --plain lstm
-      logger:style{['LSTM training error'] = '-'}
+      logger:style{['LSTM training error vs. epoch'] = '-'}
       if opt.plot then logger:plot()   end
     end 
 
@@ -432,43 +441,49 @@ local function test(data)
    print('<trainer> on testing Set:')
    local avg = 0; local predF, normedPreds = {}, {}
    local iter = 1;
+   local for_limit;
    for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
       xlua.progress(t, math.min(opt.maxIter, testHeight))
       -- create mini batch        
-      local inputs, targets, offsets = {}, {}, {}
-      -- load new sample
-      offsets = torch.LongTensor(opt.batchSize):random(1, testHeight) 
-      inputs = splitData.test_input:index(1, offsets)
-      --batch of targets
-      targets = { splitData.test_out:index(1, offsets)        }
-      --pre-whiten the inputs and outputs in the mini-batch
-      inputs = batchNorm(inputs, splitData.test_input:size(2))
-      targets = batchNorm(targets, splitData.test_out:size(2))  
-    
+      local inputs, targets = {}, {}
+      _, _, inputs, targets = get_datapair(opt)
+
       -- test samples
       local preds = neunet:forward(inputs)
-
-      local for_limit
-      if (opt.model =='mlp') or (opt.data =='glassfurnace') then
-        for_limit = preds:size(1)
-      else
-        for_limit = #preds
+      if (opt.data=='ballbeam') or (opt.data=='robotArm') then
+        for_limit = preds[1]:size(2)
+      elseif (opt.data=='softRobot') then        
+        if (opt.model =='mlp') then
+          for_limit = preds:size(1)
+        else
+          for_limit = #preds
+        end
+      elseif(opt.data == 'glassfurnace') then
+        for_limit = preds[1]:size(2) 
       end
 
       for i=1, for_limit do
-        predF[i] = preds[i]:float()        
-        normedPreds[i] = torch.norm(predF[i])
-        avg = normedPreds[i] + avg
+        if(opt.data == 'glassfurnace') then
+          predF = preds[1]:float()
+          normedPreds = torch.norm(predF)
+          -- print(normedPreds)
+          avg = normedPreds + avg
+        else
+          predF[i] = preds[i]:float()        
+          normedPreds[i] = torch.norm(predF[i])
+          avg = normedPreds[i] + avg
+        end
       end
 
       -- timing
       time = sys.clock() - time
       time = time / height
 
-      if  (iter*opt.batchSize >= math.min(opt.maxIter, height))  then 
+      if  (iter*opt.batchSize >= math.min(opt.maxIter, testHeight))  then 
         print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')  
-        print("avg. prediction errors on test data", avg/#normedPreds)
+        if not (opt.data=='glassfurnace') then print("avg. prediction errors on test data", avg/#normedPreds) 
+        else print("avg. prediction errors on test data", avg/normedPreds) end
       end 
       iter = iter + 1
     end    
@@ -478,19 +493,19 @@ end
 function saveNet()
   -- save/log current net
   if opt.model == 'rnn' then
-    netname = 'rnn-net.t7'
+    netname = opt.data .. 'rnn-net.t7'
   elseif opt.model == 'mlp' then
-    netname = 'mlp-net.t7'
+    netname = opt.data .. '_mlp-net.t7'
   elseif opt.model == 'lstm' then
     if opt.gru then
-      netname = 'gru-net.t7'
+      netname = opt.data .. '_gru-net.t7'
     elseif opt.fastlstm then
-      netname = 'fastlstm.t7'
+      netname = opt.data .. '_fastlstm.t7'
     else
-      netname = 'lstm-net.t7'
+      netname = opt.data .. '_lstm-net.t7'
     end
   else
-    netname = 'neunet.t7'
+    netname = opt.data .. '_neunet.t7'
   end  
   
   local filename = paths.concat(opt.netdir, netname)
