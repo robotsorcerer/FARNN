@@ -45,7 +45,9 @@ timeSeries = load('internet_traffic.dat');
 % motor. Reaction torque of the structure on the ground to acceleration o
 % fthe flexible arm input is a periodic sine wave
 clear all; clc
-cd('/home/local/ANT/ogunmolu/Documents/NNs/FARNN/data')
+username = system('whoami');
+cd('/home/lex/Documents/FARNN/data')
+softRobot = load('softRobot.mat')
 robotArm = load('robotArm.mat');
 robotArm = robotArm.robotArm;
 robotArm_u = robotArm(:,1);
@@ -68,3 +70,25 @@ train_out = output(1:off,:);
 
 train_input(749,:,1)
 
+%softRobot
+SR = softRobot.pose;
+srInput = SR(:,1);
+srOut = SR(:,2:end);
+
+%% estiomate box-jenkins model for soft robot
+na = [
+      0 0 0 0 0 0;
+      0 0 0 0 0 0;
+      0 0 0 0 0 0;
+      0 0 0 0 0 0;
+      0 0 0 0 0 0;
+      0 0 0 0 0 0];
+  
+nb = [2;2;2;2;2;2];
+nc = [2;2;2;2;2;2];
+nd = [2;2;2;2;2;2];
+nf = [2;2;2;2;2;2];
+nk = [1;1;1;1;1;1];
+
+sr_data = iddata(srInput, srOut, 1);
+sys = polyest(sr_data, [na nb nc nd nf nk], 'IntegrateNoise', true);

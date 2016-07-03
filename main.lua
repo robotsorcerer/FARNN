@@ -60,7 +60,7 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','softRobot','path to -v7.3 Matlab data e.g. robotArm.mat | glassfurnace.mat | ballbeam.mat | soft_robot.mat')
+cmd:option('-data','softRobot','path to -v7.3 Matlab data e.g. robotArm | glassfurnace | ballbeam | soft_robot')
 cmd:option('-tau', 5, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
@@ -500,7 +500,7 @@ function saveNet()
     if opt.gru then
       netname = opt.data .. '_gru-net.t7'
     elseif opt.fastlstm then
-      netname = opt.data .. '_fastlstm.t7'
+      netname = opt.data .. '_fastlstm-net.t7'
     else
       netname = opt.data .. '_lstm-net.t7'
     end

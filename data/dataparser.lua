@@ -168,7 +168,7 @@ function get_datapair(args)
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  
 		test_offsets = torch.LongTensor(args.batchSize):random(1,testHeight) 
 		
-		print('train_inputs', splitData.train_input)
+		-- print('train_inputs', splitData.train_input)
 		--recurse inputs and targets into one long sequence
 		inputs = {	splitData.train_input:index(1, offsets)		}
 		test_inputs = { splitData.test_input:index(1, test_offsets) }
@@ -183,6 +183,12 @@ function get_datapair(args)
 
 		test_inputs = batchNorm(test_inputs, 3)		
 		test_targets = batchNorm(test_targets, 6)
+
+		--increase offsets indices by 1      
+		offsets:add(1) -- increase indices by 1
+		test_offsets:add(1)
+		offsets[offsets:gt(height)] = 1  
+		test_offsets[test_offsets:gt(testHeight)] = 1
 		
 	--ballbeam and robotarm are siso systems from the DaiSy dataset
 	elseif (string.find(args.data, 'robotArm')) or (string.find(args.data, 'ballbeam')) then
@@ -205,6 +211,12 @@ function get_datapair(args)
 
 	  test_inputs = batchNorm(test_inputs, 1)		
 	  test_targets = batchNorm(test_targets, 1)
+
+	  --increase offsets indices by 1      
+	  offsets:add(1) -- increase indices by 1
+	  test_offsets:add(1)
+	  offsets[offsets:gt(height)] = 1  
+	  test_offsets[test_offsets:gt(testHeight)] = 1
 
 	end
 return inputs, targets, test_inputs, test_targets

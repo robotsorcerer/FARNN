@@ -84,7 +84,7 @@ function train_lstms(args)
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
       print(string.format("Epoch %d, Loss = %f ", epoch,  loss))
-      if opt.model=='lstm' then logger:add{['LSTM training error'] = loss}
+      if opt.model=='lstm' then logger:add{['LSTM training error vs. epoch'] = loss}
         elseif opt.model=='fastlstm' then logger:add{['FastLSTM training error'] = loss} end
       --reset counters
       loss = 0; iter = 0 ;
@@ -120,11 +120,11 @@ function train_lstm(args)
       print(string.format("Epoch %d,  Loss = %f ", epoch,  loss))
       if opt.model=='lstm' then 
         if opt.gru then
-          logger:add{['GRU training error'] = loss}
+          logger:add{['GRU training error vs. epoch'] = loss}
         elseif opt.fastlstm then
-          logger:add{['FastLSTM training error'] = loss}
+          logger:add{['FastLSTM training error vs. epoch'] = loss}
         else
-          logger:add{['LSTM training error'] = loss}
+          logger:add{['LSTM training error vs. epoch'] = loss}
         end
       end
       --reset counters
