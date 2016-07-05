@@ -32,7 +32,8 @@ function train_rnn(opt)
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-      print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))      
+      print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))  
+      print('neunet.weight', neunet.weight)    
       logger:add{['RNN training error'] = loss}
       --reset counters
       loss = 0; iter = 0 ;
@@ -84,6 +85,7 @@ function train_lstms(args)
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
       print(string.format("Epoch %d, Loss = %f ", epoch,  loss))
+      print('neunet.weight', neunet.weight) 
       if opt.model=='lstm' then logger:add{['LSTM training error vs. epoch'] = loss}
         elseif opt.model=='fastlstm' then logger:add{['FastLSTM training error'] = loss} end
       --reset counters
@@ -118,6 +120,7 @@ function train_lstm(args)
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
       print(string.format("Epoch %d,  Loss = %f ", epoch,  loss))
+      print('neunet.weight', neunet.weight) 
       if opt.model=='lstm' then 
         if opt.gru then
           logger:add{['GRU training error vs. epoch'] = loss}
@@ -136,32 +139,48 @@ function train_lstm(args)
 end
      
 function train_mlp(opt)  
-  for t = 1, math.min(opt.maxIter, height), opt.batchSize do
+
+  feval = function(params_new)
+     if parameters ~= params_new then
+        parameters:copy(params_new)
+     end
+
+     local data = (split_data(opt)).train
+
+     _nidx_ = (_nidx_ or 0) + 1
+
+     if _nidx_ > (#data)[1] then _nidx_ = 1 end
+
+     local inputs, targets
+     local sample = data[_nidx_]
+     if opt.data == 'robotArm' or opt.data == 'ballbeam' then
+      inputs = sample[{ {1} }]
+      targets = sample[{ {2} }]
+     end
+
+     gradParameters:zero()
+     
+      inputs =  transfer_data(inputs); targets =  transfer_data(targets)
+     -- evaluate the loss function and its derivative wrt x, for that sample
+     local loss_x = cost:forward(neunet:forward(inputs), targets)
+     neunet:backward(inputs, cost:backward(neunet.output, targets))
+
+     return loss_x, gradParameters
+  end
+
+  for t = 1, math.min(opt.maxIter, height)--[[, opt.batchSize]] do
 
     xlua.progress(t, math.min(opt.maxIter, height))
-     -- create mini batch
-    local inputs, targets = {}, {}
-    inputs, targets = get_datapair(opt)
-    --[[
-      -- load new sample
-      local offsets = {}
-      offsets = torch.LongTensor(opt.batchSize):random(1,height) 
-      inputs = train_input:index(1, offsets)
-      --batch of targets
-      targets = {train_out[1]:index(1, offsets), train_out[2]:index(1, offsets), 
-                  train_out[3]:index(1, offsets), train_out[4]:index(1, offsets), 
-                  train_out[5]:index(1, offsets), train_out[6]:index(1, offsets)
-                }    
-    --pre-whiten the inputs and outputs in the mini-batch
-    inputs = batchNorm(inputs, 1)
-    targets = batchNorm(targets, 1)
-]]
-
-    neunet:zeroGradParameters()
-          
+    local data = (split_data(opt)).train
+    local loss, lossAcc  = 0, 0
     -- optimization on current mini-batch
     if optimMethod == msetrain then
-      local loss, lossAcc       
+       -- create mini batch
+      local inputs, targets = {}, {}
+      inputs, targets = get_datapair(opt)
+
+      neunet:zeroGradParameters()
+     
       loss, lossAcc = optimMethod(inputs, targets) 
       if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
         print(string.format("Epoch %d, Loss = %f ", epoch, loss))
@@ -170,9 +189,23 @@ function train_mlp(opt)
         loss = 0; iter = 0 ;
       end    
       iter = iter +1 
-    elseif optimMethod == optim.sgd then
-      optimMethod(feval, parameters, sgdState)
 
+    elseif optimMethod == optim.sgd then
+      for i = 1, (#data)[1] do
+        _, fs = optimMethod(feval, parameters, sgdState)
+        lossAcc = lossAcc + fs[1]
+
+        --do gradCheck to be sure grad descent is correct
+        local diff, dC, dC_est = optim.checkgrad(feval, parameters)
+        -- report average error on epoch
+        loss = lossAcc / (#data)[1]
+        print(string.format('epoch: %2d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
+                loss, diff))
+        print('(loss: ', loss)
+        logger:add{['MLP training error vs. epoch'] = loss}
+        logger:style{['MLP training error vs. epoch'] = '-'}
+        if opt.plot then logger:plot()  end
+      end
     else  
       optimMethod(feval, parameters, optimState)
     end 

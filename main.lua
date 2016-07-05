@@ -11,7 +11,8 @@ require 'torch'
 require 'nn'
 require 'nngraph'
 require 'optim'
-require 'order.order_det'   
+require 'order.order_det' 
+require 'sys'  
 matio     = require 'matio' 
 plt = require 'gnuplot' 
 require 'utils.utils'
@@ -55,7 +56,7 @@ cmd:text('======================================================================
 cmd:text(                                                                             )
 cmd:text(                                                                             )
 cmd:text('Options')
-cmd:option('-seed', 123, 'initial seed for random number generator')
+cmd:option('-seed', 4000, 'initial seed for random number generator')
 cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
@@ -72,14 +73,14 @@ cmd:option('-gpu', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
-cmd:option('-learningRate',1e-1, 'learning rate for the neural network')
-cmd:option('-learningRateDecay',1e-6, 'learning rate decay to bring us to desired minimum in style')
+cmd:option('-learningRate',1e-4, 'learning rate for the neural network')
+cmd:option('-learningRateDecay',1e-3, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0.9, 'momentum for sgd algorithm')
 cmd:option('-model', 'lstm', 'mlp|lstm|linear|rnn')
 cmd:option('-gru', false, 'use Gated Recurrent Units (nn.GRU instead of nn.Recurrent)')
 cmd:option('-fastlstm', false, 'use LSTMS without peephole connections?')
 cmd:option('-netdir', 'network', 'directory to save the network')
-cmd:option('-optimizer', 'mse', 'mse|sgd')
+cmd:option('-optimizer', 'sgd', 'mse|sgd')
 cmd:option('-coefL1',   0.1, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0.2, 'L2 penalty on the weights')
 cmd:option('-plot', true, 'true|false')
@@ -89,7 +90,7 @@ cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of 
 cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-dropoutProb', 0.35, 'probability of zeroing a neuron (dropout probability)')
-cmd:option('-rnnlearningRate',0.1, 'learning rate for the reurrent neural network')
+cmd:option('-rnnlearningRate',1e-4, 'learning rate for the reurrent neural network')
 cmd:option('-batchNorm', true, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
@@ -243,8 +244,11 @@ local function contruct_net()
                   :add(nn.Sigmoid())
                   :add(r)
                   :add(nn.Linear(start, 1, bias))
-
-    neunet    = nn.Repeater(neunet, noutputs)
+    if opt.data ==('ballbeam' or 'robotArm') then
+      neunet = nn.Sequencer(neunet)
+    else
+      neunet    = nn.Repeater(neunet, noutputs)
+    end
 --======================================================================================
 --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   
@@ -314,13 +318,12 @@ print('Network Table\n'); print(neunet)
 
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
-print('Neunet Parameters', '\n', parameters:size())
-print('Neunet gradParameters', '\n', gradParameters:size())
-
+print(string.format('net params: %d, gradParams: %d', parameters:size(1), gradParameters:size(1)))
+-- sys.sleep(30)
 --init weights with 0.1
--- neunet.weight = 0.1
--- neunet.bias = 0
-print('Neunet Weights', '\n', neunet.bias, '\n', neunet.weight)
+neunet.weight= 1e-3 --torch.randn(1, parameters:size())
+neunet.bias = 0.1
+print('Neunet Weights',  neunet.bias,  neunet.weight)
 --=====================================================================================================
 neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
 cost = transfer_data(cost)
@@ -337,11 +340,16 @@ print '==> configuring optimizer\n'
 
  elseif opt.optimizer == 'sgd' then      
    -- Perform SGD step:
-   sgdState = sgdState or {
-   learningRate = opt.learningRate,
-   momentum = opt.momentum,
-   learningRateDecay = 5e-7
-   }
+   sgdState = {
+      learningRate = 1e-6,
+      learningRateDecay = 1e-2,
+      momentum = 0,
+      weightDecay = 0
+    }
+    if(data=='ballbeam') then
+      sgdState.learningRate = 1e-4
+      sgdState.learningRateDecay = 1e-4
+    end
    optimMethod = optim.sgd
 
  else  
@@ -420,8 +428,7 @@ local function train(data)
     if opt.plot then logger:plot()    end
   else
     print("Incorrect model entered")
-  end 
-           
+  end            
 end     
 
 
@@ -441,8 +448,28 @@ local function test(data)
    print('<trainer> on testing Set:')
    local avg = 0; local predF, normedPreds = {}, {}
    local iter = 1;
-   local for_limit;
-   for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
+   local for_limit; 
+   if(opt.optimizer == 'sgd') then
+    local data = transfer_data((split_data(opt)).test)
+    for t = 1, (#data)[1] do
+      local preds;
+      if (opt.data=='ballbeam') or (opt.data=='robotArm') then
+        print('data', data[{ {1} }])
+        preds = neunet:forward(data[{{1}}])
+        print('id  approx   actual')
+        print(string.format("%3d  %4.6f %4.6f", i, preds[1], data[i]))
+      elseif (opt.data=='softRobot') then        
+        if (opt.model =='mlp') then
+          for_limit = preds:size(1)
+        else
+          for_limit = #preds
+        end
+      elseif(opt.data == 'glassfurnace') then
+        for_limit = preds[1]:size(2) 
+      end
+    end
+   else
+    for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
       xlua.progress(t, math.min(opt.maxIter, testHeight))
       -- create mini batch        
@@ -486,8 +513,8 @@ local function test(data)
         else print("avg. prediction errors on test data", avg/normedPreds) end
       end 
       iter = iter + 1
-    end    
-
+    end  
+   end  
 end
 
 function saveNet()

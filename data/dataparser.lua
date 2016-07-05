@@ -29,6 +29,9 @@ function split_data(opt)
 	  k = input:size(1)
 	  off = torch.ceil(torch.abs(0.6*k))
 
+	  splitData.train = data[{{1, off}, {1, 2}}]
+	  splitData.test = data[{{off+1}, {1, 2}}]
+
 	  splitData.train_input = input[{{1, off}, {1}}]
 	  splitData.train_out = {out[{{1, off}, {}}]}
 
