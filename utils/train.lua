@@ -172,7 +172,7 @@ function train_mlp(opt)
 
     xlua.progress(t, math.min(opt.maxIter, height))
     local data = (split_data(opt)).train
-    local loss, lossAcc  = 0, 0
+    local loss, lossAcc = 0, 0
     -- optimization on current mini-batch
     if optimMethod == msetrain then
        -- create mini batch
@@ -180,7 +180,7 @@ function train_mlp(opt)
       inputs, targets = get_datapair(opt)
 
       neunet:zeroGradParameters()
-     
+      
       loss, lossAcc = optimMethod(inputs, targets) 
       if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
         print(string.format("Epoch %d, Loss = %f ", epoch, loss))
@@ -189,19 +189,17 @@ function train_mlp(opt)
         loss = 0; iter = 0 ;
       end    
       iter = iter +1 
-
     elseif optimMethod == optim.sgd then
       for i = 1, (#data)[1] do
         _, fs = optimMethod(feval, parameters, sgdState)
-        lossAcc = lossAcc + fs[1]
+        loss = loss + fs[1]
 
         --do gradCheck to be sure grad descent is correct
         local diff, dC, dC_est = optim.checkgrad(feval, parameters)
         -- report average error on epoch
-        loss = lossAcc / (#data)[1]
+        loss = loss / (#data)[1]
         print(string.format('epoch: %2d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
                 loss, diff))
-        print('(loss: ', loss)
         logger:add{['MLP training error vs. epoch'] = loss}
         logger:style{['MLP training error vs. epoch'] = '-'}
         if opt.plot then logger:plot()  end
