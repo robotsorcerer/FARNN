@@ -138,7 +138,8 @@ function train_lstm(args)
   end  
 end
      
-function train_mlp(opt)  
+function train_mlp(opt)
+
   local inputs, targets
   feval = function(params_new)
      if parameters ~= params_new then
@@ -153,7 +154,6 @@ function train_mlp(opt)
       inputs = sample[{ {1} }]
       targets = sample[{ {2} }]
      end
-     -- print('inputs: ', inputs[1], 'targets: ', targets[1])
 
      gradParameters:zero()
      
@@ -164,9 +164,9 @@ function train_mlp(opt)
      -- print('loss: ', loss_x)
      return loss_x, gradParameters
   end
-  
+
+  local loss, lossAcc = 0, 0
   for i = 1, math.min(opt.maxIter, height) do
-    local loss, lossAcc = 0, 0
     local diff, dC, dC_est    
     local data = (split_data(opt)).train
     -- optimization on current mini-batch
@@ -185,18 +185,18 @@ function train_mlp(opt)
         loss = 0; iter = 0 ;
       end    
       iter = iter +1 
-    elseif optimMethod == optim.sgd then
+    elseif optimMethod == optim.sgd then      
       for i = 1, data:size(1) do
         _, fs = optimMethod(feval, parameters, sgdState)
         loss = loss + fs[1]
-
+        -- print('fs: ', fs[1], 'loss: ', loss)
         --do gradCheck to be sure grad descent is correct
         diff, dC, dC_est = optim.checkgrad(feval, parameters)
       end
         -- report average error on epoch
-        loss = loss / data:size(1)
-        print(string.format('epoch: %2d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
-                loss, diff))
+        loss = loss / data:size(1); 
+        print(string.format('epoch: %2d, iter: %d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
+              i,  loss, diff))
         -- print('net params: ', neunet:getParameters())
         logger:add{['MLP training error vs. epoch'] = loss}
         logger:style{['MLP training error vs. epoch'] = '-'}
