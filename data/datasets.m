@@ -46,7 +46,7 @@ timeSeries = load('internet_traffic.dat');
 % fthe flexible arm input is a periodic sine wave
 clear all; clc
 username = system('whoami');
-cd('/home/lex/Documents/FARNN/data')
+cd('/home/local/ANT/ogunmolu/Documents/NNs/FARNN/data')
 softRobot = load('softRobot.mat')
 robotArm = load('robotArm.mat');
 robotArm = robotArm.robotArm;
@@ -75,20 +75,17 @@ SR = softRobot.pose;
 srInput = SR(:,1);
 srOut = SR(:,2:end);
 
-%% estiomate box-jenkins model for soft robot
-na = [
-      0 0 0 0 0 0;
-      0 0 0 0 0 0;
-      0 0 0 0 0 0;
-      0 0 0 0 0 0;
-      0 0 0 0 0 0;
-      0 0 0 0 0 0];
-  
-nb = [2;2;2;2;2;2];
-nc = [2;2;2;2;2;2];
-nd = [2;2;2;2;2;2];
-nf = [2;2;2;2;2;2];
-nk = [1;1;1;1;1;1];
+%% estiomate robotArm params
 
-sr_data = iddata(srInput, srOut, 1);
-sys = polyest(sr_data, [na nb nc nd nf nk], 'IntegrateNoise', true);
+                               
+ % Import   roboArm                                                           
+ roboArmd = detrend(robotArm,0)                                                
+ roboArmdd = detrend(roboArmd,1)                                              
+                                                                              
+ Opt = arxOptions;                                                            
+ Opt.InitialCondition = 'estimate';                                           
+                                                                              
+ [L, R] = arxRegul(roboArmdd, [10 10 1], arxRegulOptions('RegulKernel','SE'));
+ Opt.Regularization.Lambda = L;                                               
+ Opt.Regularization.R = R;                                                    
+ arx10101 = arx(roboArmdd,[10 10 1], Opt, 'IntegrateNoise', true);   

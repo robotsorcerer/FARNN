@@ -195,7 +195,7 @@ function train_mlp(opt)
       end
         -- report average error on epoch
         loss = loss / data:size(1); 
-        print(string.format('epoch: %2d, iter: %d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
+        print(string.format('epoch: %2d, iter: %d, current loss: %4.12f: ', epoch, 
               i,  loss, diff))
         -- print('net params: ', neunet:getParameters())
         logger:add{['MLP training error vs. epoch'] = loss}

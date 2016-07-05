@@ -194,7 +194,7 @@ print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 print(sys.COLORS.red .. '==> Setting up neural network parameters')
 ----------------------------------------------------------------------------------------------
 --number of hidden layers (for mlp network)
-nhiddens    = 1
+nhiddens    = 10
 transfer    =  nn.ReLU()  
 
 --[[Set up the network, add layers in place as we add more abstraction]]
@@ -207,7 +207,7 @@ local function contruct_net()
         else          
           neunet:add(nn.Linear(ninputs, nhiddens, bias))
         end
-          -- neunet:add(transfer)                         
+          neunet:add(nn.Tanh())                         
           neunet:add(nn.Linear(nhiddens, noutputs, bias)) 
     cost      = nn.MSECriterion()      
 
@@ -323,7 +323,7 @@ print(string.format('net params: %d, gradParams: %d', parameters:size(1), gradPa
 --init weights with 0.1
 -- neunet.weight= 1e-3 --torch.randn(1, parameters:size())
 -- neunet.bias = 0.1
-print('Neunet Weights',  neunet.bias,  neunet.weight)
+-- print('Neunet Weights',  neunet.bias,  neunet.weight)
 --=====================================================================================================
 neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
 cost = transfer_data(cost)
