@@ -139,24 +139,21 @@ function train_lstm(args)
 end
      
 function train_mlp(opt)  
-
+  local inputs, targets
   feval = function(params_new)
      if parameters ~= params_new then
         parameters:copy(params_new)
      end
 
-     local data = (split_data(opt)).train
-
      _nidx_ = (_nidx_ or 0) + 1
-
      if _nidx_ > (#data)[1] then _nidx_ = 1 end
 
-     local inputs, targets
      local sample = data[_nidx_]
      if opt.data == 'robotArm' or opt.data == 'ballbeam' then
       inputs = sample[{ {1} }]
       targets = sample[{ {2} }]
      end
+     -- print('inputs: ', inputs[1], 'targets: ', targets[1])
 
      gradParameters:zero()
      
@@ -164,15 +161,14 @@ function train_mlp(opt)
      -- evaluate the loss function and its derivative wrt x, for that sample
      local loss_x = cost:forward(neunet:forward(inputs), targets)
      neunet:backward(inputs, cost:backward(neunet.output, targets))
-
+     -- print('loss: ', loss_x)
      return loss_x, gradParameters
   end
-
-  for t = 1, math.min(opt.maxIter, height)--[[, opt.batchSize]] do
-
-    xlua.progress(t, math.min(opt.maxIter, height))
-    local data = (split_data(opt)).train
+  
+  for i = 1, math.min(opt.maxIter, height) do
     local loss, lossAcc = 0, 0
+    local diff, dC, dC_est    
+    local data = (split_data(opt)).train
     -- optimization on current mini-batch
     if optimMethod == msetrain then
        -- create mini batch
@@ -190,20 +186,21 @@ function train_mlp(opt)
       end    
       iter = iter +1 
     elseif optimMethod == optim.sgd then
-      for i = 1, (#data)[1] do
+      for i = 1, data:size(1) do
         _, fs = optimMethod(feval, parameters, sgdState)
         loss = loss + fs[1]
 
         --do gradCheck to be sure grad descent is correct
-        local diff, dC, dC_est = optim.checkgrad(feval, parameters)
+        diff, dC, dC_est = optim.checkgrad(feval, parameters)
+      end
         -- report average error on epoch
-        loss = loss / (#data)[1]
+        loss = loss / data:size(1)
         print(string.format('epoch: %2d, current loss %4.12f: , gradCheck: %2.6f', epoch, 
                 loss, diff))
+        -- print('net params: ', neunet:getParameters())
         logger:add{['MLP training error vs. epoch'] = loss}
         logger:style{['MLP training error vs. epoch'] = '-'}
         if opt.plot then logger:plot()  end
-      end
     else  
       optimMethod(feval, parameters, optimState)
     end 

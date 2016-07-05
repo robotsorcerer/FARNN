@@ -56,7 +56,7 @@ cmd:text('======================================================================
 cmd:text(                                                                             )
 cmd:text(                                                                             )
 cmd:text('Options')
-cmd:option('-seed', 4000, 'initial seed for random number generator')
+cmd:option('-seed', 123, 'initial seed for random number generator')
 cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
@@ -207,7 +207,7 @@ local function contruct_net()
         else          
           neunet:add(nn.Linear(ninputs, nhiddens, bias))
         end
-          neunet:add(transfer)                         
+          -- neunet:add(transfer)                         
           neunet:add(nn.Linear(nhiddens, noutputs, bias)) 
     cost      = nn.MSECriterion()      
 
@@ -321,8 +321,8 @@ parameters, gradParameters = neunet:getParameters()
 print(string.format('net params: %d, gradParams: %d', parameters:size(1), gradParameters:size(1)))
 -- sys.sleep(30)
 --init weights with 0.1
-neunet.weight= 1e-3 --torch.randn(1, parameters:size())
-neunet.bias = 0.1
+-- neunet.weight= 1e-3 --torch.randn(1, parameters:size())
+-- neunet.bias = 0.1
 print('Neunet Weights',  neunet.bias,  neunet.weight)
 --=====================================================================================================
 neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
@@ -341,15 +341,15 @@ print '==> configuring optimizer\n'
  elseif opt.optimizer == 'sgd' then      
    -- Perform SGD step:
    sgdState = {
-      learningRate = 1e-6,
-      learningRateDecay = 1e-2,
-      momentum = 0,
+      learningRate = 1e-4,
+      learningRateDecay = 1e-4,
+      momentum = 0.9,
       weightDecay = 0
     }
-    if(data=='ballbeam') then
-      sgdState.learningRate = 1e-4
-      sgdState.learningRateDecay = 1e-4
-    end
+    -- if(data=='ballbeam') then
+    --   sgdState.learningRate = 100
+    --   sgdState.learningRateDecay = 2e-4
+    -- end
    optimMethod = optim.sgd
 
  else  
@@ -446,29 +446,43 @@ local function test(data)
    end
    -- test over given dataset
    print('<trainer> on testing Set:')
-   local avg = 0; local predF, normedPreds = {}, {}
-   local iter = 1;
-   local for_limit; 
-   if(opt.optimizer == 'sgd') then
+
+  if(opt.optimizer == 'sgd') then
     local data = transfer_data((split_data(opt)).test)
+    print('data:size()', data:size())
+    local inputs, targets
     for t = 1, (#data)[1] do
       local preds;
       if (opt.data=='ballbeam') or (opt.data=='robotArm') then
-        print('data', data[{ {1} }])
-        preds = neunet:forward(data[{{1}}])
-        print('id  approx   actual')
-        print(string.format("%3d  %4.6f %4.6f", i, preds[1], data[i]))
-      elseif (opt.data=='softRobot') then        
-        if (opt.model =='mlp') then
-          for_limit = preds:size(1)
-        else
-          for_limit = #preds
-        end
-      elseif(opt.data == 'glassfurnace') then
-        for_limit = preds[1]:size(2) 
+
+        local _nidx_ = (_nidx_ or 0) + 1
+
+        if _nidx_ > (#data)[1] then _nidx_ = 1 end
+
+        local sample = data[_nidx_]
+         inputs = sample[{ {1} }]
+         targets = sample[{ {2} }]
       end
+      preds = neunet:forward(inputs)
+      print('idx  predicted   actual')
+      print(string.format("%3d,  %3.8f, %3.8f", t, preds[1], targets[1]))
     end
-   else
+  
+  else
+    local avg = 0; local predF, normedPreds = {}, {}
+    local iter = 1;
+    local for_limit; 
+
+    if (opt.data=='softRobot') then        
+      if (opt.model =='mlp') then
+        for_limit = preds:size(1)
+      else
+        for_limit = #preds
+      end
+    elseif(opt.data == 'glassfurnace') then
+      for_limit = preds[1]:size(2) 
+    end
+
     for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
       xlua.progress(t, math.min(opt.maxIter, testHeight))
@@ -514,7 +528,7 @@ local function test(data)
       end 
       iter = iter + 1
     end  
-   end  
+  end  
 end
 
 function saveNet()
@@ -551,6 +565,7 @@ if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, tra
 
 local function main()
   while true do
+  -- for i = 1, 2 do
     train(trainData)
     test(testData)
   end
