@@ -29,7 +29,6 @@ flexibleStructure = load('flexible_structure.dat');
 foetal = load('foetal_ecg.dat');
 tongueDisp = load('tongue.dat');
 
-
 % Environmental Systems
 lakeErie = load('erie.dat');
 
@@ -46,7 +45,7 @@ timeSeries = load('internet_traffic.dat');
 % fthe flexible arm input is a periodic sine wave
 clear all; clc
 username = system('whoami');
-cd('/home/local/ANT/ogunmolu/Documents/NNs/FARNN/data')
+cd('/home/lex/Documents/NNs/FARNN/data')
 softRobot = load('softRobot.mat')
 robotArm = load('robotArm.mat');
 robotArm = robotArm.robotArm;
@@ -75,6 +74,19 @@ SR = softRobot.pose;
 srInput = SR(:,1);
 srOut = SR(:,2:end);
 
+%% Train ballbeam
+    clc
+    x = num2cell(ballbeam(:,1));
+    t = num2cell(ballbeam(:,2));
+ setdemorandstream(491218381);
+ 
+ net = narxnet(1:2,1:2,10);
+ view(net)
+ [Xs,Xi,Ai,Ts] = preparets(net,x,t,{});
+ [net,tr] = train(net,Xs,Ts,Xi,Ai);
+ nntraintool
+ plotperform(tr)
+
 %% estiomate robotArm params
 
                                
@@ -88,4 +100,30 @@ srOut = SR(:,2:end);
  [L, R] = arxRegul(roboArmdd, [10 10 1], arxRegulOptions('RegulKernel','SE'));
  Opt.Regularization.Lambda = L;                                               
  Opt.Regularization.R = R;                                                    
- arx10101 = arx(roboArmdd,[10 10 1], Opt, 'IntegrateNoise', true);   
+ arx10101 = arx(roboArmdd,[10 10 1], Opt, 'IntegrateNoise', true); 
+ % Train ballbeam
+ 
+ %% Maglev
+ clear all; clc
+ [x, t] = maglev_dataset;
+ setdemorandstream(491218381);
+ 
+ net = narxnet(1:2,1:2,10);
+ view(net)
+ [Xs,Xi,Ai,Ts] = preparets(net,x,{},t);
+ [net,tr] = train(net,Xs,Ts,Xi,Ai);
+ nntraintool
+ plotperform(tr)
+ %% Neural Network saved models
+ % Soft Robot Data
+ clc; clear all;
+ cd('/home/lex/Documents/NNs/FARNN/data');
+ 
+ mlp_srID = fopen('softRobot_mlp-net.t7');
+ mlp_sr = fread(mlp_srID);
+ fclose(mlp_srID);
+ %whos mlp_srID
+
+ lstm_srID = fopen('softRobot_lstm-net.t7');
+ lstm_sr = fread(lstm_srID);
+ fclose(lstm_srID);

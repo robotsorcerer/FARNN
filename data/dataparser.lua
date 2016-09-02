@@ -27,7 +27,7 @@ function split_data(opt)
 	  out = data[{{}, {2}}]
 
 	  k = input:size(1)
-	  off = torch.ceil(torch.abs(0.6*k))
+	  off = torch.ceil(torch.abs(0.1*k))
 
 	  splitData.train = data[{{1, off}, {1, 2}}]
 	  splitData.test = data[{{off+1}, {1, 2}}]
@@ -65,20 +65,24 @@ function split_data(opt)
 	  splitData.train_out   = { 
 	                 out[1][{{1, off}, {1}}], out[2][{{1, off}, {1}}],            -- most of the work is done here              (out[{{1, off}, {1}}])/10, outlln[{{1, off}, {1}}], 
 	                 out[3][{{1, off}, {1}}], out[4][{{1, off}, {1}}],
-	                 out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}],
+	                 out[5][{{1, off}, {1}}], out[6][{{1, off}, {1}}]
 	                } 
+	  splitData.train = data[{{1, off}, {1, 7}}]
 	  --create testing data
-	  splitData.test_input = input[{{off + 1, k}, {1}}]
+	  splitData.test =  data[{{off + 1, k}, {1, 7}}]
+	  splitData.test_input = input[{ {off+1, k}, {1}}]
 	  splitData.test_out   = {
 	                 out[1][{{off+1, k}, {1}}], out[2][{{off+1, k}, {1}}], 
 	                 out[3][{{off+1, k}, {1}}], out[4][{{off+1, k}, {1}}], 
 	                 out[5][{{off+1, k}, {1}}], out[6][{{off+1, k}, {1}}] 
 	                }  
 
+	  splitData.test = {splitData.test_input, splitData.test_out}
+
 	  width       = splitData.train_input:size(2)
 	  height      = splitData.train_input:size(1)
 	  ninputs     = 1
-	  noutputs    = 6
+	  noutputs    = 1
 	  nhiddens_rnn = 6 
 	-- MIMO dataset from the Daisy  glassfurnace dataset (3 inputs, 6 outputs)
 	elseif (string.find(filename, 'glassfurnace')) then
@@ -133,7 +137,7 @@ function get_datapair(args)
 
 	local splitData = {}
 	splitData = split_data(args)	
-	local testHeight = splitData.test_input:size(1)
+	local testHeight = splitData.test_out[1]:size(1)
 	if (args.data=='softRobot') then  --SIMO dataset
 
 		offsets 	= torch.LongTensor(args.batchSize):random(1,height)  
@@ -166,6 +170,7 @@ function get_datapair(args)
 
 		test_inputs = batchNorm(test_inputs, N)
 		test_targets = batchNorm(test_targets, N)
+		-- print('inputs: ', inputs:size(), 'targets: ', targets,'test_inputs: ', test_inputs:size(), 'test_targets: ', test_targets)
 
 	elseif (args.data == 'glassfurnace') then   --MIMO Dataset
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  

@@ -13,12 +13,17 @@ function msetrain(x, y)
     local pred = neunet:forward(x)
     --easiest way to do backprop avoid cluttered data
     if use_cuda then
-      y_fwd = torch.cat({y[1]:double(), y[2]:double(), y[3]:double(), 
-                           y[4]:double(), y[5]:double(), y[6]:double()})
-      y_fwd = y_fwd:cuda()      
+      y_fwd =  y[3]:cuda()
+
+      -- y_fwd = torch.cat({
+      --                     y[1]:cuda(), y[2]:cuda(), 
+      --                     y[3]:cuda(), 
+      --                     y[4]:cuda(), y[5]:cuda(), y[6]:cuda()
+      --                     })
     else
       y_fwd = torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]}
     end
+    
     --2. Compute loss
     local loss    = cost:forward(pred, y_fwd)
     lossAcc = loss + lossAcc

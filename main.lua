@@ -49,7 +49,7 @@ cmd:text('======================================================================
 cmd:text('         Identification and Control of Nonlinear Systems Using Deep        ')
 cmd:text('                      Neural Networks                                      ')
 cmd:text(                                                                             )
-cmd:text('             Olalekan Ogunmolu. March 2016                                 ')
+cmd:text('             Olalekan Ogunmolu. May 2016                                 ')
 cmd:text(                                                                             )
 cmd:text('Code by Olalekan Ogunmolu: lexilighty [at] gmail [dot] com')
 cmd:text('===========================================================================')
@@ -194,7 +194,7 @@ print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 print(sys.COLORS.red .. '==> Setting up neural network parameters')
 ----------------------------------------------------------------------------------------------
 --number of hidden layers (for mlp network)
-nhiddens    = 10
+nhiddens    = 1
 transfer    =  nn.ReLU()  
 
 --[[Set up the network, add layers in place as we add more abstraction]]
@@ -207,11 +207,11 @@ local function contruct_net()
         else          
           neunet:add(nn.Linear(ninputs, nhiddens, bias))
         end
-          neunet:add(nn.Tanh())                         
-          neunet:add(nn.Linear(nhiddens, noutputs, bias)) 
+          neunet:add(nn.ReLU())                         
+          neunet:add(nn.Linear(nhiddens, noutputs)) 
     cost      = nn.MSECriterion()      
 
-  elseif opt.model == 'rnn' then    
+elseif opt.model == 'rnn' then    
 -------------------------------------------------------
 --  Recurrent Neural Net Initializations 
     require 'rnn'
@@ -340,16 +340,12 @@ print '==> configuring optimizer\n'
 
  elseif opt.optimizer == 'sgd' then      
    -- Perform SGD step:
-   sgdState = {
-      learningRate = 1e-4,
-      learningRateDecay = 1e-4,
-      momentum = 0.9,
-      weightDecay = 0
-    }
-    -- if(data=='ballbeam') then
-    --   sgdState.learningRate = 100
-    --   sgdState.learningRateDecay = 2e-4
-    -- end
+     sgdState = {
+        learningRate = 1e-2,
+        learningRateDecay = 1e-6,
+        momentum = 0,
+        weightDecay = 0
+      }
    optimMethod = optim.sgd
 
  else  
@@ -447,25 +443,27 @@ local function test(data)
    -- test over given dataset
    print('<trainer> on testing Set:')
 
-  if(opt.optimizer == 'sgd') then
-    local data = transfer_data((split_data(opt)).test)
-    print('data:size()', data:size())
-    local inputs, targets
-    for t = 1, (#data)[1] do
-      local preds;
-      if (opt.data=='ballbeam') or (opt.data=='robotArm') then
+   local preds;
+  if((opt.data=='ballbeam') or (opt.data=='robotArm')) then
+    if  (opt.optimizer == 'sgd') and (opt.model == 'mlp') then
+      local data = transfer_data((split_data(opt)).test)
+      print('data:size()', data:size())
+      local inputs, targets
+      for t = 1, (#data)[1] do
+          local _nidx_ = (_nidx_ or 0) + 1
 
-        local _nidx_ = (_nidx_ or 0) + 1
+          if _nidx_ > (#data)[1] then _nidx_ = 1 end
 
-        if _nidx_ > (#data)[1] then _nidx_ = 1 end
-
-        local sample = data[_nidx_]
-         inputs = sample[{ {1} }]
-         targets = sample[{ {2} }]
+          local sample = data[_nidx_]
+           inputs = sample[{ {1} }]
+           targets = sample[{ {2} }]
+        preds = neunet:forward(inputs)
+        print('idx  predicted   actual')
+        print(string.format("%3d,  %3.8f, %3.8f", t, preds[1], targets[1]))
       end
+    else
+      local _, __, inputs, ___ = get_datapair(opt)
       preds = neunet:forward(inputs)
-      print('idx  predicted   actual')
-      print(string.format("%3d,  %3.8f, %3.8f", t, preds[1], targets[1]))
     end
   
   else
@@ -564,8 +562,7 @@ end
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 
 local function main()
-  while true do
-  -- for i = 1, 2 do
+  for i = 1, 2 do
     train(trainData)
     test(testData)
   end
