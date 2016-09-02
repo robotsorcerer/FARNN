@@ -170,7 +170,6 @@ function get_datapair(args)
 
 		test_inputs = batchNorm(test_inputs, N)
 		test_targets = batchNorm(test_targets, N)
-		-- print('inputs: ', inputs:size(), 'targets: ', targets,'test_inputs: ', test_inputs:size(), 'test_targets: ', test_targets)
 
 	elseif (args.data == 'glassfurnace') then   --MIMO Dataset
 		offsets = torch.LongTensor(args.batchSize):random(1,height)  

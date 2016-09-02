@@ -73,7 +73,7 @@ cmd:option('-gpu', 0, 'which gpu to use. -1 = use CPU; >=0 use gpu')
 cmd:option('-backend', 'cudnn', 'nn|cudnn')
 
 -- Neural Network settings
-cmd:option('-learningRate',1e-4, 'learning rate for the neural network')
+cmd:option('-learningRate',1e-3, 'learning rate for the neural network')
 cmd:option('-learningRateDecay',1e-3, 'learning rate decay to bring us to desired minimum in style')
 cmd:option('-momentum', 0.9, 'momentum for sgd algorithm')
 cmd:option('-model', 'lstm', 'mlp|lstm|linear|rnn')
@@ -91,7 +91,7 @@ cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-dropoutProb', 0.35, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',1e-4, 'learning rate for the reurrent neural network')
-cmd:option('-batchNorm', true, 'apply szegedy and Ioffe\'s batch norm?')
+cmd:option('-batchNorm', false, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 
 
@@ -319,7 +319,6 @@ print('Network Table\n'); print(neunet)
 -- retrieve parameters and gradients
 parameters, gradParameters = neunet:getParameters()
 print(string.format('net params: %d, gradParams: %d', parameters:size(1), gradParameters:size(1)))
--- sys.sleep(30)
 --init weights with 0.1
 -- neunet.weight= 1e-3 --torch.randn(1, parameters:size())
 -- neunet.bias = 0.1
@@ -329,13 +328,7 @@ neunet = transfer_data(neunet)  --neunet = cudnn.convert(neunet, cudnn)
 cost = transfer_data(cost)
 print '==> configuring optimizer\n'
 
- --[[Declare states for limited BFGS
-  See: https://github.com/torch/optim/blob/master/lbfgs.lua]]
-
  if opt.optimizer == 'mse' then
-    state = {
-     learningRate = opt.learningRate
-   }
    optimMethod = msetrain
 
  elseif opt.optimizer == 'sgd' then      
@@ -468,25 +461,17 @@ local function test(data)
   
   else
     local avg = 0; local predF, normedPreds = {}, {}
-    local iter = 1;
+    local iter = 0;
     local for_limit; 
 
-    if (opt.data=='softRobot') then        
-      if (opt.model =='mlp') then
-        for_limit = preds:size(1)
-      else
-        for_limit = #preds
-      end
-    elseif(opt.data == 'glassfurnace') then
-      for_limit = preds[1]:size(2) 
-    end
+    -- create mini batch        
+    local inputs, targets = {}, {}
+    _, _, inputs, targets = get_datapair(opt)      
 
     for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
       xlua.progress(t, math.min(opt.maxIter, testHeight))
-      -- create mini batch        
-      local inputs, targets = {}, {}
-      _, _, inputs, targets = get_datapair(opt)
+
 
       -- test samples
       local preds = neunet:forward(inputs)
@@ -562,7 +547,7 @@ end
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 
 local function main()
-  for i = 1, 2 do
+  for i = 1, 25 do
     train(trainData)
     test(testData)
   end

@@ -4,7 +4,7 @@
     3) a long short-term memory network
   ]]
 require 'torch'      
-require 'optima.optim_'  
+-- require 'optima.optim_'  
 require 'data/dataparser'
 
 function train_rnn(opt)                          
@@ -140,6 +140,7 @@ function train_mlp(opt)
   local inputs, targets
   local data = (split_data(opt)).train
   
+  --[[this is my sgd optimizer]]
   feval = function(params_new)
      if parameters ~= params_new then
         parameters:copy(params_new)
@@ -149,7 +150,6 @@ function train_mlp(opt)
      if _nidx_ > (#data)[1] then _nidx_ = 1 end
 
      local sample = data[_nidx_]
-     -- print('sample: ', sample)
      if opt.data == 'robotArm' or opt.data == 'ballbeam' then
       inputs = sample[{ {1} }]
       targets = sample[{ {2} }]
@@ -161,7 +161,7 @@ function train_mlp(opt)
      inputs =  transfer_data(inputs); targets =  transfer_data(targets)
         -- print('inputs: ', inputs, ' targets: ', targets)
 
-      neunet:zeroGradParameters()
+     neunet:zeroGradParameters()
      gradParameters:zero()
      
      -- evaluate the loss function and its derivative wrt x, for that sample
@@ -176,6 +176,42 @@ function train_mlp(opt)
      return loss_x, gradParameters
   end
 
+  --[[compute gradient for batched error in closure]]
+  fmseval = function(x, y)
+    local lossAcc = 0
+    local y_fwd = {}
+      neunet:zeroGradParameters();
+      --1. predict inputs
+      local pred = neunet:forward(x)
+
+      if use_cuda then
+        y_fwd =  y[3]:cuda()
+
+        -- y_fwd = torch.cat({
+        --                     y[1]:cuda(), y[2]:cuda(), 
+        --                     y[3]:cuda(), 
+        --                     y[4]:cuda(), y[5]:cuda(), y[6]:cuda()
+        --                     })
+      else
+        y_fwd = y[3]:cuda() --torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]}
+      end
+      
+      --2. Compute loss
+      local loss    = cost:forward(pred, y_fwd)
+      lossAcc = loss + lossAcc
+      local gradOutputs = cost:backward(pred, y_fwd)
+      local gradInputs  = neunet:backward(x, gradOutputs)
+      --3. update the parameters
+      neunet:updateParameters(opt.learningRate);
+
+        -- normalize gradients and f(X)
+      gradParameters:div(opt.batchSize)
+      lossAcc = lossAcc/math.min(opt.batchSize, height)
+      
+      collectgarbage()      --yeah, sure. come in and argue :)
+    return loss, lossAcc  
+  end
+
   local loss, lossAcc, iter = 0, 0, 0
   for i = 1, math.min(opt.maxIter, height) do
     local diff, dC, dC_est    
@@ -187,14 +223,22 @@ function train_mlp(opt)
 
       neunet:zeroGradParameters()
       
-      loss, lossAcc = optimMethod(inputs, targets)       
+      loss, lossAcc = fmseval(inputs, targets)       
       iter = iter +1 
+      print(string.format("Epoch %d, Iter %d, Loss = %f ", epoch, iter, loss))
+      logger:add{['mlp training error vs. #iterations'] = loss}
+      logger:style{['mlp training error vs. #iterations'] = '-'}
+      if opt.plot then logger:plot()  end
+--[[
       if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-        print(string.format("Epoch %d, Iter %d, Loss = %f ", epoch, iter, loss))
-        logger:add{['mlp training error'] = loss}
+        -- print(string.format("Epoch % d, Iter %d, Loss = %f ", epoch, iter, loss))
+        logger:add{['mlp training error vs. epoch'] = loss}
+        logger:style{['mlp training error vs. epoch'] = '-'}
+        if opt.plot then logger:plot()  end
         --reset counters
-        loss = 0; iter = 0 ;
-      end    
+        -- loss = 0; iter = 0 ;
+      end 
+      ]]   
     elseif optimMethod == optim.sgd then  
         _, fs = optimMethod(feval, parameters, sgdState)
 
@@ -209,7 +253,6 @@ function train_mlp(opt)
         logger:add{['MLP training error vs. epoch'] = loss}
         logger:style{['MLP training error vs. epoch'] = '-'}
         if opt.plot then logger:plot()  end
-        -- sys.sleep('1')
     else  
       optimMethod(feval, parameters, optimState)
     end 
