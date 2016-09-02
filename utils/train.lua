@@ -185,15 +185,17 @@ function train_mlp(opt)
       local pred = neunet:forward(x)
 
       if use_cuda then
-        y_fwd =  y[3]:cuda()
-
-        -- y_fwd = torch.cat({
-        --                     y[1]:cuda(), y[2]:cuda(), 
-        --                     y[3]:cuda(), 
-        --                     y[4]:cuda(), y[5]:cuda(), y[6]:cuda()
-        --                     })
+        if noutputs ==1 then y_fwd =  y[3]:cuda() 
+        else  y_fwd = torch.cat({
+                                                  y[1]:cuda(), y[2]:cuda(), 
+                                                  y[3]:cuda(), 
+                                                  y[4]:cuda(), y[5]:cuda(), y[6]:cuda()
+                                                })
+        end
       else
-        y_fwd = y[3]:cuda() --torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]}
+        if noutputs ==1 then y_fwd = y[3]:cuda() else
+           y_fwd = torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]} 
+        end
       end
       
       --2. Compute loss
@@ -229,22 +231,10 @@ function train_mlp(opt)
       logger:add{['mlp training error vs. #iterations'] = loss}
       logger:style{['mlp training error vs. #iterations'] = '-'}
       if opt.plot then logger:plot()  end
---[[
-      if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-        -- print(string.format("Epoch % d, Iter %d, Loss = %f ", epoch, iter, loss))
-        logger:add{['mlp training error vs. epoch'] = loss}
-        logger:style{['mlp training error vs. epoch'] = '-'}
-        if opt.plot then logger:plot()  end
-        --reset counters
-        -- loss = 0; iter = 0 ;
-      end 
-      ]]   
     elseif optimMethod == optim.sgd then  
         _, fs = optimMethod(feval, parameters, sgdState)
 
-        -- print('sgdState: ', sgdState)
         loss = loss + fs[1]
-        -- print('iter:', i, 'loss: ', fs[1])
         diff, dC, dC_est = optim.checkgrad(feval, parameters)
         
         loss = loss --/ data:size(1); 
