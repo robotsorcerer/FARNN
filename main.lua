@@ -90,7 +90,7 @@ cmd:option('-maxIter', 10000, 'max. number of iterations; must be a multiple of 
 cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-dropoutProb', 0.35, 'probability of zeroing a neuron (dropout probability)')
-cmd:option('-rnnlearningRate',1e-4, 'learning rate for the reurrent neural network')
+cmd:option('-rnnlearningRate',1e-3, 'learning rate for the reurrent neural network')
 cmd:option('-batchNorm', false, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
 

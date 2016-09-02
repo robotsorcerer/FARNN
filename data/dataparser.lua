@@ -81,9 +81,8 @@ function split_data(opt)
 
 	  width       = splitData.train_input:size(2)
 	  height      = splitData.train_input:size(1)
-	  ninputs     = 1
-	  noutputs    = 6
-	  nhiddens_rnn = 6 
+
+	  ninputs     = 1; noutputs    = 1; nhiddens = 1; nhiddens_rnn = 1
 	-- MIMO dataset from the Daisy  glassfurnace dataset (3 inputs, 6 outputs)
 	elseif (string.find(filename, 'glassfurnace')) then
 	  data = matio.load(filenamefull)  ;   data = data[filename];
