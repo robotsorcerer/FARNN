@@ -2,6 +2,9 @@
     1) mlp (a simple feedforward network with one hidden layer)
     2) a recurrent network module stacked on a feedforward network
     3) a long short-term memory network
+
+    Author: Olalekan Ogunmolu, December 2015 - May 2016
+    Freely distributed under the MIT License.
   ]]
 require 'torch'      
 -- require 'optima.optim_'  
@@ -10,7 +13,6 @@ require 'data/dataparser'
 function train_rnn(opt)                          
   local offsets = {}; iter = iter or 0
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
-    xlua.progress(t, math.min(opt.maxIter, height))
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs, targets       = get_datapair(opt)  
@@ -21,15 +23,17 @@ function train_rnn(opt)
     if noutputs   == 1 then targets = targets[3] end
     local loss    = cost:forward(outputs, targets)
 
-    if iter % 10  == 0 then collectgarbage() end -- good idea to do this once in a while, i think
+    if iter % 10  == 0 then collectgarbage() end 
           
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
     local  gradOutputs = cost:backward(outputs, targets)
     local  gradInputs  = neunet:backward(inputs, gradOutputs) 
 
     --4. update lr
-    neunet:updateParameters(opt.rnnlearningRate)
-    print(string.format("Epoch %d, iter = %d, Loss = %f ", epoch, iter, loss))  
+    local lr = opt.learningRate/(1+ opt.decay*epoch) --learning Rate schedule
+    neunet:updateParameters(lr)
+
+    print(string.format("Epoch %d, iter = %d, Loss = %f, lr = %2.4f", epoch, iter, loss, lr))  
     logger:add{['RNN training error vs. #iterations'] = loss}
     logger:style{['RNN training error vs. #iterations'] = '-'}
     if opt.plot then logger:plot() end  
@@ -38,37 +42,49 @@ function train_rnn(opt)
     collectgarbage()        -- yeah, sure. why not?
 end
 
-function train_lstm(args)
+function train_lstm(opt)
   local offsets = {} ; local iter = iter or 0; 
-  for t = 1, math.min(args.maxIter, height), args.batchSize do 
+  for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
-    inputs, targets = get_datapair(args)
+    inputs, targets = get_datapair(opt)
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
     local outputs = neunet:forward(inputs)
-    local loss = cost:forward(outputs, targets)          
+    if noutputs   == 1 then targets = {targets[3]} end
+    local loss = cost:forward(outputs, targets) 
+
+    if iter % 10  == 0 then collectgarbage() end
+
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
-    local  gradOutputs = cost:backward(outputs, targets)
-    local gradInputs  = neunet:backward(inputs, gradOutputs) 
+    local  gradOutputs  = cost:backward(outputs, targets)
+    local gradInputs    = neunet:backward(inputs, gradOutputs) 
+
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
-    if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
-      print(string.format("Epoch %d,  Loss = %f ", epoch,  loss))
-      if opt.model=='lstm' then 
-        if opt.gru then
-          logger:add{['GRU training error vs. epoch'] = loss}
-        elseif opt.fastlstm then
-          logger:add{['FastLSTM training error vs. epoch'] = loss}
-        else
-          logger:add{['LSTM training error vs. epoch'] = loss}
-        end
+    -- if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
+    print(string.format("Epoch %d,iter = %d,  Loss = %f ", 
+            epoch, iter, loss))
+    if opt.model=='lstm' then 
+      if opt.gru then
+        logger:add{['GRU training error vs. epoch'] = loss}
+        logger:style{['GRU training error vs. epoch'] = '-'}
+        if opt.plot then logger:plot()  end
+      elseif opt.fastlstm then
+        logger:add{['FastLSTM training error vs. epoch'] = loss}
+        logger:style{['FastLSTM training error vs. epoch'] = '-'}
+        if opt.plot then logger:plot()  end
+      else
+        logger:add{['LSTM training error vs. epoch'] = loss}
+        logger:style{['LSTM training error vs. epoch'] = '-'}
+        if opt.plot then logger:plot()   end
       end
-      --reset counters
-      loss = 0; iter = 0 ;
-      collectgarbage()
-    end    
+    end
+    --reset counters
+    -- loss = 0; iter = 0 ;
+    collectgarbage()
+    -- end    
     iter = iter +1 
   end  
 end
@@ -76,8 +92,8 @@ end
 function train_mlp(opt)
 
   local inputs, targets
-  local data = (split_data(opt)).train
-  
+  local data = (split_data(opt)).train  
+  local lossAcc = 0
   --[[this is my sgd optimizer]]
   feval = function(params_new)
      if parameters ~= params_new then
@@ -116,7 +132,6 @@ function train_mlp(opt)
 
   --[[compute gradient for batched error in closure]]
   fmseval = function(x, y)
-    local lossAcc = 0
     local y_fwd = {}
       neunet:zeroGradParameters();
       --1. predict inputs
@@ -124,11 +139,11 @@ function train_mlp(opt)
 
       if use_cuda then
         if noutputs ==1 then y_fwd =  y[3]:cuda() 
-        else  y_fwd = torch.cat({
-                                                  y[1]:cuda(), y[2]:cuda(), 
-                                                  y[3]:cuda(), 
-                                                  y[4]:cuda(), y[5]:cuda(), y[6]:cuda()
-                                                })
+        else  y_fwd = torch.cat({  
+                                  y[1]:cuda(), y[2]:cuda(), 
+                                  y[3]:cuda(), y[4]:cuda(), 
+                                  y[5]:cuda(), y[6]:cuda()
+                                })
         end
       else
         if noutputs ==1 then y_fwd = y[3]:cuda() else
@@ -170,17 +185,17 @@ function train_mlp(opt)
       logger:style{['mlp training error vs. #iterations'] = '-'}
       if opt.plot then logger:plot()  end
     elseif optimMethod == optim.sgd then  
-        _, fs = optimMethod(feval, parameters, sgdState)
+      _, fs = optimMethod(feval, parameters, sgdState)
 
-        loss = loss + fs[1]
-        diff, dC, dC_est = optim.checkgrad(feval, parameters)
-        
-        loss = loss --/ data:size(1); 
-        print(string.format('epoch: %2d, iter: %d, current loss: %4.12f ', epoch, 
-              i,  loss))
-        logger:add{['MLP training error vs. epoch'] = loss}
-        logger:style{['MLP training error vs. epoch'] = '-'}
-        if opt.plot then logger:plot()  end
+      loss = loss + fs[1]
+      diff, dC, dC_est = optim.checkgrad(feval, parameters)
+      
+      loss = loss --/ data:size(1); 
+      print(string.format('epoch: %2d, iter: %d, current loss: %4.12f ', epoch, 
+            i,  loss))
+      logger:add{['MLP training error vs. epoch'] = loss}
+      logger:style{['MLP training error vs. epoch'] = '-'}
+      if opt.plot then logger:plot()  end
     else  
       optimMethod(feval, parameters, optimState)
     end 
