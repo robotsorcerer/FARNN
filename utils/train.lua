@@ -17,8 +17,8 @@ function train_rnn(opt)
     --2. Forward sequence through rnn
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
-    local outputs = neunet:forward(inputs)   
-    if noutputs   == 1 then targets = {targets[3]} end
+    local outputs = neunet:forward(inputs) 
+    if noutputs   == 1 then targets = targets[3] end
     local loss    = cost:forward(outputs, targets)
 
     if iter % 10  == 0 then collectgarbage() end -- good idea to do this once in a while, i think
@@ -34,16 +34,13 @@ function train_rnn(opt)
     logger:style{['RNN training error vs. #iterations'] = '-'}
     if opt.plot then logger:plot() end  
     iter = iter + 1 
-    if(iter >=15) then sys.sleep('30') end
   end 
     collectgarbage()        -- yeah, sure. why not?
 end
 
 function train_lstm(args)
-  local offsets = {}                         
-  
+  local offsets = {} ; local iter = iter or 0; 
   for t = 1, math.min(args.maxIter, height), args.batchSize do 
-
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs, targets = get_datapair(args)
@@ -51,12 +48,10 @@ function train_lstm(args)
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
     local outputs = neunet:forward(inputs)
-    local loss = cost:forward(outputs, targets)
-          
+    local loss = cost:forward(outputs, targets)          
     --3. do backward propagation through time(Werbos, 1990, Rummelhart, 1986)
     local  gradOutputs = cost:backward(outputs, targets)
     local gradInputs  = neunet:backward(inputs, gradOutputs) 
-
     --4. update lr
     neunet:updateParameters(opt.rnnlearningRate)
     if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
