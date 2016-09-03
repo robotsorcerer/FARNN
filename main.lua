@@ -20,26 +20,6 @@ require 'utils.train'
 require 'xlua'
 require 'utils.model'
 
---[[modified native Torch Linear class to allow random weight initializations]]
-do
-    local Linear, parent = torch.class('nn.CustomLinear', 'nn.Linear')    
-    -- override the constructor to have the additional range of initialization
-    function Linear:__initutils(inputSize, outputSize, mean, std)
-        parent.__init(self,inputSize,outputSize)                
-        self:reset(mean,std)
-    end    
-    -- override the :reset method to use custom weight initialization.        
-    function Linear:reset(mean,stdv)        
-        if mean and stdv then
-            self.weight:normal(mean,stdv)
-            self.bias:normal(mean,stdv)
-        else
-            self.weight:normal(0.5,1)
-            self.bias:normal(0.5,1)
-        end
-    end
-end
-
 -------------------------------------------------------------------------------
 -- Input arguments and options
 -------------------------------------------------------------------------------
@@ -357,12 +337,8 @@ local function test(data)
       local preds = neunet:forward(inputs)
       if (opt.data=='ballbeam') or (opt.data=='robotArm') then
         for_limit = preds[1]:size(2)
-      elseif (opt.data=='softRobot') then        
-        if (opt.model =='mlp') then
+      elseif (opt.data=='softRobot') then   
           for_limit = preds:size(1)
-        else
-          for_limit = #preds
-        end
       elseif(opt.data == 'glassfurnace') then
         for_limit = preds[1]:size(2) 
       end
