@@ -116,7 +116,7 @@ function train_mlp(opt)
 
   --[[compute gradient for batched error in closure]]
   fmseval = function(x, y)
-    local lossAcc = 0
+    -- local lossAcc = 0
     local y_fwd = {}
       neunet:zeroGradParameters();
       --1. predict inputs
