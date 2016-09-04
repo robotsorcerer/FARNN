@@ -11,7 +11,7 @@ require 'torch'
 require 'data/dataparser'
 
 function train_rnn(opt)                          
-  local offsets = {}; iter = iter or 0
+  iter = iter or 0
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
@@ -43,7 +43,7 @@ function train_rnn(opt)
 end
 
 function train_lstm(opt)
-  local offsets = {} ; local iter = iter or 0; 
+  local iter = iter or 0; 
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
