@@ -92,8 +92,8 @@ end
 function train_mlp(opt)
 
   local inputs, targets
-  local data = (split_data(opt)).train  
-  local lossAcc = 0
+  local data = (split_data(opt)).train    
+  local loss, lossAcc= 0, 0; 
   --[[this is my sgd optimizer]]
   feval = function(params_new)
      if parameters ~= params_new then
@@ -153,7 +153,7 @@ function train_mlp(opt)
       
       --2. Compute loss
       local loss    = cost:forward(pred, y_fwd)
-      lossAcc = loss + lossAcc
+      lossAcc       = loss + lossAcc
       local gradOutputs = cost:backward(pred, y_fwd)
       local gradInputs  = neunet:backward(x, gradOutputs)
       --3. update the parameters
@@ -167,30 +167,31 @@ function train_mlp(opt)
     return loss, lossAcc  
   end
 
-  local loss, lossAcc, iter = 0, 0, 0
-  for i = 1, math.min(opt.maxIter, height) do
-    local diff, dC, dC_est    
+  iter  = iter or 0
+  for t = 1, math.min(opt.maxIter, height), opt.batchSize do
+     -- create mini batch
+    local inputs, targets = {}, {}
+    inputs, targets = get_datapair(opt)
+
     -- optimization on current mini-batch
     if optimMethod == msetrain then
-       -- create mini batch
-      local inputs, targets = {}, {}
-      inputs, targets = get_datapair(opt)
 
       neunet:zeroGradParameters()
       
-      loss, lossAcc = fmseval(inputs, targets)       
-      iter = iter +1 
+      loss, lossAcc = fmseval(inputs, targets) 
+
+      if iter % 10  == 0 then collectgarbage() end 
+                  
       print(string.format("Epoch %d, Iter %d, Loss = %f ", epoch, iter, loss))
       logger:add{['mlp training error vs. #iterations'] = loss}
       logger:style{['mlp training error vs. #iterations'] = '-'}
       if opt.plot then logger:plot()  end
+      iter = iter +1 
     elseif optimMethod == optim.sgd then  
       _, fs = optimMethod(feval, parameters, sgdState)
 
       loss = loss + fs[1]
-      diff, dC, dC_est = optim.checkgrad(feval, parameters)
       
-      loss = loss --/ data:size(1); 
       print(string.format('epoch: %2d, iter: %d, current loss: %4.12f ', epoch, 
             i,  loss))
       logger:add{['MLP training error vs. epoch'] = loss}
