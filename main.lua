@@ -233,8 +233,7 @@ local function train(data)
     time = sys.clock() - time
     time = time / height
     print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
-    saveNet()
-
+    
     if epoch % 10 == 0 then
       saveNet()
     end
