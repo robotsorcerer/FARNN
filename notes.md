@@ -35,3 +35,4 @@ Use fast lstm with a dropout probability of .35. Three hidden layers each with 1
 Trained for 50 epochs each of `softRobot_lstm-net.t7`, 
 `softRobot_fastlstm-net.t7`, `softRobot_gru-net.t7`, `softRobotrnn-net.t7` and 
 
+MLP now trains up to 50 epochs with a min error of 161 from a tops of 100000+. 
