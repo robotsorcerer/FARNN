@@ -18,10 +18,20 @@ By some magic of luck or cleaning up of this code, I got the model to work well 
 
 I've separated the model constructions to a separate file/module to make the errors easier to spot during training. Changingthe set-up to a the twist motion means changing the number of outputs in the dataparserr file now. Given my previous strugges in Reading on this project, I've gotta say this is a remarkable achievement.
 
-### If you changed to a SISO model under rnn for the soft Robots data, remember to set the following parameters in dataparser
+### Parameters
+If you changed to a SISO model under rnn for the soft Robots data, remember to set the following parameters in dataparser
 
 ```lua
 	  ninputs     = 1; noutputs    = 1; nhiddens = 1; nhiddens_rnn = 1
 ```
+I found the learning rate of 1e-3 to be optimal for the rnn model
 
 And in `model.lua`, remember to do `neunet = nn.Sequencer(neunet)` rather than `neunet    = nn.Repeater(neunet, noutputs)`
+
+# LSTM Training
+## Fast LSTM --Sep 03, 2016
+Use fast lstm with a dropout probability of .35. Three hidden layers each with 1, 10 and 100 neurons respectively.  
+
+Trained for 50 epochs each of `softRobot_lstm-net.t7`, 
+`softRobot_fastlstm-net.t7`, `softRobot_gru-net.t7`, `softRobotrnn-net.t7` and 
+

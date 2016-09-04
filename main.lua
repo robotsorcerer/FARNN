@@ -3,7 +3,7 @@
    Olalekan Ogunmolu. IEEE International Conference on Robotics and Automation (ICRA), 2017
 
    Author: Olalekan Ogunmolu, December 2015 - May 2016
-   MIT License
+   Freely distributed under the MIT License
    ]]
 
 -- needed dependencies
@@ -60,7 +60,7 @@ cmd:option('-model', 'lstm', 'mlp|lstm|linear|rnn')
 cmd:option('-gru', false, 'use Gated Recurrent Units (nn.GRU instead of nn.Recurrent)')
 cmd:option('-fastlstm', false, 'use LSTMS without peephole connections?')
 cmd:option('-netdir', 'network', 'directory to save the network')
-cmd:option('-optimizer', 'sgd', 'mse|sgd')
+cmd:option('-optimizer', 'mse', 'mse|sgd')
 cmd:option('-coefL1',   0.1, 'L1 penalty on the weights')
 cmd:option('-coefL2',  0.2, 'L2 penalty on the weights')
 cmd:option('-plot', true, 'true|false')
@@ -71,14 +71,10 @@ cmd:option('-rho', 5, 'length of sequence to go back in time')
 cmd:option('-dropout', true, 'apply dropout with this probability after each rnn layer. dropout <= 0 disables it.')
 cmd:option('-dropoutProb', 0.35, 'probability of zeroing a neuron (dropout probability)')
 cmd:option('-rnnlearningRate',1e-3, 'learning rate for the reurrent neural network')
+cmd:option('-decay', 0, 'rnn learning rate decay for rnn')
 cmd:option('-batchNorm', false, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
-
-
--- LBFGS Settings
-cmd:option('-Correction', 60, 'number of corrections for line search. Max is 100')
-cmd:option('-batchSize', 100, 'Batch Size for mini-batch training, \
-                            preferrably in multiples of six')
+cmd:option('-batchSize', 100, 'Batch Size for mini-batch training')
 
 -- Print options
 cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
@@ -126,9 +122,10 @@ testlogger = optim.Logger(paths.concat(opt.rundir .. '/testlog.txt'))
 -------------------------------------------------------------------------------
 -- Fundamental initializations
 -------------------------------------------------------------------------------
---torch.setdefaulttensortype('torch.FloatTensor')            -- for CPU
 print("")
 print('==> fundamental initializations')
+
+if opt.gpu == -1 then torch.setdefaulttensortype('torch.FloatTensor') end
 
 data        = 'data/' .. opt.data
 use_cuda = false
@@ -151,16 +148,14 @@ function transfer_data(x)
   end
 end
 
-
 print(sys.COLORS.red .. '==> Parsing raw data')
 local splitData = {}
 splitData = split_data(opt)
 
-
 print(sys.COLORS.red .. '==> Data Pre-processing')
 kk          = splitData.train_input:size(1)
 --===========================================================================================
---[[Determine input-output order using He and Asada's prerogative]]
+--[[@ToDo: Determine input-output order using He and Asada's prerogative]]
 print(sys.COLORS.red .. '==> Determining input-output model order parameters' )
 
 --find optimal # of input variables from data
@@ -190,9 +185,9 @@ print '==> configuring optimizer\n'
 
  if opt.optimizer == 'mse' then
    optimMethod = msetrain
-
- elseif opt.optimizer == 'sgd' then      
+   
    -- Perform SGD step:
+ elseif opt.optimizer == 'sgd' then   
      sgdState = {
         learningRate = 1e-2,
         learningRateDecay = 1e-6,
@@ -207,11 +202,9 @@ print '==> configuring optimizer\n'
 ----------------------------------------------------------------------
 
 print '==> defining training procedure'
-
 local function train(data)    
   --time we started training
   local time = sys.clock()
-
   --track the epochs
   epoch = epoch or 1
   iter = iter or 0
@@ -233,9 +226,6 @@ local function train(data)
     -- next epoch
     epoch = epoch + 1
 
-    logger:style{['RNN training error vs. epoch'] = '-'}
-    logger:plot()
-
   elseif (opt.model == 'lstm') then
     -- train_lstm(opt)
     train_lstm(opt)
@@ -250,16 +240,6 @@ local function train(data)
     end
     -- next epoch
     epoch = epoch + 1
-    if (opt.fastlstm)  then
-      logger:style{['FastLSTM training error'] = '-'}
-      if opt.plot then logger:plot()  end
-    elseif (opt.gru)  then
-      logger:style{['GRU training error vs. epoch'] = '-'}
-      if opt.plot then logger:plot()  end
-    else  --plain lstm
-      logger:style{['LSTM training error vs. epoch'] = '-'}
-      if opt.plot then logger:plot()   end
-    end 
 
   elseif  opt.model == 'mlp'  then
     train_mlp(opt)
@@ -273,8 +253,6 @@ local function train(data)
     end
     -- next epoch
     epoch = epoch + 1
-    logger:style{['mlp training error'] = '-'}
-    if opt.plot then logger:plot()    end
   else
     print("Incorrect model entered")
   end            
@@ -283,20 +261,20 @@ end
 
 --test function
 local function test(data)
-   -- local vars
-   local splitData = {}; 
-   splitData = split_data(opt)
-   local time = sys.clock()
-   local testHeight = splitData.test_input:size(1)
-   -- averaged param use?
-   if average then
-      cachedparams = parameters:clone()
-      parameters:copy(average)
-   end
-   -- test over given dataset
-   print('<trainer> on testing Set:')
+ -- local vars
+ local splitData = {}; 
+ splitData = split_data(opt)
+ local time = sys.clock()
+ local testHeight = splitData.test_input:size(1)
+ -- averaged param use?
+ if average then
+    cachedparams = parameters:clone()
+    parameters:copy(average)
+ end
+ -- test over given dataset
+ print('<trainer> on testing Set:')
 
-   local preds;
+ local preds;
   if((opt.data=='ballbeam') or (opt.data=='robotArm')) then
     if  (opt.optimizer == 'sgd') and (opt.model == 'mlp') then
       local data = transfer_data((split_data(opt)).test)
@@ -317,8 +295,7 @@ local function test(data)
     else
       local _, __, inputs, ___ = get_datapair(opt)
       preds = neunet:forward(inputs)
-    end
-  
+    end  
   else
     local avg = 0; local predF, normedPreds = {}, {}
     local iter = 0;
@@ -326,19 +303,18 @@ local function test(data)
 
     -- create mini batch        
     local inputs, targets = {}, {}
-    _, _, inputs, targets = get_datapair(opt)      
+    _, __, inputs, targets = get_datapair(opt)      
 
     for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
       -- disp progress
       xlua.progress(t, math.min(opt.maxIter, testHeight))
 
-
       -- test samples
       local preds = neunet:forward(inputs)
       if (opt.data=='ballbeam') or (opt.data=='robotArm') then
         for_limit = preds[1]:size(2)
-      elseif (opt.data=='softRobot') then   
-          for_limit = preds:size(1)
+      elseif (opt.data=='softRobot') then  
+        if model == lstm then for_limit = preds[1]:size(1) else for_limit = preds:size(1) end
       elseif(opt.data == 'glassfurnace') then
         for_limit = preds[1]:size(2) 
       end
@@ -350,9 +326,15 @@ local function test(data)
           -- print(normedPreds)
           avg = normedPreds + avg
         else
-          predF[i] = preds[i]:float()        
-          normedPreds[i] = torch.norm(predF[i])
-          avg = normedPreds[i] + avg
+          if opt.model == 'lstm' then 
+            predF[1] = preds[1]:float()        
+            normedPreds[1] = torch.norm(predF[1])
+            avg = normedPreds[1] + avg
+          else 
+            predF[i] = preds[i]:float()       
+            normedPreds[i] = torch.norm(predF[i])
+            avg = normedPreds[i] + avg
+          end 
         end
       end
 
@@ -403,7 +385,7 @@ end
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 
 local function main()
-  for i = 1, 25 do
+  for i = 1, 50 do
     train(trainData)
     test(testData)
   end

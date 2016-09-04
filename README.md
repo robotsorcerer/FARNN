@@ -1,5 +1,6 @@
+
 # FARNN ID
-## DEPRECATED README. Please read the arXiv paper for an up-to-date paper
+## DEPRECATED README.
 
 ## Maintainer
 

@@ -1,3 +1,7 @@
+--[[
+  Author: Olalekan Ogunmolu, December 2015 - May 2016
+  Freely distributed under the MIT License
+]]
 print '==> setting up network model'
 
 --number of hidden layers (for mlp network)
@@ -42,7 +46,6 @@ function contruct_net()
                      transfer,
                      rho             
                      )
-
     --we then join the feedforward with the recurrent net
     neunet     = nn.Sequential()
                   :add(ffwd)
@@ -53,7 +56,6 @@ function contruct_net()
       neunet = nn.Sequencer(neunet)
     else      
       neunet = nn.Sequencer(neunet)
-      -- neunet    = nn.Repeater(neunet, noutputs)
     end
 --======================================================================================
 --Nested LSTM Recurrence
