@@ -40,7 +40,7 @@ heating = load('heating_system.dat');
 timeSeries = load('internet_traffic.dat');
 
 %% load mat files
-% Data from a flexible robot arm; the arm ios installed on an electrical
+% Data from a flexible robot arm; the arm is installed on an electrical
 % motor. Reaction torque of the structure on the ground to acceleration o
 % fthe flexible arm input is a periodic sine wave
 clear all; clc

@@ -1,6 +1,20 @@
 --[[Source Code that implements the the learning controller described in my IEEE T-Ro Journal:
-   Learning deep neural network policies for head motion control in maskless cancer RT
+   Learning deep neural network policies for dynamic nonlinear systems 
    Olalekan Ogunmolu. IEEE International Conference on Robotics and Automation (ICRA), 2017
+
+   Module: Glassfurnace Data: ftp://ftp.esat.kuleuven.ac.be/pub/SISTA/data/process_industry/glassfurnace.txt
+
+   The glassfurnace data is a 3 inputs six outputs system with the following properties:
+
+       1. Number of samples: 
+        1247 samples
+       2. Inputs:
+        a. heating input
+            b. cooling input
+            c. heating input
+       3. Outputs:
+        a. 6 outputs from temperature sensors in a cross section of the 
+        furnace
 
    Author: Olalekan Ogunmolu, December 2015 - May 2016
    Freely distributed under the MIT License
@@ -31,7 +45,7 @@ cmd:text('                      Neural Networks                                 
 cmd:text(                                                                             )
 cmd:text('             Olalekan Ogunmolu. May 2016                                 ')
 cmd:text(                                                                             )
-cmd:text('Code by Olalekan Ogunmolu: lexilighty [at] gmail [dot] com')
+cmd:text('Code by Olalekan Ogunmolu: patlekano [at] gmail [dot] com')
 cmd:text('===========================================================================')
 cmd:text(                                                                             )
 cmd:text(                                                                             )
@@ -41,7 +55,7 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','softRobot','path to -v7.3 Matlab data e.g. robotArm | glassfurnace | ballbeam | soft_robot')
+cmd:option('-data','glassfurnace','path to -v7.3 Matlab data e.g. robotArm | glassfurnace | ballbeam | soft_robot')
 cmd:option('-tau', 5, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')
