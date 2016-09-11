@@ -13,18 +13,11 @@ brought error in first epoch down from 48716.261719 to 129.988235. Sounds like 1
 ** Number of epochs set to 25 **
 
 ** Result for 70 epochs using my MSE minimizer **
-![MLP Soft-Robots](figures/mlp_mse_siso.png)
+![MLP Soft-Robots](figures/soft-robot/mlp_mse_siso.png)
 
 The figure above merely maps the pneumatic valve current to the pitch motion of the head. Assuming a coupling of all other twist motion of the human head during bladder actuation, we get the data presented in the chart below
 
 ![MLP SIMO model](figures/soft-robot/mlp_mse_simo.png)
-
-<!-- <div class="fig figcenter fighighlight"> 
-  <img src="/figures/soft-robot/mlp_mse_siso.png" width="50%" height="350", border="0" style="float:left;">
-  <img src="/figures/soft-robot/mlp_mse_simo.png" width="50%" height="350"  border="0" style="float:right;">  
-  <div class="figcaption" align="left">Fig.1.0. (a) Training of soft robot siso model (70 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Training of soft robots simo model (70(epochs) </a></a>.
-  </div></div>
-</div> -->
 
 ### RNN Model Training
 <b> Sept 2, 6:03pm </b>
@@ -94,13 +87,6 @@ LSTM Training of soft robot siso model (50 epochs)
 ![Fast LSTM Training of soft robot siso model (50 epochs)](figures/soft-robot/fastlstm_siso.png)
 
 Fast LSTM Training of soft robot siso model (50 epochs)
-<!-- 
-<div class="fig figcenter fighighlight"> 
-  <img src="/figures/soft-robot/lstm_siso.png" width="50%" height="350", border="0" style="float:left;">
-  <img src="/figures/soft-robot/fastlstm_siso.png" width="50%" height="350"  border="0" style="float:right;">  
-  <div class="figcaption" align="left">Fig.1.0. (a) LSTM Training of soft robot siso model (50 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Fast LSTM Training of soft robots siso model (50 epochs) </a></a>.
-  </div></div>
-</div> -->
 
 <b>Training of GRU Model on soft robot network </b>
 
@@ -166,18 +152,9 @@ The training data is available here:
 
 Tuning the learning rate from 1e-3 to 5e-3 after a host of other trials seem to settle the error about the 3.8 to 4.08 valley. Turning on the recurrent batch normalization class in fastLSTM algorithm seemed to speed up trainnhg by a factor of 2. Towards the last five epochs, the lstm seems to have mastered the dynamics in the glassfurnace system by learning bringing down the error to ~0.85 from an original of 4.8. Note that recurrent batch normalization is turned on. This accounts to the normed errors.
 
-<!-- 
-<div class="fig figcenter fighighlight"> 
-  <img src="/figures/glassfurnace/lstm-glassfurnace.png" width="50%" height="350", border="0" style="float:left;">
-  <img src="/figures/fastlstm-glassfurnace.png" width="50%" height="350"  border="0" style="float:right;">  
-  <div class="figcaption" align="left">Fig.1.0. (a) Training of soft robot siso model (70 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Training of soft robots simo model (70(epochs) </a></a>.
-  </div></div>
-</div> -->
-
-
 <section class="footnotes">
 <hr>
-<ol>
-<li id="fn1"><p>This has been fixed in September Week II wherein I separated each system into different branches on my github page<a href="#fnref1">↩</a></p></li>
-</ol>
+	<ol>
+		<li id="fn1"><p>This has been fixed in September Week II wherein I separated each system into different branches on my github page<a href="#fnref1">↩</a></p></li>
+	</ol>
 </section>

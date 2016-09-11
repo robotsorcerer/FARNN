@@ -358,15 +358,17 @@ if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, tra
 
 local function main()
 
-  local start = os.execute('date');
+  local start = sys.clock() --os.execute('date');
   
   for i = 1, 50 do
     train(trainData)
     test(testData)
   end
 
-  local finish = os.execute('date')
-  print('experiment started at ', start, '\nand ended at \n', finish)
+  local finish = sys.clock() --os.execute('date')
+  print('Experiment started at: ', start)
+  print('Experiment Ended at: ', finish)
+  print('Total Time Taken = ', (finish - start), 'secs')
 end
 
 
