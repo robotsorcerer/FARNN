@@ -1,5 +1,5 @@
 # Soft-Robots DataSet 
-## MLP Training: Training with mse on soft robots data
+### MLP Training: Training with mse on soft robots data
 
 With a learning rate of 1e-4 and using the mlp model on soft robot, mI achieved convergence but training was slow.; important to notice there is no dropout or momentum in this implementation; batchNorm seems pretty useless for this training as the error reduction is not clearly discernible
 
@@ -10,23 +10,24 @@ Changed learning rate to 1e-2 to see if I could get better convergence but the m
 ]
 brought error in first epoch down from 48716.261719 to 129.988235. Sounds like 1e-3 is a good learning rate.
 
-### Number of epochs set to 25
+** Number of epochs set to 25 **
 
-<!-- ** Result for 70 epochs using my MSE minimizer **
-![MLP Soft-Robots](figures/mlp_mse_siso.png) -->
+** Result for 70 epochs using my MSE minimizer **
+![MLP Soft-Robots](figures/mlp_mse_siso.png)
 
 The figure above merely maps the pneumatic valve current to the pitch motion of the head. Assuming a coupling of all other twist motion of the human head during bladder actuation, we get the data presented in the chart below
 
-<div class="fig figcenter fighighlight"> 
+![MLP SIMO model](figures/soft-robot/mlp_mse_simo.png)
+
+<!-- <div class="fig figcenter fighighlight"> 
   <img src="/figures/soft-robot/mlp_mse_siso.png" width="50%" height="350", border="0" style="float:left;">
   <img src="/figures/soft-robot/mlp_mse_simo.png" width="50%" height="350"  border="0" style="float:right;">  
   <div class="figcaption" align="left">Fig.1.0. (a) Training of soft robot siso model (70 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Training of soft robots simo model (70(epochs) </a></a>.
   </div></div>
-</div>
+</div> -->
 
-
-## RNN Model Training on Soft-Robots Dataset
-** Sept 2, 6:03pm **
+### RNN Model Training
+<b> Sept 2, 6:03pm </b>
 By cleaning up this code, I got the model to work well with (i) a standalone feedforward mlp and (ii) a feedforward mlp followed by an rnn using a learning rate of 1e-3/1e-4.
 
 I've separated the model constructions to a separate file/module to make the errors easier to spot during training. Changing the set-up to a the twist motion means changing the number of outputs in the dataparser file now. Given my previous strugges in Reading on this project, I've gotta say this is a remarkable achievement.
@@ -42,14 +43,15 @@ I found the learning rate of 1e-3 to be optimal for the rnn model
 And in `model.lua`, remember to do `neunet = nn.Sequencer(neunet)` rather than `neunet    = nn.Repeater(neunet, noutputs)`. .<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>
 
 ** Result for 50 epochs using Element Research Inc.'s rnn minimizer **
-![RNN Soft-Robots](figures/rnn_siso.png)
+![RNN Soft-Robots](figures/soft-robot/rnn_siso.png)
+
 ## LSTMs
 
 Recurrent networks use their feedback connections to store representations of recent input events in the form of activations (i.e. <i>short-term memory</i> compared against "long-term memory by slowly changing weights.") Such is important for tasks such as speech processingm non-Markovian Control and music composition.
 
-###RNN problem: With conventional "Back-propagation Through Time" (e.g. Werbos 1998) or Real Time Recurrent Learning (RTRL) error signals flowing backwards in time tend to either (i) explode or (ii) vanish such that the temporal evolution of the backpropagated error exponentially depend on the size if the weights. With exploding gradients, you could have oscillating weights while for vanishing gradients, learning to bridge long time delays is prohibitively costly in time or never works.
+<b>RNN problem:</b> With conventional "Back-propagation Through Time" (e.g. Werbos 1998) or Real Time Recurrent Learning (RTRL) error signals flowing backwards in time tend to either (i) explode or (ii) vanish such that the temporal evolution of the backpropagated error exponentially depend on the size if the weights. With exploding gradients, you could have oscillating weights while for vanishing gradients, learning to bridge long time delays is prohibitively costly in time or never works.
 
-###LSTM Remedy: Learning to store information over a long period of time using recurrent backpropagation takes a long period of time, mostly due to lack of adequate and decaying error back floww. LSTM is a gadient-based method that truncates the gradient where it does no harm in the network. An LSTM can learn to bridge minimal time lags in excess of 1000 discrete time steps by enforcing <i>constant error flow </i> through "constant error carousels" within special units. [HochReiter1997](LSTM). Multiplicative gate units learn to open and close access to the constant error flow. LSTM is local in space and time and its computational complexity per time step and weight is $\mathcal{O}(1)$. For long-term delay-infested (:D) systems, LSTMs solves recurrent neural network algorithms faster and better.
+<b>LSTM Remedy:</b> Learning to store information over a long period of time using recurrent backpropagation takes a long period of time, mostly due to lack of adequate and decaying error back floww. LSTM is a gadient-based method that truncates the gradient where it does no harm in the network. An LSTM can learn to bridge minimal time lags in excess of 1000 discrete time steps by enforcing <i>constant error flow </i> through "constant error carousels" within special units. [HochReiter1997](LSTM). Multiplicative gate units learn to open and close access to the constant error flow. LSTM is local in space and time and its computational complexity per time step and weight is $\mathcal{O}(1)$. For long-term delay-infested (:D) systems, LSTMs solves recurrent neural network algorithms faster and better.
 
 LSTMs are designed to avoid the long-term dependency problem that recurrent neural networks are known to have. They are specialists in remembering information for a long period of time. 
 
@@ -78,20 +80,30 @@ In experiments, this is ensured by using the identity function $f_j: f_j(x= = x,
 
 #### Memory cells and gate units: To 
 
-### Fast LSTM --Sep 03, 2016
+### Fast LSTM 
+<b> Sep 03, 2016 </b>
 Use fast lstm with a dropout probability of .35. Three hidden layers each with 1, 10 and 100 neurons respectively.  
 
 Trained for 50 epochs each of `softRobot_lstm-net.t7`, 
 `softRobot_fastlstm-net.t7`, `softRobot_gru-net.t7`, `softRobotrnn-net.t7` and 
 
+![LSTM Training of soft robot siso model (50 epochs)](figures/soft-robot/lstm_siso.png)
+
+LSTM Training of soft robot siso model (50 epochs)
+
+![Fast LSTM Training of soft robot siso model (50 epochs)](figures/soft-robot/fastlstm_siso.png)
+
+Fast LSTM Training of soft robot siso model (50 epochs)
+<!-- 
 <div class="fig figcenter fighighlight"> 
   <img src="/figures/soft-robot/lstm_siso.png" width="50%" height="350", border="0" style="float:left;">
   <img src="/figures/soft-robot/fastlstm_siso.png" width="50%" height="350"  border="0" style="float:right;">  
   <div class="figcaption" align="left">Fig.1.0. (a) LSTM Training of soft robot siso model (50 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Fast LSTM Training of soft robots siso model (50 epochs) </a></a>.
   </div></div>
-</div>
+</div> -->
 
-** Training of GRU Model on soft robot network **
+<b>Training of GRU Model on soft robot network </b>
+
 ![GRU Training of SISO Model](figures/soft-robot/gru_siso.png)
 
 ### System integration
@@ -150,17 +162,17 @@ nn.Sequencer @ nn.Recursor @ nn.Sequential {
 
 The training data is available here:
 
-![FastLSTM Training Error Glass Furnace](figures/glassfurnace/fastlstm_glassfurnace.png)
+![FastLSTM Training Error Glass Furnace](figures/glassfurnace/fastlstm-glassfurnace.png)
 
 Tuning the learning rate from 1e-3 to 5e-3 after a host of other trials seem to settle the error about the 3.8 to 4.08 valley. Turning on the recurrent batch normalization class in fastLSTM algorithm seemed to speed up trainnhg by a factor of 2. Towards the last five epochs, the lstm seems to have mastered the dynamics in the glassfurnace system by learning bringing down the error to ~0.85 from an original of 4.8. Note that recurrent batch normalization is turned on. This accounts to the normed errors.
 
-
+<!-- 
 <div class="fig figcenter fighighlight"> 
-  <img src="/figures/lstm-glassfurnace.png" width="50%" height="350", border="0" style="float:left;">
+  <img src="/figures/glassfurnace/lstm-glassfurnace.png" width="50%" height="350", border="0" style="float:left;">
   <img src="/figures/fastlstm-glassfurnace.png" width="50%" height="350"  border="0" style="float:right;">  
   <div class="figcaption" align="left">Fig.1.0. (a) Training of soft robot siso model (70 epochs). <div class="figcaption" align="right">Fig. 1.0. (b) Training of soft robots simo model (70(epochs) </a></a>.
   </div></div>
-</div>
+</div> -->
 
 
 <section class="footnotes">
