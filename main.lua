@@ -88,7 +88,7 @@ cmd:option('-rnnlearningRate',1e-3, 'learning rate for the reurrent neural netwo
 cmd:option('-decay', 0, 'rnn learning rate decay for rnn')
 cmd:option('-batchNorm', false, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
-cmd:option('-batchSize', 50, 'Batch Size for mini-batch training')
+cmd:option('-batchSize', 100, 'Batch Size for mini-batch training')
 
 -- Print options
 cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters

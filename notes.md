@@ -81,3 +81,9 @@ e.g. First copy bjam from tools/build to /usr/bin and then do the following in o
 	lex@lex:/usr/local/boost_1_61_0$ bjam install libs/chrono libs/thread
 	lex@lex:/usr/local/boost_1_61_0$ sudo bjam install --prefix=/usr/local/boost_1_61_0 --with-chrono --with-thread
 ```
+
+## September 11, 2016
+
+The mlp network generalizes well to DaISy MIMO data. I trained for 50 epochs looping over each epoch for 10,000 iterations and using a 3 -> 6 -> 6 network layer. Also, cut out ballbeam/robotArm/soft-robot data from the glassfurnace branch. Training error is described in the grapgh below:
+
+[MLP Training Error Glass Furnace]()

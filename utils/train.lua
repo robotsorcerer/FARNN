@@ -154,7 +154,7 @@ function train_mlp(opt)
   end
 
   iter  = iter or 0
-  for t = 1, math.min(opt.maxIter, height), opt.batchSize do
+  for t = 1, opt.maxIter, opt.batchSize do
      -- create mini batch
     local inputs, targets = {}, {}
 
@@ -166,13 +166,14 @@ function train_mlp(opt)
       
       loss, lossAcc = fmseval(inputs, targets) 
 
-      if iter % 10  == 0 then collectgarbage() end 
-                  
+      if iter % 100  == 0 then collectgarbage() end 
+
       print(string.format("Epoch %d, Iter %d, Loss = %f ", epoch, iter, loss))
       logger:add{['mlp training error vs. #iterations'] = loss}
       logger:style{['mlp training error vs. #iterations'] = '-'}
       if opt.plot then logger:plot()  end
       iter = iter +1 
+      
     elseif optimMethod == optim.sgd then  
       _, fs = optimMethod(feval, parameters, sgdState)
 
