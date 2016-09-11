@@ -366,7 +366,7 @@ local function main()
   end
 
   local finish = os.execute('date')
-  print('experiment started at ' .. start .. '\nand ended at \n' .. finish)
+  print('experiment started at ', start, '\nand ended at \n', finish)
 end
 
 
