@@ -44,7 +44,7 @@ end
 
 function train_lstm(opt)
   local iter = iter or 0; 
-  for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
+  for t = 1, opt.maxIter, opt.batchSize do 
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs, targets = get_datapair(opt)
