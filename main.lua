@@ -88,7 +88,7 @@ cmd:option('-rnnlearningRate',1e-3, 'learning rate for the reurrent neural netwo
 cmd:option('-decay', 0, 'rnn learning rate decay for rnn')
 cmd:option('-batchNorm', false, 'apply szegedy and Ioffe\'s batch norm?')
 cmd:option('-hiddenSize', {1, 10, 100}, 'number of hidden units used at output of each recurrent layer. When more than one is specified, RNN/LSTMs/GRUs are stacked')
-cmd:option('-batchSize', 100, 'Batch Size for mini-batch training')
+cmd:option('-batchSize', 50, 'Batch Size for mini-batch training')
 
 -- Print options
 cmd:option('-print', false, 'false = 0 | true = 1 : Option to make code print neural net parameters')  -- print System order/Lipschitz parameters
@@ -288,84 +288,43 @@ local function test(data)
  print('<trainer> on testing Set:')
 
  local preds;
-  if((opt.data=='ballbeam') or (opt.data=='robotArm')) then
-    if  (opt.optimizer == 'sgd') and (opt.model == 'mlp') then
-      local data = transfer_data((split_data(opt)).test)
-      print('data:size()', data:size())
-      local inputs, targets
-      for t = 1, (#data)[1] do
-          local _nidx_ = (_nidx_ or 0) + 1
+  local avg = 0; local predF, normedPreds = {}, {}
+  local iter = 0; local for_limit; 
 
-          if _nidx_ > (#data)[1] then _nidx_ = 1 end
+  -- create mini batch        
+  local inputs, targets = {}, {}
+  _, __, inputs, targets = get_datapair(opt)      
 
-          local sample = data[_nidx_]
-           inputs = sample[{ {1} }]
-           targets = sample[{ {2} }]
-        preds = neunet:forward(inputs)
-        print('idx  predicted   actual')
-        print(string.format("%3d,  %3.8f, %3.8f", t, preds[1], targets[1]))
-      end
-    else
-      local _, __, inputs, ___ = get_datapair(opt)
-      preds = neunet:forward(inputs)
-    end  
-  else
-    local avg = 0; local predF, normedPreds = {}, {}
-    local iter = 0;
-    local for_limit; 
+  for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
+    -- test samples
+    local preds = neunet:forward(inputs)
+    
+    for_limit = preds:size(2) 
 
-    -- create mini batch        
-    local inputs, targets = {}, {}
-    _, __, inputs, targets = get_datapair(opt)      
+    for i=1, for_limit do
+        predF = preds:float()
+        normedPreds = torch.norm(predF)
+        avg = normedPreds + avg
+    end
 
-    for t = 1, math.min(opt.maxIter, testHeight), opt.batchSize do
-      -- disp progress
-      xlua.progress(t, math.min(opt.maxIter, testHeight))
+    -- timing
+    time = sys.clock() - time
+    time = time / height
 
-      -- test samples
-      local preds = neunet:forward(inputs)
-      if (opt.data=='ballbeam') or (opt.data=='robotArm') then
-        for_limit = preds[1]:size(2)
-      elseif (opt.data=='softRobot') then  
-        if model == lstm then for_limit = preds[1]:size(1) else for_limit = preds:size(1) end
-      elseif(opt.data == 'glassfurnace') then
-        for_limit = preds[1]:size(2) 
-      end
-
-      for i=1, for_limit do
-        if(opt.data == 'glassfurnace') then
-          predF = preds[1]:float()
-          normedPreds = torch.norm(predF)
-          -- print(normedPreds)
-          avg = normedPreds + avg
-        else
-          if opt.model == 'lstm' then 
-            predF[1] = preds[1]:float()        
-            normedPreds[1] = torch.norm(predF[1])
-            avg = normedPreds[1] + avg
-          else 
-            predF[i] = preds[i]:float()       
-            normedPreds[i] = torch.norm(predF[i])
-            avg = normedPreds[i] + avg
-          end 
-        end
-      end
-
-      -- timing
-      time = sys.clock() - time
-      time = time / height
-
-      if  (iter*opt.batchSize >= math.min(opt.maxIter, testHeight))  then 
-        print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')  
-        if not (opt.data=='glassfurnace') then print("avg. prediction errors on test data", avg/#normedPreds) 
-        else print("avg. prediction errors on test data", avg/normedPreds) end
-      end 
-      iter = iter + 1
-    end  
+    if  (iter*opt.batchSize >= math.min(opt.maxIter, testHeight))  then 
+      print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')  
+      if not (opt.data=='glassfurnace') then print("avg. prediction errors on test data", avg/#normedPreds) 
+      else print("avg. prediction errors on test data", avg/normedPreds) end
+    end 
+    iter = iter + 1
   end  
 end
 
 function saveNet()
+  --check if network directory exists
+  if not paths.dirp('network')  then
+    paths.mkdir('network')
+  end
   -- save/log current net
   if opt.model == 'rnn' then
     netname = opt.data .. 'rnn-net.t7'
@@ -387,7 +346,7 @@ function saveNet()
   if epoch == 0 then
     if paths.filep(filename) then
      os.execute('mv ' .. filename .. ' ' .. filename .. '.old')
-    end    
+    end  
     os.execute('mkdir -p ' .. sys.dirname(filename))
   else    
     print('<trainer> saving network model to '..filename)

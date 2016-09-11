@@ -106,9 +106,7 @@ function split_data(opt)
 
 	  width       = splitData.train_input:size(2)
 	  height      = splitData.train_input:size(2)
-	  ninputs     = 3
-	  noutputs    = 6
-	  nhiddens_rnn = 6 
+	  ninputs     = 3; nhiddens = 6;  noutputs = 6; nhiddens_rnn = 6 
 	end
 	return splitData
 end
@@ -180,12 +178,12 @@ function get_datapair(args)
 		
 		-- print('train_inputs', splitData.train_input)
 		--recurse inputs and targets into one long sequence
-		inputs = {	splitData.train_input:index(1, offsets)		}
-		test_inputs = { splitData.test_input:index(1, test_offsets) }
+		inputs = 	splitData.train_input:index(1, offsets)		
+		test_inputs =  splitData.test_input:index(1, test_offsets) 
 
 		--batch of targets
-		targets = {	splitData.train_out:index(1, offsets)        }
-		test_targets = {   splitData.test_out:index(1, test_offsets)  }
+		targets = 	splitData.train_out:index(1, offsets)        
+		test_targets =   splitData.test_out:index(1, test_offsets)  
 		                  
 		--pre-whiten the inputs and outputs in the mini-batch
 		inputs = batchNorm(inputs, 3)

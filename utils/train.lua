@@ -136,25 +136,11 @@ function train_mlp(opt)
       neunet:zeroGradParameters();
       --1. predict inputs
       local pred = neunet:forward(x)
-
-      if use_cuda then
-        if noutputs ==1 then y_fwd =  y[3]:cuda() 
-        else  y_fwd = torch.cat({  
-                                  y[1]:cuda(), y[2]:cuda(), 
-                                  y[3]:cuda(), y[4]:cuda(), 
-                                  y[5]:cuda(), y[6]:cuda()
-                                })
-        end
-      else
-        if noutputs ==1 then y_fwd = y[3]:cuda() else
-           y_fwd = torch.cat{y[1], y[2], y[3], y[4], y[5], y[6]} 
-        end
-      end
       
       --2. Compute loss
-      local loss    = cost:forward(pred, y_fwd)
+      local loss    = cost:forward(pred, y)
       lossAcc       = loss + lossAcc
-      local gradOutputs = cost:backward(pred, y_fwd)
+      local gradOutputs = cost:backward(pred, y)
       local gradInputs  = neunet:backward(x, gradOutputs)
       --3. update the parameters
       neunet:updateParameters(opt.learningRate);
@@ -171,8 +157,8 @@ function train_mlp(opt)
   for t = 1, math.min(opt.maxIter, height), opt.batchSize do
      -- create mini batch
     local inputs, targets = {}, {}
-    inputs, targets = get_datapair(opt)
 
+    inputs, targets = get_datapair(opt)    
     -- optimization on current mini-batch
     if optimMethod == msetrain then
 
