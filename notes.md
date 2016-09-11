@@ -96,7 +96,7 @@ Again, we train over 50 epochs looping over each epoch for 10,000 iterations to 
 
 Training started at Sun Sep 11 14:10:35 CDT 2016. The training process proceeded as 
 
-[RNN Training Error Glass Furnace](figures/glassfurnace/rnn_glassfurnace.png)
+![RNN Training Error Glass Furnace](figures/glassfurnace/rnn-glassfurnace.png)
 
 Notice RNN first saturates after first 12-some epochs before reducing in slope for a further 13 epochs.
 
@@ -104,7 +104,7 @@ Notice RNN first saturates after first 12-some epochs before reducing in slope f
 
 Used a 3 -> 10 -> 100 hidden layer with dropout probability of 35%. Same idea as an mlp and rnn. Train for 50 epochs looping over data 10,000 iterations at each epoch. Operation on training these datas in matlab can ve trial and error of different options in the system identification toolbox et cetera.
 
-[LSTM Training Error Glass Furnace]((figures/glassfurnace/lstm_glassfurnace.png))
+![LSTM Training Error Glass Furnace]((figures/glassfurnace/lstm_glassfurnace.png))
 
 Training is rather erratic at first. 
 
@@ -126,6 +126,6 @@ nn.Sequencer @ nn.Recursor @ nn.Sequential {
 
 The training data is available here:
 
-[FastLSTM Training Error Glass Furnace](figures/glassfurnace/faslLSTM_glassfurnace.png)
+![FastLSTM Training Error Glass Furnace](figures/glassfurnace/fastlstm_glassfurnace.png)
 
 Tuning the learning rate from 1e-3 to 5e-3 after a host of other trials seem to settle the error about the 3.8 to 4.08 valley
