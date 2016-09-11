@@ -1,4 +1,4 @@
---[[Train the network. User can train with 
+--[[Train the network on glassfurnace data. User can train with 
     1) mlp (a simple feedforward network with one hidden layer)
     2) a recurrent network module stacked on a feedforward network
     3) a long short-term memory network
@@ -12,7 +12,7 @@ require 'data/dataparser'
 
 function train_rnn(opt)                          
   iter = iter or 0
-  for t = 1, math.min(opt.maxIter, height), opt.batchSize do 
+  for t = 1,opt.maxIter, opt.batchSize do 
      -- 1. create a sequence of rho time-steps
     local inputs, targets = {}, {}
     inputs, targets       = get_datapair(opt)  
@@ -20,7 +20,7 @@ function train_rnn(opt)
     neunet:zeroGradParameters()
     neunet:forget()  --forget all past time steps
     local outputs = neunet:forward(inputs) 
-    if noutputs   == 1 then targets = targets[3] end
+
     local loss    = cost:forward(outputs, targets)
 
     if iter % 10  == 0 then collectgarbage() end 
@@ -173,7 +173,7 @@ function train_mlp(opt)
       logger:style{['mlp training error vs. #iterations'] = '-'}
       if opt.plot then logger:plot()  end
       iter = iter +1 
-      
+
     elseif optimMethod == optim.sgd then  
       _, fs = optimMethod(feval, parameters, sgdState)
 

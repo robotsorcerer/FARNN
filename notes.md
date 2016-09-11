@@ -82,8 +82,18 @@ e.g. First copy bjam from tools/build to /usr/bin and then do the following in o
 	lex@lex:/usr/local/boost_1_61_0$ sudo bjam install --prefix=/usr/local/boost_1_61_0 --with-chrono --with-thread
 ```
 
-## September 11, 2016
+## GlassFurnace Network::September 11, 2016
 
+###MLP
 The mlp network generalizes well to DaISy MIMO data. I trained for 50 epochs looping over each epoch for 10,000 iterations and using a 3 -> 6 -> 6 network layer. Also, cut out ballbeam/robotArm/soft-robot data from the glassfurnace branch. Training error is described in the grapgh below:
 
-[MLP Training Error Glass Furnace]()
+[MLP Training Error Glass Furnace](figures/glassfurnace/mlp_glassfunace.png)
+
+### RNN Network
+
+Same idea as for soft-robot data. Use 3 input layers in a feedforward structure. Then stack a recurrent layer going back five steps in time on the feedforward; made the output of the recurrent layer 6 as flassfurnace data is MIMO with 3 inputs and six outputs. Same rnnLearningRate as soft-robot data and embed the network in an nn.recurrent model. Noticed a faster convergence to minimum.
+Again, we train over 50 epochs looping over each epoch for 10,000 iterations to guarantee global minimum.
+
+Training started at Sun Sep 11 14:10:35 CDT 2016. The training process proceeded as 
+
+[RNN Training Error Glass Furnace]((figures/glassfurnace/rnn_glassfurnace.png))

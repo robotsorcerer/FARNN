@@ -51,12 +51,8 @@ function contruct_net()
                   :add(ffwd)
                   :add(nn.Sigmoid())
                   :add(r)
-                  :add(nn.Linear(start, 1, bias))
-    if opt.data ==('ballbeam' or 'robotArm') then
-      neunet = nn.Sequencer(neunet)
-    else      
-      neunet = nn.Sequencer(neunet)
-    end
+                  :add(nn.Linear(start, 6, bias)) 
+    neunet = nn.Sequencer(neunet)
 --======================================================================================
 --Nested LSTM Recurrence
   elseif opt.model == 'lstm' then   

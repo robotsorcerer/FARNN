@@ -357,10 +357,16 @@ end
 if (opt.print) then perhaps_print(q, qn, inorder, outorder, input, out, off, train_out, trainData) end
 
 local function main()
+
+  local start = os.execute('date');
+  
   for i = 1, 50 do
     train(trainData)
     test(testData)
   end
+
+  local finish = os.execute('date')
+  print('experiment started at ' .. start .. '\nand ended at \n' .. finish)
 end
 
 
