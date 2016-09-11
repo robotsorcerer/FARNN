@@ -97,3 +97,9 @@ Again, we train over 50 epochs looping over each epoch for 10,000 iterations to 
 Training started at Sun Sep 11 14:10:35 CDT 2016. The training process proceeded as 
 
 [RNN Training Error Glass Furnace]((figures/glassfurnace/rnn_glassfurnace.png))
+
+Notice RNN first saturates after first 12-some epochs before reducing in slope for a further 13 epochs.
+
+### Standard LSTM
+
+Used a 3 -> 10 -> 100 hidden layer with dropout probability of 35%. Same idea as an mlp and rnn. Train for 50 epochs looping over data 10,000 iterations at each epoch. Operation on training these datas in matlab can ve trial and error of different options in the system identification toolbox et cetera
