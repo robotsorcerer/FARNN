@@ -72,9 +72,9 @@ function contruct_net()
       if opt.gru then -- Gated Recurrent Units
          rnn = nn.GRU(inputSize, hiddenSize, opt.rho, opt.dropoutProb)
       elseif opt.fastlstm then        
-        nn.FastLSTM.usenngraph = true -- faster
+        nn.FastLSTM.usenngraph = false -- faster
         if(opt.batchNorm) then
-          nn.FastLSTM.bn = true         --apply weights normalization
+          nn.FastLSTM.bn = false         --apply weights normalization
         end
         nn.FastLSTM.affine = true         
         print(sys.COLORS.magenta .. 'affine state', nn.FastLSTM.affine)
@@ -101,12 +101,6 @@ function contruct_net()
       -- will recurse a single continuous sequence
       neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
       neunet = nn.Sequencer(neunet)
-    else
-      neunet:add(nn.Linear(inputSize, 1, bias))
-      -- will recurse a single continuous sequence
-      neunet:remember((opt.lstm or opt.fastlstm or opt.gru) or 'eval')
-      --output layer 
-      neunet = nn.Repeater(neunet, noutputs)
     end
 --===========================================================================================
   else    

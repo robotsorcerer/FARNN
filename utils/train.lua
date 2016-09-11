@@ -62,6 +62,7 @@ function train_lstm(opt)
     local gradInputs    = neunet:backward(inputs, gradOutputs) 
 
     --4. update lr
+    if opt.fastlstm then opt.rnnlearningRate = 5e-3 end
     neunet:updateParameters(opt.rnnlearningRate)
     -- if (iter*opt.batchSize >= math.min(opt.maxIter, height)) then
     print(string.format("Epoch %d,iter = %d,  Loss = %f ", 
