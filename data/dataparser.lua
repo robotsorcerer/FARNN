@@ -20,6 +20,7 @@ function split_data(opt)
 	  -- if epoch==1 then data_path_printer(filenamefull) ends
 
 	  local splitData = {}
+
 	--ballbeam and robotarm are siso systems from the DaiSy dataset
 	if (string.find(filename, 'robotArm')) or (string.find(filename, 'ballbeam')) then  
 
@@ -44,9 +45,8 @@ function split_data(opt)
 
 	  width       = splitData.train_input:size(2)
 	  height      = splitData.train_input:size(1)
-	  ninputs     = 1
-	  noutputs    = 1
-	  nhiddens_rnn = 6 
+	  ninputs     = 1; nhiddens_rnn = 3 ; nhiddens = 3; noutputs    = 1; 
+
 	--SIMO System from my soft_robot system
 	elseif(string.find(filename, 'softRobot')) then 
 	  data = matio.load(filenamefull);  
@@ -98,15 +98,19 @@ function split_data(opt)
 
 	  k = input:size(1)
 	  off = torch.ceil(torch.abs(0.6*k))
+
 	  --create actual training datasets
-	  	splitData.train_input = input[{{1, off}, {}}];
-	  	splitData.train_out   =   out[{{1, off}, {}}];
-	  	splitData.test_input  = input[{{off+1, k}, {}}];
-	  	splitData.test_out	  = out[{{off+1, k}, {}}];
+	  splitData.train_input = input[{{1, off}, {}}];
+	  splitData.train_out   =   out[{{1, off}, {}}];
+	  splitData.train		=  data[{{1, off}, {}}];
+
+	  splitData.test_input  = input[{{off+1, k}, {}}];
+	  splitData.test_out	= out[{{off+1, k}, {}}];
+	  splitData.test 		= data[{{off+1, k}, {}}];
 
 	  width       = splitData.train_input:size(2)
 	  height      = splitData.train_input:size(2)
-	  ninputs     = 3; nhiddens = 6;  noutputs = 6; nhiddens_rnn = 6 
+	  ninputs     = 3; nhiddens = 1;  noutputs = 1; nhiddens_rnn = 6 
 	end
 	return splitData
 end
@@ -206,18 +210,18 @@ function get_datapair(args)
 	  test_offsets = torch.LongTensor(args.batchSize):random(1,testHeight) 
 
 	  --recurse inputs and targets into one long sequence
-	  inputs = {	splitData.train_input:index(1, offsets)		}
-	  test_inputs = { splitData.test_input:index(1, test_offsets) }
+	  inputs = splitData.train_input:index(1, offsets)	
+	  test_inputs = splitData.test_input:index(1, test_offsets)
 
 	  --batch of targets
-	  targets = {	splitData.train_out[1]:index(1, offsets)        }
-	  test_targets = {   splitData.test_out[1]:index(1, test_offsets)  }
+	  targets = splitData.train_out[1]:index(1, offsets)       
+	  test_targets =   splitData.test_out[1]:index(1, test_offsets) 
 
 	  --pre-whiten the inputs and outputs in the mini-batch
 	  inputs = batchNorm(inputs, 1)
 	  targets = batchNorm(targets, 1)
 
-	  test_inputs = batchNorm(test_inputs, 1)		
+	  test_inputs = batchNorm(test_inputs, 1)
 	  test_targets = batchNorm(test_targets, 1)
 
 	  --increase offsets indices by 1      
@@ -225,7 +229,6 @@ function get_datapair(args)
 	  test_offsets:add(1)
 	  offsets[offsets:gt(height)] = 1  
 	  test_offsets[test_offsets:gt(testHeight)] = 1
-
 	end
 return inputs, targets, test_inputs, test_targets
 end

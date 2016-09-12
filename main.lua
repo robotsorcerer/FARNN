@@ -2,9 +2,12 @@
    Learning deep neural network policies for dynamic nonlinear systems 
    Olalekan Ogunmolu. IEEE International Conference on Robotics and Automation (ICRA), 2017
 
-   Module: Glassfurnace Data: ftp://ftp.esat.kuleuven.ac.be/pub/SISTA/data/process_industry/glassfurnace.txt
-
-   The glassfurnace data is a 3 inputs six outputs system with the following properties:
+   Module: RobotArm Data: ftp://ftp.esat.kuleuven.ac.be/pub/SISTA/data/mechanical/robot_arm.txt
+    
+    Data from a flexible robot arm. The arm is installed on an electrical 
+      motor.  the transfer function from the measured reaction 
+      torque of the structure on the ground to the acceleration of the 
+      flexible arm HAS BEEN MODELED.  The applied input is a periodic sine sweep.
 
        1. Number of samples: 
         1247 samples
@@ -55,7 +58,7 @@ cmd:option('-silent', true, 'false|true: 0 for false, 1 for true')
 cmd:option('-dir', 'outputs', 'directory to log training data')
 
 -- Model Order Determination Parameters
-cmd:option('-data','glassfurnace','path to -v7.3 Matlab data e.g. robotArm | glassfurnace | ballbeam | soft_robot')
+cmd:option('-data','robotArm','path to -v7.3 Matlab data e.g. robotArm | glassfurnace | ballbeam | soft_robot')
 cmd:option('-tau', 5, 'what is the delay in the data?')
 cmd:option('-m_eps', 0.01, 'stopping criterion for output order determination')
 cmd:option('-l_eps', 0.05, 'stopping criterion for input order determination')

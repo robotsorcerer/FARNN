@@ -6,8 +6,7 @@
     Author: Olalekan Ogunmolu, December 2015 - May 2016
     Freely distributed under the MIT License.
   ]]
-require 'torch'      
--- require 'optima.optim_'  
+require 'torch'       
 require 'data/dataparser'
 
 function train_rnn(opt)                          
@@ -114,7 +113,6 @@ function train_mlp(opt)
      end
 
      inputs =  transfer_data(inputs); targets =  transfer_data(targets)
-        -- print('inputs: ', inputs, ' targets: ', targets)
 
      neunet:zeroGradParameters()
      gradParameters:zero()
@@ -134,23 +132,23 @@ function train_mlp(opt)
   --[[compute gradient for batched error in closure]]
   fmseval = function(x, y)
     local y_fwd = {}
-      neunet:zeroGradParameters();
-      --1. predict inputs
-      local pred = neunet:forward(x)
-      
-      --2. Compute loss
-      local loss    = cost:forward(pred, y)
-      lossAcc       = loss + lossAcc
-      local gradOutputs = cost:backward(pred, y)
-      local gradInputs  = neunet:backward(x, gradOutputs)
-      --3. update the parameters
-      neunet:updateParameters(opt.learningRate);
+    neunet:zeroGradParameters();
+    --1. predict inputs
+    local pred = neunet:forward(x)
+    
+    --2. Compute loss
+    local loss    = cost:forward(pred, y)
+    lossAcc       = loss + lossAcc
+    local gradOutputs = cost:backward(pred, y)
+    local gradInputs  = neunet:backward(x, gradOutputs)
+    --3. update the parameters
+    neunet:updateParameters(opt.learningRate);
 
-        -- normalize gradients and f(X)
-      gradParameters:div(opt.batchSize)
-      lossAcc = lossAcc/math.min(opt.batchSize, height)
-      
-      collectgarbage()      --yeah, sure. come in and argue :)
+      -- normalize gradients and f(X)
+    gradParameters:div(opt.batchSize)
+    lossAcc = lossAcc/math.min(opt.batchSize, height)
+    
+    collectgarbage()      --yeah, sure. come in and argue :)
     return loss, lossAcc  
   end
 
@@ -162,9 +160,7 @@ function train_mlp(opt)
     inputs, targets = get_datapair(opt)    
     -- optimization on current mini-batch
     if optimMethod == msetrain then
-
-      neunet:zeroGradParameters()
-      
+      neunet:zeroGradParameters()      
       loss, lossAcc = fmseval(inputs, targets) 
 
       if iter % 100  == 0 then collectgarbage() end 
