@@ -2,7 +2,7 @@
 
 Author: Olalekan Ogunmolu         
 
-This repo contains the code for reproducing the results introduced in the paper Nonlinear Systems Identification Using Deep Dynamic Neural Networks.
+This repo contains the code for reproducing the results introduced in the paper, [Nonlinear Systems Identification Using Deep Dynamic Neural Networks](http://ecs.utdallas.edu/~opo140030/vitae.html).
 
 ## Maintainer
 
