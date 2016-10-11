@@ -16,6 +16,7 @@ This repo contains the code for reproducing the results introduced in the paper,
 - [Test Code](#test-code)
 - [Options](#options)
 
+![FastLSTM](data/fastlstm.gif)
 
 ### Description
 Nonlinear Systems Identification Using Deep Dynamic Neural Networks
