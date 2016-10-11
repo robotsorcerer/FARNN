@@ -1,25 +1,27 @@
-# Nonlinear Systems Identification Using Deep Dynamic Neural Networks
+## Nonlinear Systems Identification Using Deep Dynamic Neural Networks
+ in https://arxiv.org/abs/1610.01439
 
 Author: Olalekan Ogunmolu         
 
 This repo contains the code for reproducing the results introduced in the paper, [Nonlinear Systems Identification Using Deep Dynamic Neural Networks](http://ecs.utdallas.edu/~opo140030/vitae.html).
 
-## Maintainer
+### Maintainer
 
 - [Olalekan Ogunmolu](http://ecs.utdallas.edu/~olalekan.ogunmolu) 
 
-## Table of contents
+### Table of contents
 - [Description](#description)
 - [Dependencies](#Dependencies)
 - [Modifications](#modifications)
 - [Test Code](#test-code)
 - [Options](#options)
 
+![FastLSTM](data/fastlstm.gif)
 
-## Description
+### Description
 Nonlinear Systems Identification Using Deep Dynamic Neural Networks
 
-## Dependencies
+### Dependencies
 
 This code is written in lua/torch and compiles with Torch7. I recommend you follow the instructions on the [torch website](http://torch.ch/docs/getting-started.html) to get the torch7 package installed. Typical installation would include running the following  commands in a terminal
 
@@ -86,7 +88,7 @@ To run the Hammerstein models described in the paper, we do
 	luarocks install rnn
 ```
 
-## Test code
+### Test code
 
 To test this code, make sure `posemat7.mat`	 is in the root directory of your project. Then run the `farnn.lua` script as
 
@@ -94,33 +96,33 @@ To test this code, make sure `posemat7.mat`	 is in the root directory of your pr
 	th main.lua
 ```
 
-## Training Models
+### Training Models
 By default, this trains with the Hammerstein LSTM architecture described in the paper. 
 To use a different model such as `mlp`, `fastlstm`, `rnn` or `gru`, do the following. To train on a specific dataset that was mentioned in the paper, pass the name of the dataset as a command line argument before training (e.g., `-data softRobot` for soft-robot dataset or `-data glasssurface` for glassfurnace dataset).
 
-### MLP Models
+#### MLP Models
 
 ```bash
 	th main.lua -model mlp
 ```
 
-### RNN Models
+#### RNN Models
 ```bash
 	th main.lua -model rnn
 ```
 
-### FastLSTM models
+#### FastLSTM models
 ```
 	th main.lua -fastlstm
 ```
 
-### GRU Models
+#### GRU Models
 
 ```
 	th main.lua -gru
 ```
 
-## Options
+### Options
 	
 * `-seed`, 123, 'initial seed for random number generator'
 * `-silent`, true, 'false|true: 0 for false, 1 for true'
